@@ -7,6 +7,7 @@ export default defineConfig({
   sitemap: {
     hostname: 'https://file-system.tuist.io'
   },
+  head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
