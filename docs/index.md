@@ -5,7 +5,7 @@ layout: home
 hero:
   name: "FileSystem"
   text: "Cross-platform file system API for Swift"
-  tagline: A battle-tested Swift package for running system processes.
+  tagline: A battle-tested Swift package for working with the file system.
   actions:
     - theme: brand
       text: Get started
