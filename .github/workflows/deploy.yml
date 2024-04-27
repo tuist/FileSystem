@@ -1,0 +1,24 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - 'main'
+
+concurrency:
+  group: deploy-${{ github.head_ref }}
+  cancel-in-progress: true
+  
+jobs:
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: pnpm install
+      - run: mise run docs:deploy

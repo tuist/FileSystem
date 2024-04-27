@@ -1,0 +1,87 @@
+name: FileSystem
+
+on:
+  push:
+    branches:
+      - main
+  pull_request: {}
+
+env:
+  TUIST_CONFIG_CLOUD_TOKEN: ${{ secrets.TUIST_CONFIG_CLOUD_TOKEN }}
+  
+concurrency:
+  group: file-system-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: "Release build on ${{ matrix.os }}"
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run build-spm
+
+  build_tuist:
+    name: "Tuist build"
+    runs-on: "macos-14"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_$(cat .xcode-version).app
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: |
+          mise x -- tuist install
+          mise run build
+
+  test:
+    name: "Test on ${{ matrix.os }}"
+    strategy:
+      matrix:
+        # FIXME: Mockable doesn't work on Linux
+        os: [macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run test-spm
+
+  test_tuist:
+    name: "Tuist test"
+    runs-on: "macos-14"
+    env:
+      TUIST_CONFIG_CLOUD_TOKEN: ${{ secrets.TUIST_CONFIG_CLOUD_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode_$(cat .xcode-version).app
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: |
+          mise x -- tuist install
+          mise run test
+
+  lint:
+    name: Lint
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run lint
