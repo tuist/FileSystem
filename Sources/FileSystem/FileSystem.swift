@@ -65,10 +65,12 @@ public struct FileSystem: FileSysteming {
     }
 
     public func remove(_ path: AbsolutePath) throws {
+        logger?.debug("Removing directory or file at path: \(path.pathString)")
         try FileManager.default.removeItem(atPath: path.pathString)
     }
 
     public func touch(_ path: Path.AbsolutePath) throws {
+        logger?.debug("Touching a file at path \(path.pathString)")
         try "".write(toFile: path.pathString, atomically: true, encoding: .utf8)
     }
 }
