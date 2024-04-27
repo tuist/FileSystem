@@ -20,8 +20,10 @@ public protocol FileSysteming {
 
 public struct FileSystem: FileSysteming {
     fileprivate let logger: Logger?
+    fileprivate let environmentVariables: [String: String]
 
-    public init(logger: Logger? = nil) {
+    public init(environmentVariables: [String: String] = ProcessInfo.processInfo.environment, logger: Logger? = nil) {
+        self.environmentVariables = environmentVariables
         self.logger = logger
     }
 
