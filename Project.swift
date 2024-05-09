@@ -11,6 +11,7 @@ let project = Project(name: "FileSystem", targets: [
             "Sources/FileSystem/**/*.swift",
         ],
         dependencies: [
+            .external(name: "_NIOFileSystem"),
             .external(name: "Logging"),
             .external(name: "Path"),
         ],

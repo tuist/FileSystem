@@ -22,7 +22,8 @@ final class FileSystemTests: XCTestCase {
         let temporaryDirectory = try subject.createTemporaryDirectory(prefix: "FileSystem")
 
         // When
-        XCTAssertTrue(subject.exists(temporaryDirectory))
+        let exists = try await subject.exists(temporaryDirectory)
+        XCTAssertTrue(exists)
         XCTAssertTrue(subject.exists(temporaryDirectory, isDirectory: true))
         XCTAssertFalse(subject.exists(temporaryDirectory, isDirectory: false))
     }
@@ -35,7 +36,8 @@ final class FileSystemTests: XCTestCase {
         }
 
         // Then
-        XCTAssertFalse(subject.exists(temporaryDirectory))
+        let exists = try await subject.exists(temporaryDirectory)
+        XCTAssertFalse(exists)
     }
 
     func test_runInTemporaryDirectory_rethrowsErrors() async throws {

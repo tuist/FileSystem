@@ -2,10 +2,6 @@
 
 FileSystem is a Swift Package that provides a simple cross-platform API to interact with the file system.
 
-## Documentation
-
-You can find the documentation [here](https://filesystem.tuist.io).
-
 ## Add it to your project
 
 ### Swift Package Manager

@@ -15,12 +15,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.2.0")),
+        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.65.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.5.4")),
     ],
     targets: [
         .target(
             name: "FileSystem",
             dependencies: [
+                .product(name: "NIOFileSystem", package: "swift-nio"),
                 .product(name: "Path", package: "Path"),
                 .product(name: "Logging", package: "swift-log"),
             ],
