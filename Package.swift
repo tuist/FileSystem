@@ -22,7 +22,7 @@ let package = Package(
         .target(
             name: "FileSystem",
             dependencies: [
-                .product(name: "NIOFileSystem", package: "swift-nio"),
+                .product(name: "_NIOFileSystem", package: "swift-nio"),
                 .product(name: "Path", package: "Path"),
                 .product(name: "Logging", package: "swift-log"),
             ],
