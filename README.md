@@ -44,8 +44,8 @@ let package = Package(
 
 And then declare it as a dependency of one of your project's targets:
 
-::: code-group
-```swift [Project.swift]
+```swift
+// Project.swift
 import ProjectDescription
 
 let project = Project(
@@ -67,7 +67,6 @@ let project = Project(
     ]
 )
 ```
-:::
 
 ## Development
 
