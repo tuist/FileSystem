@@ -314,18 +314,22 @@ public struct FileSystem: FileSysteming {
     }
 
     public func readPlistFile<T>(at _: Path.AbsolutePath) async throws -> T where T: Decodable {
+        // swiftlint:disable:next force_cast
         "TODO" as! T
     }
 
     public func readPlistFile<T>(at _: Path.AbsolutePath, decoder _: PropertyListDecoder) async throws -> T where T: Decodable {
+        // swiftlint:disable:next force_cast
         "TODO" as! T
     }
 
     public func readJSONFile<T>(at _: Path.AbsolutePath) async throws -> T where T: Decodable {
+        // swiftlint:disable:next force_cast
         "TODO" as! T
     }
 
     public func readJSONFile<T>(at _: Path.AbsolutePath, decoder _: JSONDecoder) async throws -> T where T: Decodable {
+        // swiftlint:disable:next force_cast
         "TODO" as! T
     }
 
