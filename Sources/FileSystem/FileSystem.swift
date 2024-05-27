@@ -182,24 +182,29 @@ public protocol FileSysteming {
     ///   - encoder: The JSONEncoder instance to encode the item.
     func writeAsJSON<T: Encodable>(_ item: T, at: AbsolutePath, encoder: JSONEncoder) async throws
 
-//
-//       func replace(_ to: AbsolutePath, with: AbsolutePath) throws
-//       func copy(from: AbsolutePath, to: AbsolutePath) throws
-//       func locateDirectoryTraversingParents(from: AbsolutePath, path: String) -> AbsolutePath?
-//       func locateDirectory(_ path: String, traversingFrom from: AbsolutePath) throws -> AbsolutePath?
-//       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
-//       func glob(_ path: AbsolutePath, glob: String) -> [AbsolutePath]
-//       func throwingGlob(_ path: AbsolutePath, glob: String) throws -> [AbsolutePath]
-//       func linkFile(atPath: AbsolutePath, toPath: AbsolutePath) throws
-//       func contentsOfDirectory(_ path: AbsolutePath) throws -> [AbsolutePath]
-//       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
-//       func fileSize(path: AbsolutePath) throws -> UInt64
-//       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
-//       func resolveSymlinks(_ path: AbsolutePath) throws -> AbsolutePath
-//       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
-//       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
-//       func zipItem(at sourcePath: AbsolutePath, to destinationPath: AbsolutePath) throws
-//       func unzipItem(at sourcePath: AbsolutePath, to destinationPath: AbsolutePath) throws
+    /// Returns the size of a file at a given path. If the file doesn't exist, it returns nil.
+    /// - Parameter at: Path to the file whose size will be returned.
+    /// - Returns: The file size, otherwise `nil`
+    func fileSizeInBytes(at: AbsolutePath) async throws -> Int64?
+
+    //
+    //       func replace(_ to: AbsolutePath, with: AbsolutePath) throws
+    //       func copy(from: AbsolutePath, to: AbsolutePath) throws
+    //       func locateDirectoryTraversingParents(from: AbsolutePath, path: String) -> AbsolutePath?
+    //       func locateDirectory(_ path: String, traversingFrom from: AbsolutePath) throws -> AbsolutePath?
+    //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
+    //       func glob(_ path: AbsolutePath, glob: String) -> [AbsolutePath]
+    //       func throwingGlob(_ path: AbsolutePath, glob: String) throws -> [AbsolutePath]
+    //       func linkFile(atPath: AbsolutePath, toPath: AbsolutePath) throws
+    //       func contentsOfDirectory(_ path: AbsolutePath) throws -> [AbsolutePath]
+    //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
+    //       func fileSize(path: AbsolutePath) throws -> UInt64
+    //       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
+    //       func resolveSymlinks(_ path: AbsolutePath) throws -> AbsolutePath
+    //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
+    //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
+    //       func zipItem(at sourcePath: AbsolutePath, to destinationPath: AbsolutePath) throws
+    //       func unzipItem(at sourcePath: AbsolutePath, to destinationPath: AbsolutePath) throws
 }
 
 public struct FileSystem: FileSysteming {
@@ -438,5 +443,13 @@ public struct FileSystem: FileSysteming {
         case let .success(value): return value
         case let .failure(error): throw error
         }
+    }
+
+    public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
+        guard let info = try await NIOFileSystem.FileSystem.shared.info(
+            forFileAt: .init(path.pathString),
+            infoAboutSymbolicLink: true
+        ) else { return nil }
+        return info.size
     }
 }

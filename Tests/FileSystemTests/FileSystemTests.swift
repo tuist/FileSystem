@@ -185,4 +185,31 @@ final class FileSystemTests: XCTestCase {
             XCTAssertEqual(got, item)
         }
     }
+
+    func test_fileSizeInBytes_returnsTheFileSize_when_itExists() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let path = temporaryDirectory.appending(component: "file")
+            try await subject.writeText("tuist", at: path)
+
+            // When
+            let size = try await subject.fileSizeInBytes(at: path)
+
+            // Then
+            XCTAssertEqual(size, 5)
+        }
+    }
+
+    func test_fileSizeInBytes_returnsNil_when_theFileDoesntExist() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let path = temporaryDirectory.appending(component: "file")
+
+            // When
+            let size = try await subject.fileSizeInBytes(at: path)
+
+            // Then
+            XCTAssertNil(size)
+        }
+    }
 }
