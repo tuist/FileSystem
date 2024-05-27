@@ -1,5 +1,6 @@
 import Foundation
 import Logging
+import NIOCore
 import NIOFileSystem
 import Path
 
@@ -11,6 +12,8 @@ public enum FileSystemItemType: CaseIterable, Equatable {
 public enum FileSystemError: Equatable, Error, CustomStringConvertible {
     case moveNotFound(from: AbsolutePath, to: AbsolutePath)
     case makeDirectoryAbsentParent(AbsolutePath)
+    case readInvalidEncoding(String.Encoding, path: AbsolutePath)
+    case cantEncodeText(String, String.Encoding)
 
     public var description: String {
         switch self {
@@ -18,6 +21,10 @@ public enum FileSystemError: Equatable, Error, CustomStringConvertible {
             return "The file or directory at path \(from.pathString) couldn't be moved to \(to.parentDirectory.pathString). Ensure the source file or directory and the target's parent directory exist."
         case let .makeDirectoryAbsentParent(path):
             return "Couldn't create the directory at path \(path.pathString) because its parent directory doesn't exists."
+        case let .readInvalidEncoding(encoding, path):
+            return "Couldn't text-decode the content of the file at path \(path.pathString) using the encoding \(encoding.description). Ensure that the encoding is the right one."
+        case let .cantEncodeText(text, encoding):
+            return "Couldn't encode the following text using the encoding \(encoding):\n\(text)"
         }
     }
 }
@@ -112,6 +119,19 @@ public protocol FileSysteming {
     /// - Returns: The content of the file.
     func readTextFile(at: Path.AbsolutePath, encoding: String.Encoding) async throws -> String
 
+    /// It writes the text at the given path. It encodes the text using UTF-8
+    /// - Parameters:
+    ///   - text: Text to be written.
+    ///   - at: Path at which the text will be written.
+    func writeText(_ text: String, at: AbsolutePath) async throws
+
+    /// It writes the text at the given path.
+    /// - Parameters:
+    ///   - text: Text to be written.
+    ///   - at: Path at which the text will be written.
+    ///   - encoding: The encoding to encode the text as data.
+    func writeText(_ text: String, at: AbsolutePath, encoding: String.Encoding) async throws
+
     /// Reads a property list file at a given path, and decodes it into the provided decodable type.
     /// - Parameter at: The path to the property list file.
     /// - Returns: The decoded structure.
@@ -123,6 +143,19 @@ public protocol FileSysteming {
     ///   - decoder: The property list decoder to use.
     /// - Returns: The decoded instance.
     func readPlistFile<T: Decodable>(at: AbsolutePath, decoder: PropertyListDecoder) async throws -> T
+
+    /// Given an `Encodable` instance, it encodes it as a Plist, and writes it at the given path.
+    /// - Parameters:
+    ///   - item: Item to be encoded as Plist.
+    ///   - at: Path at which the Plist will be written.
+    func writeAsPlist<T: Encodable>(_ item: T, at: AbsolutePath) async throws
+
+    /// Given an `Encodable` instance, it encodes it as a Plist, and writes it at the given path.
+    /// - Parameters:
+    ///   - item: Item to be encoded as Plist.
+    ///   - at: Path at which the Plist will be written.
+    ///   - encoder: The PropertyListEncoder instance to encode the item.
+    func writeAsPlist<T: Encodable>(_ item: T, at: AbsolutePath, encoder: PropertyListEncoder) async throws
 
     /// Reads a JSON  file at a given path, and decodes it into the provided decodable type.
     /// - Parameter at: The path to the property list file.
@@ -136,18 +169,22 @@ public protocol FileSysteming {
     /// - Returns: The decoded instance.
     func readJSONFile<T: Decodable>(at: AbsolutePath, decoder: JSONDecoder) async throws -> T
 
-//    /// Returns the current path.
-    //       func inTemporaryDirectory(_ closure: @escaping (AbsolutePath) async throws -> Void) async throws
-    //       func inTemporaryDirectory(_ closure: (AbsolutePath) throws -> Void) throws
-    //       func inTemporaryDirectory(removeOnCompletion: Bool, _ closure: (AbsolutePath) throws -> Void) throws
-    //       func inTemporaryDirectory<Result>(_ closure: (AbsolutePath) throws -> Result) throws -> Result
-    //       func inTemporaryDirectory<Result>(removeOnCompletion: Bool, _ closure: (AbsolutePath) throws -> Result) throws ->
-    //       Result
+    /// Given an `Encodable` instance, it encodes it as a JSON, and writes it at the given path.
+    /// - Parameters:
+    ///   - item: Item to be encoded as JSON.
+    ///   - at: Path at which the JSON will be written.
+    func writeAsJSON<T: Encodable>(_ item: T, at: AbsolutePath) async throws
+
+    /// Given an `Encodable` instance, it encodes it as a JSON, and writes it at the given path.
+    /// - Parameters:
+    ///   - item: Item to be encoded as JSON.
+    ///   - at: Path at which the JSON will be written.
+    ///   - encoder: The JSONEncoder instance to encode the item.
+    func writeAsJSON<T: Encodable>(_ item: T, at: AbsolutePath, encoder: JSONEncoder) async throws
+
 //
 //       func replace(_ to: AbsolutePath, with: AbsolutePath) throws
 //       func copy(from: AbsolutePath, to: AbsolutePath) throws
-//       /// Determine temporary directory either default for user or specified by ENV variable
-//       func write(_ content: String, path: AbsolutePath, atomically: Bool) throws
 //       func locateDirectoryTraversingParents(from: AbsolutePath, path: String) -> AbsolutePath?
 //       func locateDirectory(_ path: String, traversingFrom from: AbsolutePath) throws -> AbsolutePath?
 //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
@@ -281,13 +318,21 @@ public struct FileSystem: FileSysteming {
         }
     }
 
-    public func readFile(at: Path.AbsolutePath) async throws -> Data {
-        let handle = try await NIOFileSystem.FileSystem.shared.openFile(forReadingAt: .init(at.pathString), options: .init())
+    public func readFile(at path: Path.AbsolutePath) async throws -> Data {
+        try await readFile(at: path, log: true)
+    }
+
+    private func readFile(at path: Path.AbsolutePath, log: Bool = false) async throws -> Data {
+        if log {
+            logger?.debug("Reading file at path \(path.pathString)")
+        }
+        let handle = try await NIOFileSystem.FileSystem.shared.openFile(forReadingAt: .init(path.pathString), options: .init())
+
         let result: Result<Data, Error>
         do {
             var bytes: [UInt8] = []
             for try await var chunk in handle.readChunks() {
-                let chunkBytes = chunk.readBytes(length: chunk.capacity) ?? []
+                let chunkBytes = chunk.readBytes(length: chunk.readableBytes) ?? []
                 bytes.append(contentsOf: chunkBytes)
             }
             result = .success(Data(bytes))
@@ -305,32 +350,73 @@ public struct FileSystem: FileSysteming {
         try await readTextFile(at: at, encoding: .utf8)
     }
 
-    public func readTextFile(at: Path.AbsolutePath, encoding: String.Encoding) async throws -> String {
-        let data = try await readFile(at: at)
+    public func readTextFile(at path: Path.AbsolutePath, encoding: String.Encoding) async throws -> String {
+        logger?.debug("Reading text file at path \(path.pathString) using encoding \(encoding.description)")
+        let data = try await readFile(at: path)
         guard let string = String(data: data, encoding: encoding) else {
-            return "TODO"
+            throw FileSystemError.readInvalidEncoding(encoding, path: path)
         }
         return string
     }
 
-    public func readPlistFile<T>(at _: Path.AbsolutePath) async throws -> T where T: Decodable {
-        // swiftlint:disable:next force_cast
-        "TODO" as! T
+    public func writeText(_ text: String, at path: AbsolutePath) async throws {
+        try await writeText(text, at: path, encoding: .utf8)
     }
 
-    public func readPlistFile<T>(at _: Path.AbsolutePath, decoder _: PropertyListDecoder) async throws -> T where T: Decodable {
-        // swiftlint:disable:next force_cast
-        "TODO" as! T
+    public func writeText(_ text: String, at path: AbsolutePath, encoding: String.Encoding) async throws {
+        logger?.debug("Writing text at path \(path.pathString)")
+        guard let data = text.data(using: encoding) else {
+            throw FileSystemError.cantEncodeText(text, encoding)
+        }
+        _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
+            try await handler.write(contentsOf: data, toAbsoluteOffset: 0)
+        }
     }
 
-    public func readJSONFile<T>(at _: Path.AbsolutePath) async throws -> T where T: Decodable {
-        // swiftlint:disable:next force_cast
-        "TODO" as! T
+    public func readPlistFile<T>(at path: Path.AbsolutePath) async throws -> T where T: Decodable {
+        try await readPlistFile(at: path, decoder: PropertyListDecoder())
     }
 
-    public func readJSONFile<T>(at _: Path.AbsolutePath, decoder _: JSONDecoder) async throws -> T where T: Decodable {
-        // swiftlint:disable:next force_cast
-        "TODO" as! T
+    public func readPlistFile<T>(at path: Path.AbsolutePath, decoder: PropertyListDecoder) async throws -> T where T: Decodable {
+        logger?.debug("Reading .plist file at path \(path.pathString)")
+        let data = try await readFile(at: path)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    public func writeAsPlist(_ item: some Encodable, at path: AbsolutePath) async throws {
+        try await writeAsPlist(item, at: path, encoder: PropertyListEncoder())
+    }
+
+    public func writeAsPlist(_ item: some Encodable, at path: AbsolutePath, encoder: PropertyListEncoder) async throws {
+        logger?.debug("Writing .plist at path \(path.pathString)")
+
+        let json = try encoder.encode(item)
+        _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
+            try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
+        }
+    }
+
+    public func readJSONFile<T>(at path: Path.AbsolutePath) async throws -> T where T: Decodable {
+        try await readJSONFile(at: path, decoder: JSONDecoder())
+    }
+
+    public func readJSONFile<T>(at path: Path.AbsolutePath, decoder: JSONDecoder) async throws -> T where T: Decodable {
+        logger?.debug("Reading .json file at path \(path.pathString)")
+        let data = try await readFile(at: path)
+        return try decoder.decode(T.self, from: data)
+    }
+
+    public func writeAsJSON(_ item: some Encodable, at path: AbsolutePath) async throws {
+        try await writeAsJSON(item, at: path, encoder: JSONEncoder())
+    }
+
+    public func writeAsJSON(_ item: some Encodable, at path: AbsolutePath, encoder: JSONEncoder) async throws {
+        logger?.debug("Writing .json at path \(path.pathString)")
+
+        let json = try encoder.encode(item)
+        _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
+            try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
+        }
     }
 
     public func runInTemporaryDirectory<T>(

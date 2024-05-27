@@ -138,17 +138,51 @@ final class FileSystemTests: XCTestCase {
         }
     }
 
-    func test_readTextFile_returnsTheContent() async throws {
-//        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-//            // Given
-//            let filePath = temporaryDirectory.appending(component: "file")
-//            try await "test".write(toFileAt: .init(filePath.pathString))
-//
-//            // When
-//            let got = try await subject.readTextFile(at: filePath)
-//
-//            // Then
-//            XCTAssertEqual(got, "test")
-//        }
+    func test_writeTextFile_and_readTextFile_returnsTheContent() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let filePath = temporaryDirectory.appending(component: "file")
+            try await subject.writeText("test", at: filePath)
+
+            // When
+            let got = try await subject.readTextFile(at: filePath)
+
+            // Then
+            XCTAssertEqual(got, "test")
+        }
+    }
+
+    func test_writeAsJSON_and_readJSONFile_returnsTheContent() async throws {
+        struct CodableStruct: Codable, Equatable { let name: String }
+
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let item = CodableStruct(name: "tuist")
+            let filePath = temporaryDirectory.appending(component: "file")
+            try await subject.writeAsJSON(item, at: filePath)
+
+            // When
+            let got: CodableStruct = try await subject.readJSONFile(at: filePath)
+
+            // Then
+            XCTAssertEqual(got, item)
+        }
+    }
+
+    func test_writeAsPlist_and_readPlistFile_returnsTheContent() async throws {
+        struct CodableStruct: Codable, Equatable { let name: String }
+
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let item = CodableStruct(name: "tuist")
+            let filePath = temporaryDirectory.appending(component: "file")
+            try await subject.writeAsPlist(item, at: filePath)
+
+            // When
+            let got: CodableStruct = try await subject.readPlistFile(at: filePath)
+
+            // Then
+            XCTAssertEqual(got, item)
+        }
     }
 }
