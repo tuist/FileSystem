@@ -205,7 +205,16 @@ public protocol FileSysteming {
     ///   - with: The path to copy the file or directory to.
     func copy(_ to: AbsolutePath, to: AbsolutePath) async throws
 
-    //       func copy(from: AbsolutePath, to: AbsolutePath) throws
+    /// Given a path, it traverses the hierarcy until it finds a file or directory whose absolute path is formed by concatenating
+    /// the looked up path and the given relative path. The search stops when the file-system root path, `/`, is reached.
+    ///
+    /// - Parameters:
+    ///   - from: The path to traverse plan. This one will also be checked against.
+    ///   - relativePath: The relative path to append to every traversed path.
+    ///
+    /// - Returns: The found path. Otherwise it returns `nil`.
+    func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath?
+
     //       func locateDirectoryTraversingParents(from: AbsolutePath, path: String) -> AbsolutePath?
     //       func locateDirectory(_ path: String, traversingFrom from: AbsolutePath) throws -> AbsolutePath?
     //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
@@ -486,5 +495,14 @@ public struct FileSystem: FileSysteming {
             infoAboutSymbolicLink: true
         ) else { return nil }
         return info.size
+    }
+
+    public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {
+        let path = from.appending(relativePath)
+        if try await exists(path) {
+            return path
+        }
+        if from == .root { return nil }
+        return try await locateTraversingUp(from: from.parentDirectory, relativePath: relativePath)
     }
 }

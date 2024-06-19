@@ -345,4 +345,38 @@ final class FileSystemTests: XCTestCase {
             XCTAssertEqual(_error, FileSystemError.copiedItemAbsent(copiedPath: fromPath, intoPath: toPath))
         }
     }
+
+    func test_locateTraversingUp_whenAnItemIsFound() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let fileToLookUp = temporaryDirectory.appending(component: "FileSystem.swift")
+            try await self.subject.touch(fileToLookUp)
+            let veryNestedDirectory = temporaryDirectory.appending(components: ["first", "second", "third"])
+
+            // When
+            let got = try await subject.locateTraversingUp(
+                from: veryNestedDirectory,
+                relativePath: try RelativePath(validating: "FileSystem.swift")
+            )
+
+            // Then
+            XCTAssertEqual(got, fileToLookUp)
+        }
+    }
+
+    func test_locateTraversingUp_whenAnItemIsNotFound() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let veryNestedDirectory = temporaryDirectory.appending(components: ["first", "second", "third"])
+
+            // When
+            let got = try await subject.locateTraversingUp(
+                from: veryNestedDirectory,
+                relativePath: try RelativePath(validating: "FileSystem.swift")
+            )
+
+            // Then
+            XCTAssertNil(got)
+        }
+    }
 }
