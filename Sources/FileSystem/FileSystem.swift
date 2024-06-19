@@ -14,6 +14,8 @@ public enum FileSystemError: Equatable, Error, CustomStringConvertible {
     case makeDirectoryAbsentParent(AbsolutePath)
     case readInvalidEncoding(String.Encoding, path: AbsolutePath)
     case cantEncodeText(String, String.Encoding)
+    case replacingItemAbsent(replacingPath: AbsolutePath, replacedPath: AbsolutePath)
+    case copiedItemAbsent(copiedPath: AbsolutePath, intoPath: AbsolutePath)
 
     public var description: String {
         switch self {
@@ -25,6 +27,10 @@ public enum FileSystemError: Equatable, Error, CustomStringConvertible {
             return "Couldn't text-decode the content of the file at path \(path.pathString) using the encoding \(encoding.description). Ensure that the encoding is the right one."
         case let .cantEncodeText(text, encoding):
             return "Couldn't encode the following text using the encoding \(encoding):\n\(text)"
+        case let .replacingItemAbsent(replacingPath, replacedPath):
+            return "Couldn't replace file or directory at \(replacedPath.pathString) with item at \(replacingPath.pathString) because the latter doesn't exist."
+        case let .copiedItemAbsent(copiedPath, intoPath):
+            return "Couldn't copy the file or directory at \(copiedPath.pathString) to \(intoPath.pathString) because the former doesn't exist."
         }
     }
 }
@@ -187,8 +193,18 @@ public protocol FileSysteming {
     /// - Returns: The file size, otherwise `nil`
     func fileSizeInBytes(at: AbsolutePath) async throws -> Int64?
 
-    //
-    //       func replace(_ to: AbsolutePath, with: AbsolutePath) throws
+    /// Given a path, it replaces it with the file or directory at the other path.
+    /// - Parameters:
+    ///   - to: The path to be replaced.
+    ///   - with: The path to the directory or file to replace the other path with.
+    func replace(_ to: AbsolutePath, with: AbsolutePath) async throws
+
+    /// Given a path, it copies the file or directory to another path.
+    /// - Parameters:
+    ///   - to: The path to the file or directory to be copied.
+    ///   - with: The path to copy the file or directory to.
+    func copy(_ to: AbsolutePath, to: AbsolutePath) async throws
+
     //       func copy(from: AbsolutePath, to: AbsolutePath) throws
     //       func locateDirectoryTraversingParents(from: AbsolutePath, path: String) -> AbsolutePath?
     //       func locateDirectory(_ path: String, traversingFrom from: AbsolutePath) throws -> AbsolutePath?
@@ -198,7 +214,6 @@ public protocol FileSysteming {
     //       func linkFile(atPath: AbsolutePath, toPath: AbsolutePath) throws
     //       func contentsOfDirectory(_ path: AbsolutePath) throws -> [AbsolutePath]
     //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
-    //       func fileSize(path: AbsolutePath) throws -> UInt64
     //       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
     //       func resolveSymlinks(_ path: AbsolutePath) throws -> AbsolutePath
     //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
@@ -422,6 +437,26 @@ public struct FileSystem: FileSysteming {
         _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
             try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
         }
+    }
+
+    public func replace(_ to: AbsolutePath, with path: AbsolutePath) async throws {
+        if !(try await exists(path)) {
+            throw FileSystemError.replacingItemAbsent(replacingPath: path, replacedPath: to)
+        }
+        if !(try await exists(to.parentDirectory)) {
+            try await makeDirectory(at: to.parentDirectory)
+        }
+        try await NIOFileSystem.FileSystem.shared.replaceItem(at: .init(to.pathString), withItemAt: .init(path.pathString))
+    }
+
+    public func copy(_ from: AbsolutePath, to: AbsolutePath) async throws {
+        if !(try await exists(from)) {
+            throw FileSystemError.copiedItemAbsent(copiedPath: from, intoPath: to)
+        }
+        if !(try await exists(to.parentDirectory)) {
+            try await makeDirectory(at: to.parentDirectory)
+        }
+        try await NIOFileSystem.FileSystem.shared.copyItem(at: .init(from.pathString), to: .init(to.pathString))
     }
 
     public func runInTemporaryDirectory<T>(
