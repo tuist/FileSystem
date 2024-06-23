@@ -4,11 +4,11 @@
 import PackageDescription
 
 #if TUIST
-import ProjectDescription
+    import ProjectDescription
 
-let packageSettings = PackageSettings(
-    baseSettings: .settings(base: ["SWIFT_STRICT_CONCURRENCY": "complete"])
-)
+    let packageSettings = PackageSettings(
+        baseSettings: .settings(base: ["SWIFT_STRICT_CONCURRENCY": "complete"])
+    )
 #endif
 
 let package = Package(
