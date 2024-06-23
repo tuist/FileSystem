@@ -138,17 +138,281 @@ final class FileSystemTests: XCTestCase {
         }
     }
 
-    func test_readTextFile_returnsTheContent() async throws {
-//        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-//            // Given
-//            let filePath = temporaryDirectory.appending(component: "file")
-//            try await "test".write(toFileAt: .init(filePath.pathString))
-//
-//            // When
-//            let got = try await subject.readTextFile(at: filePath)
-//
-//            // Then
-//            XCTAssertEqual(got, "test")
-//        }
+    func test_writeTextFile_and_readTextFile_returnsTheContent() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let filePath = temporaryDirectory.appending(component: "file")
+            try await subject.writeText("test", at: filePath)
+
+            // When
+            let got = try await subject.readTextFile(at: filePath)
+
+            // Then
+            XCTAssertEqual(got, "test")
+        }
+    }
+
+    func test_writeAsJSON_and_readJSONFile_returnsTheContent() async throws {
+        struct CodableStruct: Codable, Equatable { let name: String }
+
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let item = CodableStruct(name: "tuist")
+            let filePath = temporaryDirectory.appending(component: "file")
+            try await subject.writeAsJSON(item, at: filePath)
+
+            // When
+            let got: CodableStruct = try await subject.readJSONFile(at: filePath)
+
+            // Then
+            XCTAssertEqual(got, item)
+        }
+    }
+
+    func test_writeAsPlist_and_readPlistFile_returnsTheContent() async throws {
+        struct CodableStruct: Codable, Equatable { let name: String }
+
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let item = CodableStruct(name: "tuist")
+            let filePath = temporaryDirectory.appending(component: "file")
+            try await subject.writeAsPlist(item, at: filePath)
+
+            // When
+            let got: CodableStruct = try await subject.readPlistFile(at: filePath)
+
+            // Then
+            XCTAssertEqual(got, item)
+        }
+    }
+
+    func test_fileSizeInBytes_returnsTheFileSize_when_itExists() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let path = temporaryDirectory.appending(component: "file")
+            try await subject.writeText("tuist", at: path)
+
+            // When
+            let size = try await subject.fileSizeInBytes(at: path)
+
+            // Then
+            XCTAssertEqual(size, 5)
+        }
+    }
+
+    func test_fileSizeInBytes_returnsNil_when_theFileDoesntExist() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let path = temporaryDirectory.appending(component: "file")
+
+            // When
+            let size = try await subject.fileSizeInBytes(at: path)
+
+            // Then
+            XCTAssertNil(size)
+        }
+    }
+
+    func test_replace_replaces_when_replacingPathIsADirectory_and_targetDirectoryIsAbsent() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let replacedPath = temporaryDirectory.appending(component: "replaced")
+            let replacingPath = temporaryDirectory.appending(component: "replacing")
+            try await subject.makeDirectory(at: replacingPath)
+            let replacingFilePath = replacingPath.appending(component: "file")
+            try await subject.touch(replacingFilePath)
+
+            // When
+            try await subject.replace(replacedPath, with: replacingPath)
+
+            // Then
+            let exists = try await subject.exists(replacedPath.appending(component: "file"))
+            XCTAssertTrue(exists)
+        }
+    }
+
+    func test_replace_replaces_when_replacingPathIsADirectory_and_targetDirectoryIsPresent() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let replacedPath = temporaryDirectory.appending(component: "replaced")
+            let replacingPath = temporaryDirectory.appending(component: "replacing")
+            try await subject.makeDirectory(at: replacedPath)
+            try await subject.makeDirectory(at: replacingPath)
+            let replacingFilePath = replacingPath.appending(component: "file")
+            try await subject.touch(replacingFilePath)
+
+            // When
+            try await subject.replace(replacedPath, with: replacingPath)
+
+            // Then
+            let exists = try await subject.exists(replacedPath.appending(component: "file"))
+            XCTAssertTrue(exists)
+        }
+    }
+
+    func test_replace_replaces_when_replacingPathDoesntExist() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let replacedPath = temporaryDirectory.appending(component: "replaced")
+            let replacingPath = temporaryDirectory.appending(component: "replacing")
+            try await subject.makeDirectory(at: replacedPath)
+            try await subject.makeDirectory(at: replacingPath)
+            let replacingFilePath = replacingPath.appending(component: "file")
+            let replacedFilePath = replacedPath.appending(component: "file")
+
+            // When
+            var _error: FileSystemError?
+            do {
+                try await subject.replace(replacedFilePath, with: replacingFilePath)
+            } catch {
+                _error = error as? FileSystemError
+            }
+
+            // Then
+            XCTAssertEqual(
+                _error,
+                FileSystemError.replacingItemAbsent(replacingPath: replacingFilePath, replacedPath: replacedFilePath)
+            )
+        }
+    }
+
+    func test_replace_createsTheReplacedPathParentDirectoryIfAbsent() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let replacedPath = temporaryDirectory.appending(component: "replaced")
+            let replacingPath = temporaryDirectory.appending(component: "replacing")
+            try await subject.makeDirectory(at: replacingPath)
+            let replacingFilePath = replacingPath.appending(component: "file")
+            let replacedFilePath = replacedPath.appending(component: "file")
+            try await subject.touch(replacingFilePath)
+
+            // When
+            try await subject.replace(replacedFilePath, with: replacingFilePath)
+
+            // Then
+            let exists = try await subject.exists(replacedFilePath)
+            XCTAssertTrue(exists)
+        }
+    }
+
+    func test_copy_copiesASourceItemToATargetPath() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let fromPath = temporaryDirectory.appending(component: "from")
+            let toPath = temporaryDirectory.appending(component: "to")
+            try await subject.touch(fromPath)
+
+            // When
+            try await subject.copy(fromPath, to: toPath)
+
+            // Then
+            let exists = try await subject.exists(toPath)
+            XCTAssertTrue(exists)
+        }
+    }
+
+    func test_copy_createsTargetParentDirectoriesIfNeeded() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let fromPath = temporaryDirectory.appending(component: "from")
+            let toPath = temporaryDirectory.appending(components: ["directory", "to"])
+            try await subject.touch(fromPath)
+
+            // When
+            try await subject.copy(fromPath, to: toPath)
+
+            // Then
+            let exists = try await subject.exists(toPath)
+            XCTAssertTrue(exists)
+        }
+    }
+
+    func test_copy_errorsIfTheSourceItemDoesntExist() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let fromPath = temporaryDirectory.appending(component: "from")
+            let toPath = temporaryDirectory.appending(component: "to")
+
+            // When
+            var _error: FileSystemError?
+            do {
+                try await subject.copy(fromPath, to: toPath)
+            } catch {
+                _error = error as? FileSystemError
+            }
+
+            // Then
+            XCTAssertEqual(_error, FileSystemError.copiedItemAbsent(copiedPath: fromPath, intoPath: toPath))
+        }
+    }
+
+    func test_locateTraversingUp_whenAnItemIsFound() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let fileToLookUp = temporaryDirectory.appending(component: "FileSystem.swift")
+            try await self.subject.touch(fileToLookUp)
+            let veryNestedDirectory = temporaryDirectory.appending(components: ["first", "second", "third"])
+
+            // When
+            let got = try await subject.locateTraversingUp(
+                from: veryNestedDirectory,
+                relativePath: try RelativePath(validating: "FileSystem.swift")
+            )
+
+            // Then
+            XCTAssertEqual(got, fileToLookUp)
+        }
+    }
+
+    func test_locateTraversingUp_whenAnItemIsNotFound() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let veryNestedDirectory = temporaryDirectory.appending(components: ["first", "second", "third"])
+
+            // When
+            let got = try await subject.locateTraversingUp(
+                from: veryNestedDirectory,
+                relativePath: try RelativePath(validating: "FileSystem.swift")
+            )
+
+            // Then
+            XCTAssertNil(got)
+        }
+    }
+
+    func test_createSymbolicLink() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let filePath = temporaryDirectory.appending(component: "file")
+            let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+            try await subject.touch(filePath)
+
+            // When
+            try await subject.createSymbolicLink(from: symbolicLinkPath, to: filePath)
+            let got = try await subject.resolveSymbolicLink(symbolicLinkPath)
+
+            // Then
+            XCTAssertEqual(got, filePath)
+        }
+    }
+
+    func test_createSymbolicLink_whenTheSymbolicLinkDoesntExist() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let filePath = temporaryDirectory.appending(component: "file")
+            let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+            try await subject.touch(filePath)
+
+            // When
+            var _error: FileSystemError?
+            do {
+                _ = try await subject.resolveSymbolicLink(symbolicLinkPath)
+            } catch {
+                _error = error as? FileSystemError
+            }
+
+            // Then
+            XCTAssertEqual(_error, FileSystemError.absentSymbolicLink(symbolicLinkPath))
+        }
     }
 }
