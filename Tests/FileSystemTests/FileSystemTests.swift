@@ -379,4 +379,40 @@ final class FileSystemTests: XCTestCase {
             XCTAssertNil(got)
         }
     }
+
+    func test_createSymbolicLink() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let filePath = temporaryDirectory.appending(component: "file")
+            let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+            try await subject.touch(filePath)
+
+            // When
+            try await subject.createSymbolicLink(from: symbolicLinkPath, to: filePath)
+            let got = try await subject.resolveSymbolicLink(symbolicLinkPath)
+
+            // Then
+            XCTAssertEqual(got, filePath)
+        }
+    }
+
+    func test_createSymbolicLink_whenTheSymbolicLinkDoesntExist() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let filePath = temporaryDirectory.appending(component: "file")
+            let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+            try await subject.touch(filePath)
+
+            // When
+            var _error: FileSystemError?
+            do {
+                _ = try await subject.resolveSymbolicLink(symbolicLinkPath)
+            } catch {
+                _error = error as? FileSystemError
+            }
+
+            // Then
+            XCTAssertEqual(_error, FileSystemError.absentSymbolicLink(symbolicLinkPath))
+        }
+    }
 }

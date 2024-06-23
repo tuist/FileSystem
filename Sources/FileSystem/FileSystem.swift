@@ -16,6 +16,7 @@ public enum FileSystemError: Equatable, Error, CustomStringConvertible {
     case cantEncodeText(String, String.Encoding)
     case replacingItemAbsent(replacingPath: AbsolutePath, replacedPath: AbsolutePath)
     case copiedItemAbsent(copiedPath: AbsolutePath, intoPath: AbsolutePath)
+    case absentSymbolicLink(AbsolutePath)
 
     public var description: String {
         switch self {
@@ -31,6 +32,8 @@ public enum FileSystemError: Equatable, Error, CustomStringConvertible {
             return "Couldn't replace file or directory at \(replacedPath.pathString) with item at \(replacingPath.pathString) because the latter doesn't exist."
         case let .copiedItemAbsent(copiedPath, intoPath):
             return "Couldn't copy the file or directory at \(copiedPath.pathString) to \(intoPath.pathString) because the former doesn't exist."
+        case let .absentSymbolicLink(path):
+            return "Couldn't resolve the symbolic link at path \(path.pathString) because it doesn't exist."
         }
     }
 }
@@ -215,17 +218,25 @@ public protocol FileSysteming {
     /// - Returns: The found path. Otherwise it returns `nil`.
     func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath?
 
-    //       func locateDirectoryTraversingParents(from: AbsolutePath, path: String) -> AbsolutePath?
-    //       func locateDirectory(_ path: String, traversingFrom from: AbsolutePath) throws -> AbsolutePath?
+    /// Creates a symlink.
+    /// - Parameters:
+    ///   - from: The path where the symlink is created.
+    ///   - to: The path the symlink points to.
+    func createSymbolicLink(from: AbsolutePath, to: AbsolutePath) async throws
+
+    /// Given a symlink, it resolves it returning the path to the file or directory the symlink is pointing to.
+    /// - Parameter symlinkPath: The absolute path to the symlink.
+    /// - Returns: The resolved path.
+    func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath
+
+    // TODO:
+    //       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
+    //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
+    //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
     //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
     //       func glob(_ path: AbsolutePath, glob: String) -> [AbsolutePath]
     //       func throwingGlob(_ path: AbsolutePath, glob: String) throws -> [AbsolutePath]
-    //       func linkFile(atPath: AbsolutePath, toPath: AbsolutePath) throws
     //       func contentsOfDirectory(_ path: AbsolutePath) throws -> [AbsolutePath]
-    //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
-    //       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
-    //       func resolveSymlinks(_ path: AbsolutePath) throws -> AbsolutePath
-    //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
     //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
     //       func zipItem(at sourcePath: AbsolutePath, to destinationPath: AbsolutePath) throws
     //       func unzipItem(at sourcePath: AbsolutePath, to destinationPath: AbsolutePath) throws
@@ -241,16 +252,16 @@ public struct FileSystem: FileSysteming {
     }
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
-        logger?.debug("Checking if a file or directory exists at path \(path.pathString)")
+        logger?.debug("Checking if a file or directory exists at path \(path.pathString).")
         let info = try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString))
         return info != nil
     }
 
     public func exists(_ path: AbsolutePath, isDirectory: Bool) async throws -> Bool {
         if isDirectory {
-            logger?.debug("Checking if a directory exists at path \(path.pathString)")
+            logger?.debug("Checking if a directory exists at path \(path.pathString).")
         } else {
-            logger?.debug("Checking if a file exists at path \(path.pathString)")
+            logger?.debug("Checking if a file exists at path \(path.pathString).")
         }
         guard let info = try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
             return false
@@ -259,7 +270,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func touch(_ path: Path.AbsolutePath) async throws {
-        logger?.debug("Touching a file at path \(path.pathString)")
+        logger?.debug("Touching a file at path \(path.pathString).")
         _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { writer in
             try await writer.write(contentsOf: "".data(using: .utf8)!, toAbsoluteOffset: 0)
         }
@@ -271,9 +282,9 @@ public struct FileSystem: FileSysteming {
 
     public func remove(_ path: AbsolutePath, recursively: Bool) async throws {
         if recursively {
-            logger?.debug("Removing the directory at path recursively: \(path.pathString)")
+            logger?.debug("Removing the directory at path recursively: \(path.pathString).")
         } else {
-            logger?.debug("Removing the file or directory at path: \(path.pathString)")
+            logger?.debug("Removing the file or directory at path: \(path.pathString).")
         }
         try await NIOFileSystem.FileSystem.shared.removeItem(at: .init(path.pathString), recursively: recursively)
     }
@@ -282,7 +293,7 @@ public struct FileSystem: FileSysteming {
         let systemTemporaryDirectory = NSTemporaryDirectory()
         let temporaryDirectory = try AbsolutePath(validating: systemTemporaryDirectory)
             .appending(component: "\(prefix)-\(UUID().uuidString)")
-        logger?.debug("Creating a temporary directory at path \(temporaryDirectory.pathString)")
+        logger?.debug("Creating a temporary directory at path \(temporaryDirectory.pathString).")
         try FileManager.default.createDirectory(
             at: URL(fileURLWithPath: temporaryDirectory.pathString),
             withIntermediateDirectories: true
@@ -296,11 +307,11 @@ public struct FileSystem: FileSysteming {
 
     public func move(from: AbsolutePath, to: AbsolutePath, options: [MoveOptions]) async throws {
         if options.isEmpty {
-            logger?.debug("Moving the file or directory from path \(from.pathString) to \(to.pathString)")
+            logger?.debug("Moving the file or directory from path \(from.pathString) to \(to.pathString).")
         } else {
             logger?
                 .debug(
-                    "Moving the file or directory from path \(from.pathString) to \(to.pathString) with options: \(options.map(\.rawValue).joined(separator: ", "))"
+                    "Moving the file or directory from path \(from.pathString) to \(to.pathString) with options: \(options.map(\.rawValue).joined(separator: ", "))."
                 )
         }
         do {
@@ -327,10 +338,10 @@ public struct FileSystem: FileSysteming {
         if options.isEmpty {
             logger?
                 .debug(
-                    "Creating directory at path \(at.pathString) with options: \(options.map(\.rawValue).joined(separator: ", "))"
+                    "Creating directory at path \(at.pathString) with options: \(options.map(\.rawValue).joined(separator: ", "))."
                 )
         } else {
-            logger?.debug("Creating directory at path \(at.pathString)")
+            logger?.debug("Creating directory at path \(at.pathString).")
         }
         do {
             try await NIOFileSystem.FileSystem.shared.createDirectory(
@@ -353,7 +364,7 @@ public struct FileSystem: FileSysteming {
 
     private func readFile(at path: Path.AbsolutePath, log: Bool = false) async throws -> Data {
         if log {
-            logger?.debug("Reading file at path \(path.pathString)")
+            logger?.debug("Reading file at path \(path.pathString).")
         }
         let handle = try await NIOFileSystem.FileSystem.shared.openFile(forReadingAt: .init(path.pathString), options: .init())
 
@@ -380,7 +391,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func readTextFile(at path: Path.AbsolutePath, encoding: String.Encoding) async throws -> String {
-        logger?.debug("Reading text file at path \(path.pathString) using encoding \(encoding.description)")
+        logger?.debug("Reading text file at path \(path.pathString) using encoding \(encoding.description).")
         let data = try await readFile(at: path)
         guard let string = String(data: data, encoding: encoding) else {
             throw FileSystemError.readInvalidEncoding(encoding, path: path)
@@ -393,7 +404,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func writeText(_ text: String, at path: AbsolutePath, encoding: String.Encoding) async throws {
-        logger?.debug("Writing text at path \(path.pathString)")
+        logger?.debug("Writing text at path \(path.pathString).")
         guard let data = text.data(using: encoding) else {
             throw FileSystemError.cantEncodeText(text, encoding)
         }
@@ -407,7 +418,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func readPlistFile<T>(at path: Path.AbsolutePath, decoder: PropertyListDecoder) async throws -> T where T: Decodable {
-        logger?.debug("Reading .plist file at path \(path.pathString)")
+        logger?.debug("Reading .plist file at path \(path.pathString).")
         let data = try await readFile(at: path)
         return try decoder.decode(T.self, from: data)
     }
@@ -417,7 +428,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func writeAsPlist(_ item: some Encodable, at path: AbsolutePath, encoder: PropertyListEncoder) async throws {
-        logger?.debug("Writing .plist at path \(path.pathString)")
+        logger?.debug("Writing .plist at path \(path.pathString).")
 
         let json = try encoder.encode(item)
         _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
@@ -430,7 +441,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func readJSONFile<T>(at path: Path.AbsolutePath, decoder: JSONDecoder) async throws -> T where T: Decodable {
-        logger?.debug("Reading .json file at path \(path.pathString)")
+        logger?.debug("Reading .json file at path \(path.pathString).")
         let data = try await readFile(at: path)
         return try decoder.decode(T.self, from: data)
     }
@@ -440,7 +451,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func writeAsJSON(_ item: some Encodable, at path: AbsolutePath, encoder: JSONEncoder) async throws {
-        logger?.debug("Writing .json at path \(path.pathString)")
+        logger?.debug("Writing .json at path \(path.pathString).")
 
         let json = try encoder.encode(item)
         _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
@@ -449,6 +460,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func replace(_ to: AbsolutePath, with path: AbsolutePath) async throws {
+        logger?.debug("Replacing file or directory at path \(path.pathString) with item at path \(to.pathString).")
         if !(try await exists(path)) {
             throw FileSystemError.replacingItemAbsent(replacingPath: path, replacedPath: to)
         }
@@ -459,6 +471,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func copy(_ from: AbsolutePath, to: AbsolutePath) async throws {
+        logger?.debug("Copying file or directory at path \(from.pathString) to \(to.pathString).")
         if !(try await exists(from)) {
             throw FileSystemError.copiedItemAbsent(copiedPath: from, intoPath: to)
         }
@@ -490,6 +503,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
+        logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
         guard let info = try await NIOFileSystem.FileSystem.shared.info(
             forFileAt: .init(path.pathString),
             infoAboutSymbolicLink: true
@@ -498,11 +512,29 @@ public struct FileSystem: FileSysteming {
     }
 
     public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {
+        logger?.debug("Locating the relative path \(relativePath.pathString) by traversing up from \(from.pathString).")
         let path = from.appending(relativePath)
         if try await exists(path) {
             return path
         }
         if from == .root { return nil }
         return try await locateTraversingUp(from: from.parentDirectory, relativePath: relativePath)
+    }
+
+    public func createSymbolicLink(from: AbsolutePath, to: AbsolutePath) async throws {
+        logger?.debug("Creating symbolic link from \(from.pathString) to \(to.pathString).")
+        try await NIOFileSystem.FileSystem.shared.createSymbolicLink(
+            at: FilePath(from.pathString),
+            withDestination: FilePath(to.pathString)
+        )
+    }
+
+    public func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath {
+        logger?.debug("Resolving symbolink link at path \(symlinkPath.pathString).")
+        if !(try await exists(symlinkPath)) {
+            throw FileSystemError.absentSymbolicLink(symlinkPath)
+        }
+        let path = try await NIOFileSystem.FileSystem.shared.destinationOfSymbolicLink(at: FilePath(symlinkPath.pathString))
+        return try AbsolutePath(validating: path.string)
     }
 }
