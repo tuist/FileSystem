@@ -1,6 +1,6 @@
 import ProjectDescription
 
-let project = Project(name: "FileSystem", targets: [
+let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRICT_CONCURRENCY": "complete"]), targets: [
     .target(
         name: "FileSystem",
         destinations: .macOS,
