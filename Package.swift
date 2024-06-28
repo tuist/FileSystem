@@ -25,6 +25,7 @@ let package = Package(
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.0")),
         .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.67.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.1")),
+        .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
     ],
     targets: [
         .target(
@@ -33,6 +34,7 @@ let package = Package(
                 .product(name: "_NIOFileSystem", package: "swift-nio"),
                 .product(name: "Path", package: "Path"),
                 .product(name: "Logging", package: "swift-log"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ],
             swiftSettings: [
                 .define("MOCKING", .when(configuration: .debug)),

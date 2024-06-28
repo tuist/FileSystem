@@ -14,6 +14,7 @@ let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRI
             .external(name: "_NIOFileSystem"),
             .external(name: "Logging"),
             .external(name: "Path"),
+            .external(name: "ZIPFoundation"),
         ],
         settings: .settings(configurations: [
             .debug(name: .debug, settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MOCKING"]),
