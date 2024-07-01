@@ -23,7 +23,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.0")),
-        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.67.0")),
+        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.68.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.1")),
     ],
     targets: [
