@@ -2,6 +2,17 @@
 
 FileSystem is a Swift Package that provides a simple cross-platform API to interact with the file system.
 
+## Motivation
+Why build a Swift Package for interacting with the file system if there's already `FileManager`? Here are the motivations:
+
+- Providing human-friendly errors that are ok to present to the user.
+- Integrating with [swift-log](https://github.com/apple/swift-log) to give consumers the ability to log file system operations.
+- Embracing Swift's structured concurrency with async/await.
+- Providing an API where paths are always absolute, makes it easier to reason about the file system operations.
+
+> [!NOTE]
+> FileSystem powers [Tuist](https://tuist.io), a toolchain to build better apps faster.
+
 ## Add it to your project
 
 ### Swift Package Manager
