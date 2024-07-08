@@ -3,6 +3,7 @@ import Logging
 import NIOCore
 import NIOFileSystem
 import Path
+import ZIPFoundation
 
 public enum FileSystemItemType: CaseIterable, Equatable {
     case directory
@@ -228,6 +229,9 @@ public protocol FileSysteming {
     /// - Parameter symlinkPath: The absolute path to the symlink.
     /// - Returns: The resolved path.
     func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath
+
+    func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws
+    func unzip(_ zipePath: AbsolutePath, to: AbsolutePath) async throws
 
     // TODO:
     //       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
@@ -536,5 +540,26 @@ public struct FileSystem: FileSysteming {
         }
         let path = try await NIOFileSystem.FileSystem.shared.destinationOfSymbolicLink(at: FilePath(symlinkPath.pathString))
         return try AbsolutePath(validating: path.string)
+    }
+
+    public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
+        logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
+        try await NIOSingletons.posixBlockingThreadPool.runIfActive {
+            try FileManager.default.zipItem(
+                at: URL(fileURLWithPath: path.pathString),
+                to: URL(fileURLWithPath: to.pathString),
+                shouldKeepParent: false
+            )
+        }
+    }
+
+    public func unzip(_ zipPath: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
+        logger?.debug("Unzipping the file at path \(zipPath.pathString) to \(to.pathString)")
+        try await NIOSingletons.posixBlockingThreadPool.runIfActive {
+            try FileManager.default.unzipItem(
+                at: URL(fileURLWithPath: zipPath.pathString),
+                to: URL(fileURLWithPath: to.pathString)
+            )
+        }
     }
 }
