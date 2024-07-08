@@ -543,6 +543,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
+        logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
         try await NIOSingletons.posixBlockingThreadPool.runIfActive {
             try FileManager.default.zipItem(
                 at: URL(fileURLWithPath: path.pathString),
@@ -553,6 +554,7 @@ public struct FileSystem: FileSysteming {
     }
 
     public func unzip(_ zipPath: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
+        logger?.debug("Unzipping the file at path \(zipPath.pathString) to \(to.pathString)")
         try await NIOSingletons.posixBlockingThreadPool.runIfActive {
             try FileManager.default.unzipItem(
                 at: URL(fileURLWithPath: zipPath.pathString),
