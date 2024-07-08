@@ -415,7 +415,7 @@ final class FileSystemTests: XCTestCase {
             XCTAssertEqual(_error, FileSystemError.absentSymbolicLink(symbolicLinkPath))
         }
     }
-    
+
     func test_zipping() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
@@ -424,12 +424,11 @@ final class FileSystemTests: XCTestCase {
             let unzippedPath = temporaryDirectory.appending(component: "unzipped")
             try await subject.makeDirectory(at: unzippedPath)
             try await subject.touch(filePath)
-            
-            
+
             // When
             try await subject.zipFileOrDirectoryContent(at: filePath, to: zipPath)
             try await subject.unzip(zipPath, to: unzippedPath)
-            
+
             // Then
             let exists = try await subject.exists(unzippedPath.appending(component: "file"))
             XCTAssertTrue(exists)
