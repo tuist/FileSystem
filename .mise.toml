@@ -4,6 +4,7 @@
 "swiftformat" = "0.52.10"
 "swift" = "5.9.2"
 "podman" = "4.9.3"
+"git-cliff" = "2.0.0"
 
 [plugins]
 tuist = "https://github.com/asdf-community/asdf-tuist"
