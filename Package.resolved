@@ -28,6 +28,15 @@
       }
     },
     {
+      "identity" : "swift-glob",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/davbeck/swift-glob",
+      "state" : {
+        "revision" : "f8d3495325bfd1a53f37ece5a244f28d1d857879",
+        "version" : "0.1.0"
+      }
+    },
+    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log",
@@ -41,8 +50,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio",
       "state" : {
-        "revision" : "e5a216ba89deba84356bad9d4c2eab99071c745b",
-        "version" : "2.67.0"
+        "revision" : "fc79798d5a150d61361a27ce0c51169b889e23de",
+        "version" : "2.68.0"
       }
     },
     {

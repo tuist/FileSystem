@@ -11,6 +11,7 @@ let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRI
             "Sources/FileSystem/**/*.swift",
         ],
         dependencies: [
+            .external(name: "Glob"),
             .external(name: "_NIOFileSystem"),
             .external(name: "Logging"),
             .external(name: "Path"),
