@@ -20,10 +20,12 @@ let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRI
         settings: .settings(
             base: ["GENERATE_MASTER_OBJECT_FILE": "YES", "OTHER_LDFLAGS": "$(inherited) -ObjC"],
             configurations: [
-            .debug(name: .debug, settings: [
-                "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MOCKING"]),
-            .release(name: .release, settings: [:]),
-        ])
+                .debug(name: .debug, settings: [
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MOCKING",
+                ]),
+                .release(name: .release, settings: [:]),
+            ]
+        )
     ),
     .target(
         name: "FileSystemTests",

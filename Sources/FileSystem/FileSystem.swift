@@ -1,10 +1,10 @@
 import Foundation
+import Glob
 import Logging
 import NIOCore
 import NIOFileSystem
 import Path
 import ZIPFoundation
-import Glob
 
 public enum FileSystemItemType: CaseIterable, Equatable {
     case directory
@@ -233,24 +233,24 @@ public protocol FileSysteming {
 
     /// Zips a file or the content of a given directory.
     /// - Parameters:
-    ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to a directory, the content of the directory is zipped.
+    ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to a
+    /// directory, the content of the directory is zipped.
     ///   - to: Path to where the zip file will be created.
     func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws
-    
+
     /// Unzips a zip file.
     /// - Parameters:
     ///   - zipPath: Path to the zip file.
     ///   - to: Path to the directory into which the content will be unzipped.
     func unzip(_ zipPath: AbsolutePath, to: AbsolutePath) async throws
-    
-    
+
     /// Looks up files and directories that match a set of glob patterns.
     /// - Parameters:
     ///   - directory: Base absolute directory that glob patterns are relative to.
     ///   - include: A list of glob patterns.
     /// - Returns: An async sequence to get the results.
     func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
-    
+
     /// Looks up files and directories that match a set of glob patterns.
     /// By default it skips hidden files.
     ///
@@ -260,12 +260,13 @@ public protocol FileSysteming {
     ///   - include: A list of glob patterns to exclude results.
     ///   - skipHiddenFiles: When true, it skips hidden files.
     /// - Returns: An async sequence to get the results.
-    func glob(directory: Path.AbsolutePath,
-                     include: [String],
-                     exclude: [String],
-                     skipHiddenFiles: Bool) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
-    
-    
+    func glob(
+        directory: Path.AbsolutePath,
+        include: [String],
+        exclude: [String],
+        skipHiddenFiles: Bool
+    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
+
     // TODO:
     //       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
     //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
@@ -324,7 +325,7 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func makeTemporaryDirectory(prefix: String) async throws -> AbsolutePath {
         var systemTemporaryDirectory = NSTemporaryDirectory()
-        
+
         /// The path to the directory /var is a symlink to /var/private.
         /// NSTemporaryDirectory() returns the path to the symlink, so the logic here removes the symlink from it.
         if systemTemporaryDirectory.starts(with: "/var/") {
@@ -597,33 +598,40 @@ public struct FileSystem: FileSysteming, Sendable {
             )
         }
     }
-    
+
     public func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
-        try self.glob(directory: directory,
-                      include: include,
-                      exclude: [],
-                      skipHiddenFiles: true)
+        try glob(
+            directory: directory,
+            include: include,
+            exclude: [],
+            skipHiddenFiles: true
+        )
     }
-    
-    public func glob(directory: Path.AbsolutePath,
-                     include: [String],
-                     exclude: [String],
-                     skipHiddenFiles: Bool) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
-        var logMessage = "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", ")) excluding the ones that match the glob patterns \(exclude.joined(separator: ", "))."
+
+    public func glob(
+        directory: Path.AbsolutePath,
+        include: [String],
+        exclude: [String],
+        skipHiddenFiles: Bool
+    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
+        var logMessage =
+            "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", ")) excluding the ones that match the glob patterns \(exclude.joined(separator: ", "))."
         if skipHiddenFiles {
             logMessage = "\(logMessage). Hidden files are skipped."
         }
         logger?.debug("\(logMessage)")
-        let stream = try Glob.search(directory: URL.init(string: directory.pathString)!,
-                                     include: include.map({ try .init($0) }),
-                                     exclude: exclude.map({ try .init($0) }),
-                                     skipHiddenFiles: skipHiddenFiles)
-        return stream.map({ try! Path.AbsolutePath.init(validating: $0.path()) }).eraseToAnyThrowingAsyncSequenceable()
+        let stream = try Glob.search(
+            directory: URL(string: directory.pathString)!,
+            include: include.map { try .init($0) },
+            exclude: exclude.map { try .init($0) },
+            skipHiddenFiles: skipHiddenFiles
+        )
+        return stream.map { try! Path.AbsolutePath(validating: $0.path()) }.eraseToAnyThrowingAsyncSequenceable()
     }
 }
 
-public extension AnyThrowingAsyncSequenceable where Element == Path.AbsolutePath {
-    func collect() async throws -> [Path.AbsolutePath] {
-        return try await self.reduce(into: Array<Path.AbsolutePath>(), { $0.append($1) })
+extension AnyThrowingAsyncSequenceable where Element == Path.AbsolutePath {
+    public func collect() async throws -> [Path.AbsolutePath] {
+        try await reduce(into: [Path.AbsolutePath]()) { $0.append($1) }
     }
 }
