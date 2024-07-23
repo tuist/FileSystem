@@ -17,8 +17,11 @@ let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRI
             .external(name: "Path"),
             .external(name: "ZIPFoundation"),
         ],
-        settings: .settings(configurations: [
-            .debug(name: .debug, settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MOCKING"]),
+        settings: .settings(
+            base: ["GENERATE_MASTER_OBJECT_FILE": "YES", "OTHER_LDFLAGS": "$(inherited) -ObjC"],
+            configurations: [
+            .debug(name: .debug, settings: [
+                "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MOCKING"]),
             .release(name: .release, settings: [:]),
         ])
     ),
@@ -33,6 +36,7 @@ let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRI
         ],
         dependencies: [
             .target(name: "FileSystem"),
-        ]
+        ],
+        settings: .settings(base: ["GENERATE_MASTER_OBJECT_FILE": "YES", "OTHER_LDFLAGS": "$(inherited) -ObjC"])
     ),
 ])
