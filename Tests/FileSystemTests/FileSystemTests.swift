@@ -4,7 +4,7 @@ import XCTest
 
 private struct TestError: Error, Equatable {}
 
-final class FileSystemTests: XCTestCase {
+final class FileSystemTests: XCTestCase, @unchecked Sendable {
     var subject: FileSystem!
 
     override func setUp() async throws {
@@ -432,6 +432,64 @@ final class FileSystemTests: XCTestCase {
             // Then
             let exists = try await subject.exists(unzippedPath.appending(component: "file"))
             XCTAssertTrue(exists)
+        }
+    }
+
+    func test_glob_when_excluding_hidden_files() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstDirectory = temporaryDirectory.appending(component: "first")
+            let firstSourceFile = firstDirectory.appending(component: "first.swift")
+            let secondDirectory = firstDirectory.appending(component: "second")
+            let secondSourceFile = firstDirectory.appending(component: "second.swift")
+            let secondHiddenSourceFile = firstDirectory.appending(component: ".second.swift")
+
+            try await subject.makeDirectory(at: secondDirectory)
+            try await subject.touch(firstSourceFile)
+            try await subject.touch(secondSourceFile)
+            try await subject.touch(secondHiddenSourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**/*.swift"],
+                exclude: ["**/second.swift"],
+                skipHiddenFiles: true
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [firstSourceFile])
+        }
+    }
+
+    func test_glob_when_not_excluding_hidden_files() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstDirectory = temporaryDirectory.appending(component: "first")
+            let firstSourceFile = firstDirectory.appending(component: "first.swift")
+            let secondDirectory = firstDirectory.appending(component: "second")
+            let secondSourceFile = firstDirectory.appending(component: "second.swift")
+            let secondHiddenSourceFile = firstDirectory.appending(component: ".second.swift")
+
+            try await subject.makeDirectory(at: secondDirectory)
+            try await subject.touch(firstSourceFile)
+            try await subject.touch(secondSourceFile)
+            try await subject.touch(secondHiddenSourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**/*.swift"],
+                exclude: ["**/second.swift"],
+                skipHiddenFiles: false
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [secondHiddenSourceFile, firstSourceFile])
         }
     }
 }

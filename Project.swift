@@ -11,15 +11,21 @@ let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRI
             "Sources/FileSystem/**/*.swift",
         ],
         dependencies: [
+            .external(name: "Glob"),
             .external(name: "_NIOFileSystem"),
             .external(name: "Logging"),
             .external(name: "Path"),
             .external(name: "ZIPFoundation"),
         ],
-        settings: .settings(configurations: [
-            .debug(name: .debug, settings: ["SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MOCKING"]),
-            .release(name: .release, settings: [:]),
-        ])
+        settings: .settings(
+            base: ["GENERATE_MASTER_OBJECT_FILE": "YES", "OTHER_LDFLAGS": "$(inherited) -ObjC"],
+            configurations: [
+                .debug(name: .debug, settings: [
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) MOCKING",
+                ]),
+                .release(name: .release, settings: [:]),
+            ]
+        )
     ),
     .target(
         name: "FileSystemTests",
@@ -32,6 +38,7 @@ let project = Project(name: "FileSystem", settings: .settings(base: ["SWIFT_STRI
         ],
         dependencies: [
             .target(name: "FileSystem"),
-        ]
+        ],
+        settings: .settings(base: ["GENERATE_MASTER_OBJECT_FILE": "YES", "OTHER_LDFLAGS": "$(inherited) -ObjC"])
     ),
 ])
