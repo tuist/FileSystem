@@ -626,6 +626,7 @@ public struct FileSystem: FileSysteming, Sendable {
             exclude: exclude.map { try .init($0) },
             skipHiddenFiles: skipHiddenFiles
         )
+        // swiftlint:disable:next force_try
         return stream.map { try! Path.AbsolutePath(validating: $0.path()) }.eraseToAnyThrowingAsyncSequenceable()
     }
 }
