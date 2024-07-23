@@ -13,7 +13,7 @@ import PackageDescription
 
 let package = Package(
     name: "FileSystem",
-    platforms: [.macOS("13.0")],
+    platforms: [.macOS("12.0")],
     products: [
         .library(
             name: "FileSystem",

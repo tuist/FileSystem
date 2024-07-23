@@ -627,7 +627,8 @@ public struct FileSystem: FileSysteming, Sendable {
             skipHiddenFiles: skipHiddenFiles
         )
         // swiftlint:disable:next force_try
-        return stream.map { try! Path.AbsolutePath(validating: $0.path()) }.eraseToAnyThrowingAsyncSequenceable()
+        return stream.map { try! Path.AbsolutePath(validating: $0.absoluteString.replacingOccurrences(of: "file://", with: "")) }
+            .eraseToAnyThrowingAsyncSequenceable()
     }
 }
 
