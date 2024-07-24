@@ -206,9 +206,9 @@ public protocol FileSysteming {
 
     /// Given a path, it copies the file or directory to another path.
     /// - Parameters:
-    ///   - to: The path to the file or directory to be copied.
-    ///   - with: The path to copy the file or directory to.
-    func copy(_ to: AbsolutePath, to: AbsolutePath) async throws
+    ///   - from: The path to the file or directory to be copied.
+    ///   - to: The path to copy the file or directory to.
+    func copy(_ from: AbsolutePath, to: AbsolutePath) async throws
 
     /// Given a path, it traverses the hierarcy until it finds a file or directory whose absolute path is formed by concatenating
     /// the looked up path and the given relative path. The search stops when the file-system root path, `/`, is reached.
