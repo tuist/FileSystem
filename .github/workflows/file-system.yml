@@ -15,11 +15,8 @@ concurrency:
 
 jobs:
   build:
-    name: "Release build on ${{ matrix.os }}"
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-14]
-    runs-on: ${{ matrix.os }}
+    name: "Release build on macOS 14"
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
@@ -27,6 +24,17 @@ jobs:
           experimental: true
       - name: Run
         run: mise run build-spm
+
+  build-linux:
+    name: "Release build on Linux"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run build-linux
 
   build_tuist:
     name: "Tuist build"
@@ -44,11 +52,8 @@ jobs:
           mise run build
 
   test:
-    name: "Test on ${{ matrix.os }}"
-    strategy:
-      matrix:
-        os: [macos-14, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    name: "Test on macOS 14"
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
@@ -56,6 +61,17 @@ jobs:
           experimental: true
       - name: Run
         run: mise run test-spm
+
+  test_linux:
+    name: "Test on Linux"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run test-linux
 
   test_tuist:
     name: "Tuist test"

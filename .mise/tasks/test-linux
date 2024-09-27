@@ -1,5 +1,5 @@
 #!/bin/bash
-# mise description="Builds the project using Swift Package Manager in Linux"
+# mise description="Tests the project using Swift Package Manager in Linux"
 set -euo pipefail
 
 CONTAINER_RUNTIME=$(command -v podman || command -v docker)
@@ -14,4 +14,4 @@ $CONTAINER_RUNTIME run --rm \
     --workdir "/package" \
     swift:5.9.2 \
     /bin/bash -c \
-    "swift build --configuration release --build-path ./.build/linux"
+    "swift test"
