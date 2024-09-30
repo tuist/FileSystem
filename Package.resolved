@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tuist/Path",
       "state" : {
-        "revision" : "4490da629937fc3994f72dd787dcc3f50d6973fe",
-        "version" : "0.3.0"
+        "revision" : "7c74ac435e03a927c3a73134c48b61e60221abcb",
+        "version" : "0.3.8"
       }
     },
     {
@@ -50,8 +50,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio",
       "state" : {
-        "revision" : "fc79798d5a150d61361a27ce0c51169b889e23de",
-        "version" : "2.68.0"
+        "revision" : "1b33db2dea6a64d5b619b9e888175133c6d7f410",
+        "version" : "2.73.0"
       }
     },
     {
