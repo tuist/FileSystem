@@ -68,6 +68,8 @@ jobs:
         id: auto-commit-action
         uses: stefanzweifel/git-auto-commit-action@v5
         if: env.should-release == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.TUIST_FILE_SYSTEM_RELEASE_TOKEN }}
         with:
           commit_options: "--allow-empty"
           tagging_message: ${{ steps.next-version.outputs.NEXT_VERSION }}
