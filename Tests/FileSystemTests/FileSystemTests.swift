@@ -416,6 +416,20 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_resolveSymbolicLink_whenThePathIsNotASymbolicLink() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let directoryPath = temporaryDirectory.appending(component: "symbolic")
+            try await subject.makeDirectory(at: directoryPath)
+
+            // When
+            let got = try await subject.resolveSymbolicLink(directoryPath)
+
+            // Then
+            XCTAssertEqual(got, directoryPath)
+        }
+    }
+
     func test_zipping() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
