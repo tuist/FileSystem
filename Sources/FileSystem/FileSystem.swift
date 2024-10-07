@@ -574,6 +574,17 @@ public struct FileSystem: FileSysteming, Sendable {
         if !(try await exists(symlinkPath)) {
             throw FileSystemError.absentSymbolicLink(symlinkPath)
         }
+        guard let info = try await NIOFileSystem.FileSystem.shared.info(
+            forFileAt: FilePath(symlinkPath.pathString),
+            infoAboutSymbolicLink: true
+        )
+        else { return symlinkPath }
+        switch info.type {
+        case .symlink:
+            break
+        default:
+            return symlinkPath
+        }
         let path = try await NIOFileSystem.FileSystem.shared.destinationOfSymbolicLink(at: FilePath(symlinkPath.pathString))
         return try AbsolutePath(validating: path.string)
     }
