@@ -267,8 +267,10 @@ public protocol FileSysteming {
         skipHiddenFiles: Bool
     ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
 
+    /// Returns the path of the current working directory.
+    func currentWorkingDirectory() async throws -> AbsolutePath
+
     // TODO:
-    //       func changeExtension(path: AbsolutePath, to newExtension: String) throws -> AbsolutePath
     //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
     //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
     //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
@@ -283,6 +285,10 @@ public struct FileSystem: FileSysteming, Sendable {
     public init(environmentVariables: [String: String] = ProcessInfo.processInfo.environment, logger: Logger? = nil) {
         self.environmentVariables = environmentVariables
         self.logger = logger
+    }
+
+    public func currentWorkingDirectory() async throws -> AbsolutePath {
+        try await NIOFileSystem.FileSystem.shared.currentWorkingDirectory.path
     }
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
@@ -646,5 +652,11 @@ public struct FileSystem: FileSysteming, Sendable {
 extension AnyThrowingAsyncSequenceable where Element == Path.AbsolutePath {
     public func collect() async throws -> [Path.AbsolutePath] {
         try await reduce(into: [Path.AbsolutePath]()) { $0.append($1) }
+    }
+}
+
+extension FilePath {
+    fileprivate var path: AbsolutePath {
+        try! AbsolutePath(validating: string) // swiftlint:disable:this force_try
     }
 }

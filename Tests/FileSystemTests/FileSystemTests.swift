@@ -57,6 +57,15 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(caughtError as? TestError, TestError())
     }
 
+    func test_currentWorkingDirectory() async throws {
+        // When
+        let got = try await subject.currentWorkingDirectory()
+
+        // Then
+        let isDirectory = try await subject.exists(got, isDirectory: true)
+        XCTAssertTrue(isDirectory)
+    }
+
     func test_move_when_fromFileExistsAndToPathsParentDirectoryExists() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
