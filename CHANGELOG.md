@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2024-10-24
+### Details
+#### Feat
+- Use different implementation of globbing for more stable behavior by @fortmarek in [#66](https://github.com/tuist/FileSystem/pull/66)
+
 ## [0.4.9] - 2024-10-24
 ### Details
 #### Chore
@@ -77,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.5.0]: https://github.com/tuist/FileSystem/compare/0.4.9..0.5.0
 [0.4.9]: https://github.com/tuist/FileSystem/compare/0.4.8..0.4.9
 [0.4.8]: https://github.com/tuist/FileSystem/compare/0.4.7..0.4.8
 [0.4.7]: https://github.com/tuist/FileSystem/compare/0.4.6..0.4.7
