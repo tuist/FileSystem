@@ -30,10 +30,10 @@
     {
       "identity" : "swift-glob",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/davbeck/swift-glob",
+      "location" : "https://github.com/tuist/swift-glob",
       "state" : {
-        "revision" : "f8d3495325bfd1a53f37ece5a244f28d1d857879",
-        "version" : "0.1.0"
+        "revision" : "a0bc22cc5e5113356d31540dbe66da0b653cd6d8",
+        "version" : "0.2.2"
       }
     },
     {

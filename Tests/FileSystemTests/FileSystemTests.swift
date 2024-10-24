@@ -487,6 +487,34 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    // The following behavior works correctly only on Apple environments due to discrepancies in the `Foundation` implementation.
+    #if !os(Linux)
+        func test_glob_when_recursive_glob_with_file_being_in_the_base_directory() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                print(temporaryDirectory)
+                let temporaryDirectory = try AbsolutePath(validating: temporaryDirectory.pathString.replacingOccurrences(
+                    of: "/private",
+                    with: ""
+                ))
+                // Given
+                let firstSourceFile = temporaryDirectory.appending(component: "first.swift")
+
+                try await subject.touch(firstSourceFile)
+
+                // When
+                let got = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["*.swift"]
+                )
+                .collect()
+                .sorted()
+
+                // Then
+                XCTAssertEqual(got, [firstSourceFile])
+            }
+        }
+    #endif
+
     func test_glob_when_not_excluding_hidden_files() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
