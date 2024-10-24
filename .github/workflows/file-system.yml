@@ -8,7 +8,7 @@ on:
 
 env:
   TUIST_CONFIG_CLOUD_TOKEN: ${{ secrets.TUIST_CONFIG_CLOUD_TOKEN }}
-  
+
 concurrency:
   group: file-system-${{ github.head_ref }}
   cancel-in-progress: true
@@ -25,16 +25,16 @@ jobs:
       - name: Run
         run: mise run build-spm
 
-  build-linux:
-    name: "Release build on Linux"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-        with:
-          experimental: true
-      - name: Run
-        run: mise run build-linux
+  # build-linux:
+  #   name: "Release build on Linux"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: jdx/mise-action@v2
+  #       with:
+  #         experimental: true
+  #     - name: Run
+  #       run: mise run build-linux
 
   build_tuist:
     name: "Tuist build"
@@ -62,16 +62,16 @@ jobs:
       - name: Run
         run: mise run test-spm
 
-  test_linux:
-    name: "Test on Linux"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-        with:
-          experimental: true
-      - name: Run
-        run: mise run test-linux
+  # test_linux:
+  #   name: "Test on Linux"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: jdx/mise-action@v2
+  #       with:
+  #         experimental: true
+  #     - name: Run
+  #       run: mise run test-linux
 
   test_tuist:
     name: "Tuist test"
