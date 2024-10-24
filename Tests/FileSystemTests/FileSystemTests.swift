@@ -491,12 +491,11 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
     #if !os(Linux)
         func test_glob_when_recursive_glob_with_file_being_in_the_base_directory() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-                print(temporaryDirectory)
+                // Given
                 let temporaryDirectory = try AbsolutePath(validating: temporaryDirectory.pathString.replacingOccurrences(
                     of: "/private",
                     with: ""
                 ))
-                // Given
                 let firstSourceFile = temporaryDirectory.appending(component: "first.swift")
 
                 try await subject.touch(firstSourceFile)
