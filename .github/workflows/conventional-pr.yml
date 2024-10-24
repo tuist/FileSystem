@@ -1,0 +1,22 @@
+name: conventional-pr
+on:
+  pull_request:
+    paths:
+      - "Sources/**"
+      - "Package.swift"
+      - "Package.Package.resolved"
+    branches:
+      - main
+    types:
+      - opened
+      - edited
+      - synchronize
+
+jobs:
+  lint-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: CondeNast/conventional-pull-request-action@v0.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
