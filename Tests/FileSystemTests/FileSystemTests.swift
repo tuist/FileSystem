@@ -458,26 +458,39 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func test_glob_when_excluding_hidden_files() async throws {
+    func test_glob_component_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
             let firstDirectory = temporaryDirectory.appending(component: "first")
             let firstSourceFile = firstDirectory.appending(component: "first.swift")
-            let secondDirectory = firstDirectory.appending(component: "second")
-            let secondSourceFile = firstDirectory.appending(component: "second.swift")
-            let secondHiddenSourceFile = firstDirectory.appending(component: ".second.swift")
 
-            try await subject.makeDirectory(at: secondDirectory)
+            try await subject.makeDirectory(at: firstDirectory)
             try await subject.touch(firstSourceFile)
-            try await subject.touch(secondSourceFile)
-            try await subject.touch(secondHiddenSourceFile)
 
             // When
             let got = try await subject.glob(
                 directory: temporaryDirectory,
-                include: ["**/*.swift"],
-                exclude: ["**/second.swift"],
-                skipHiddenFiles: true
+                include: ["first/*.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [firstSourceFile])
+        }
+    }
+
+    func test_glob_nested_component_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstSourceFile = temporaryDirectory.appending(component: "first.swift")
+
+            try await subject.touch(firstSourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["*.swift"]
             )
             .collect()
             .sorted()
@@ -514,32 +527,29 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     #endif
 
-    func test_glob_when_not_excluding_hidden_files() async throws {
+    func test_glob_with_nested_directories_with_exclude() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
             let firstDirectory = temporaryDirectory.appending(component: "first")
             let firstSourceFile = firstDirectory.appending(component: "first.swift")
             let secondDirectory = firstDirectory.appending(component: "second")
             let secondSourceFile = firstDirectory.appending(component: "second.swift")
-            let secondHiddenSourceFile = firstDirectory.appending(component: ".second.swift")
 
             try await subject.makeDirectory(at: secondDirectory)
             try await subject.touch(firstSourceFile)
             try await subject.touch(secondSourceFile)
-            try await subject.touch(secondHiddenSourceFile)
 
             // When
             let got = try await subject.glob(
                 directory: temporaryDirectory,
                 include: ["**/*.swift"],
-                exclude: ["**/second.swift"],
-                skipHiddenFiles: false
+                exclude: ["**/second.swift"]
             )
             .collect()
             .sorted()
 
             // Then
-            XCTAssertEqual(got, [secondHiddenSourceFile, firstSourceFile])
+            XCTAssertEqual(got, [firstSourceFile])
         }
     }
 }
