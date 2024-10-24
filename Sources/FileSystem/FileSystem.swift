@@ -252,19 +252,16 @@ public protocol FileSysteming {
     func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
 
     /// Looks up files and directories that match a set of glob patterns.
-    /// By default it skips hidden files.
     ///
     /// - Parameters:
     ///   - directory: Base absolute directory that glob patterns are relative to.
     ///   - include: A list of glob patterns.
-    ///   - include: A list of glob patterns to exclude results.
-    ///   - skipHiddenFiles: When true, it skips hidden files.
+    ///   - include: A list of glob patterns to exclude results
     /// - Returns: An async sequence to get the results.
     func glob(
         directory: Path.AbsolutePath,
         include: [String],
-        exclude: [String],
-        skipHiddenFiles: Bool
+        exclude: [String]
     ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
 
     /// Returns the path of the current working directory.
@@ -620,32 +617,38 @@ public struct FileSystem: FileSysteming, Sendable {
         try glob(
             directory: directory,
             include: include,
-            exclude: [],
-            skipHiddenFiles: true
+            exclude: []
         )
     }
 
     public func glob(
         directory: Path.AbsolutePath,
         include: [String],
-        exclude: [String],
-        skipHiddenFiles: Bool
+        exclude: [String]
     ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
-        var logMessage =
+        let logMessage =
             "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", ")) excluding the ones that match the glob patterns \(exclude.joined(separator: ", "))."
-        if skipHiddenFiles {
-            logMessage = "\(logMessage). Hidden files are skipped."
-        }
         logger?.debug("\(logMessage)")
-        let stream = try Glob.search(
-            directory: URL(string: directory.pathString)!,
-            include: include.map { try .init($0) },
-            exclude: exclude.map { try .init($0) },
-            skipHiddenFiles: skipHiddenFiles
-        )
-        // swiftlint:disable:next force_try
-        return stream.map { try! Path.AbsolutePath(validating: $0.absoluteString.replacingOccurrences(of: "file://", with: "")) }
-            .eraseToAnyThrowingAsyncSequenceable()
+        return AsyncThrowingStream<AbsolutePath, any Error>(bufferingPolicy: .unbounded) { continuation in
+            let task = Task {
+                let excluded = exclude.flatMap {
+                    directory.glob($0)
+                }
+                let included = include.flatMap {
+                    directory.glob($0)
+                }
+                .filter { !excluded.contains($0) }
+                for path in Set(included) {
+                    continuation.yield(path)
+                }
+                continuation.finish()
+            }
+
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+        .eraseToAnyThrowingAsyncSequenceable()
     }
 }
 
