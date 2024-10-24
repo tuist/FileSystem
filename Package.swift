@@ -26,7 +26,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.74.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.1")),
         .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
-        .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.2.1")),
+        .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.2.2")),
     ],
     targets: [
         .target(
