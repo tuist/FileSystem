@@ -251,19 +251,6 @@ public protocol FileSysteming {
     /// - Returns: An async sequence to get the results.
     func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
 
-    /// Looks up files and directories that match a set of glob patterns.
-    ///
-    /// - Parameters:
-    ///   - directory: Base absolute directory that glob patterns are relative to.
-    ///   - include: A list of glob patterns.
-    ///   - include: A list of glob patterns to exclude results
-    /// - Returns: An async sequence to get the results.
-    func glob(
-        directory: Path.AbsolutePath,
-        include: [String],
-        exclude: [String]
-    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
-
     /// Returns the path of the current working directory.
     func currentWorkingDirectory() async throws -> AbsolutePath
 
@@ -614,39 +601,21 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
-        try glob(
-            directory: directory,
-            include: include,
-            exclude: []
-        )
-    }
-
-    public func glob(
-        directory: Path.AbsolutePath,
-        include: [String],
-        exclude: [String]
-    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
         let logMessage =
-            "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", ")) excluding the ones that match the glob patterns \(exclude.joined(separator: ", "))."
+            "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", "))."
         logger?.debug("\(logMessage)")
-        return AsyncThrowingStream<AbsolutePath, any Error>(bufferingPolicy: .unbounded) { continuation in
-            let task = Task {
-                let excluded = exclude.flatMap {
-                    directory.glob($0)
-                }
-                let included = include.flatMap {
-                    directory.glob($0)
-                }
-                .filter { !excluded.contains($0) }
-                for path in Set(included) {
-                    continuation.yield(path)
-                }
-                continuation.finish()
-            }
-
-            continuation.onTermination = { _ in
-                task.cancel()
-            }
+        return Glob.search(
+            directory: URL(string: directory.pathString)!,
+            include: try include
+                .flatMap { $0.contains("**/") ? [$0.replacingOccurrences(of: "**/", with: ""), $0] : [$0] }
+                .map { try Pattern($0) }
+        )
+        .map {
+            try Path
+                .AbsolutePath(
+                    validating: $0.absoluteString.replacingOccurrences(of: "file://", with: "")
+                        .replacingOccurrences(of: "%20", with: " ")
+                )
         }
         .eraseToAnyThrowingAsyncSequenceable()
     }
