@@ -527,14 +527,16 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     #endif
 
-    func test_glob_with_nested_directories_with_exclude() async throws {
+    func test_glob_with_nested_directories() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
+            let topFile = temporaryDirectory.appending(component: "top.swift")
             let firstDirectory = temporaryDirectory.appending(component: "first")
             let firstSourceFile = firstDirectory.appending(component: "first.swift")
             let secondDirectory = firstDirectory.appending(component: "second")
             let secondSourceFile = firstDirectory.appending(component: "second.swift")
 
+            try await subject.touch(topFile)
             try await subject.makeDirectory(at: secondDirectory)
             try await subject.touch(firstSourceFile)
             try await subject.touch(secondSourceFile)
@@ -542,14 +544,157 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             // When
             let got = try await subject.glob(
                 directory: temporaryDirectory,
-                include: ["**/*.swift"],
-                exclude: ["**/second.swift"]
+                include: ["**/*.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [firstSourceFile, secondSourceFile, topFile])
+        }
+    }
+
+    func test_glob_with_file_in_a_nested_directory_with_a_component_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstDirectory = temporaryDirectory.appending(component: "first")
+            let firstSourceFile = firstDirectory.appending(component: "first.swift")
+
+            try await subject.makeDirectory(at: firstDirectory)
+            try await subject.touch(firstSourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["*/*.swift"]
             )
             .collect()
             .sorted()
 
             // Then
             XCTAssertEqual(got, [firstSourceFile])
+        }
+    }
+
+    func test_glob_with_file_and_only_a_directory_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstSourceFile = temporaryDirectory.appending(component: "first.swift")
+            try await subject.touch(firstSourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [firstSourceFile])
+        }
+    }
+
+    func test_glob_with_file_with_a_space_and_only_a_directory_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let sourceFile = temporaryDirectory.appending(component: "first plus.swift")
+            try await subject.touch(sourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [sourceFile])
+        }
+    }
+
+    func test_glob_with_file_with_a_special_character_and_only_a_directory_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let sourceFile = temporaryDirectory.appending(component: "firstµplus.swift")
+            try await subject.touch(sourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [sourceFile])
+        }
+    }
+
+    func test_glob_with_path_wildcard_and_a_constant_file_name() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let directory = temporaryDirectory.appending(component: "first")
+            let sourceFile = directory.appending(component: "first.swift")
+
+            try await subject.makeDirectory(at: directory)
+            try await subject.touch(sourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**/first.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [sourceFile])
+        }
+    }
+
+    func test_glob_with_file_in_a_directory_with_a_space() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let directory = temporaryDirectory.appending(component: "directory with a space")
+            let sourceFile = directory.appending(component: "first.swift")
+            try await subject.makeDirectory(at: directory)
+            try await subject.touch(sourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: directory,
+                include: ["*.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [sourceFile])
+        }
+    }
+
+    func test_glob_with_nested_files_and_only_a_directory_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstDirectory = temporaryDirectory.appending(component: "first")
+            let secondDirectory = firstDirectory.appending(component: "second")
+            let sourceFile = firstDirectory.appending(component: "file.swift")
+            try await subject.makeDirectory(at: secondDirectory)
+            try await subject.touch(sourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [firstDirectory, sourceFile, secondDirectory])
         }
     }
 }

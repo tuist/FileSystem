@@ -13,7 +13,10 @@ import PackageDescription
 
 let package = Package(
     name: "FileSystem",
-    platforms: [.macOS("12.0")],
+    platforms: [
+        .macOS("13.0"),
+        .iOS("13.0"),
+    ],
     products: [
         .library(
             name: "FileSystem",
@@ -26,7 +29,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.76.1")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.1")),
         .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
-        // We are depending on a fork until the following PR is merged: https://github.com/davbeck/swift-glob/pull/14
+        // We are depending on a fork as swift-glob currently can't handle some scenario that we need in tuist/tuist.
+        // For example, the package currently goes through all directories regradless of whether that's necessary.'
         .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.3.4")),
     ],
     targets: [
