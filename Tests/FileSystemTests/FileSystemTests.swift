@@ -675,7 +675,7 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [sourceFile])
         }
     }
-    
+
     func test_glob_with_file_extension_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
