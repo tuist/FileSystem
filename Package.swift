@@ -27,7 +27,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.1")),
         .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
         // We are depending on a fork until the following PR is merged: https://github.com/davbeck/swift-glob/pull/14
-        .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.3.0")),
+        .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.3.3")),
     ],
     targets: [
         .target(
