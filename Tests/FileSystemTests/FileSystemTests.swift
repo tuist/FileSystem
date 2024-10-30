@@ -613,6 +613,25 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [sourceFile])
         }
     }
+
+    func test_glob_with_file_with_a_special_character_and_only_a_directory_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let sourceFile = temporaryDirectory.appending(component: "firstµplus.swift")
+            try await subject.touch(sourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [sourceFile])
+        }
+    }
     
     func test_glob_with_path_wildcard_and_a_constant_file_name() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in

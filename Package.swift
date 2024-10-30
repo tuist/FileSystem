@@ -31,7 +31,7 @@ let package = Package(
         .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
         // We are depending on a fork as swift-glob currently can't handle some scenario that we need in tuist/tuist.
         // For example, the package currently goes through all directories regradless of whether that's necessary.'
-        .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.3.2")),
+        .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.3.3")),
     ],
     targets: [
         .target(

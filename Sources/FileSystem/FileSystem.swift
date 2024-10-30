@@ -611,10 +611,10 @@ public struct FileSystem: FileSysteming, Sendable {
                 .map { try Pattern($0) }
         )
         .map {
-            try Path
+            let path = $0.absoluteString.replacingOccurrences(of: "file://", with: "")
+            return try Path
                 .AbsolutePath(
-                    validating: $0.absoluteString.replacingOccurrences(of: "file://", with: "")
-                        .replacingOccurrences(of: "%20", with: " ")
+                    validating: path.removingPercentEncoding ?? path
                 )
         }
         .eraseToAnyThrowingAsyncSequenceable()
