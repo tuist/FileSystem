@@ -32,8 +32,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tuist/swift-glob",
       "state" : {
-        "revision" : "82bc2775b587172a99ab0e41d02387bc97e60023",
-        "version" : "0.3.0"
+        "revision" : "5b75024a4a5b7ef771fa895de0b00854e4f19345",
+        "version" : "0.3.1"
       }
     },
     {
