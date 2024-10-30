@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2024-10-29
+### Details
+#### Chore
+- Update dependency tuist/swift-glob to from: "0.3.0" by @renovate[bot] in [#69](https://github.com/tuist/FileSystem/pull/69)
+
+## [0.5.2] - 2024-10-28
+### Details
+#### Chore
+- Update actions/checkout action to v4 by @renovate[bot] in [#67](https://github.com/tuist/FileSystem/pull/67)
+
+## [0.5.1] - 2024-10-28
+### Details
+#### Chore
+- Add conventional PR check by @fortmarek in [#64](https://github.com/tuist/FileSystem/pull/64)
+
 ## [0.5.0] - 2024-10-24
 ### Details
 #### Feat
@@ -82,6 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.5.3]: https://github.com/tuist/FileSystem/compare/0.5.2..0.5.3
+[0.5.2]: https://github.com/tuist/FileSystem/compare/0.5.1..0.5.2
+[0.5.1]: https://github.com/tuist/FileSystem/compare/0.5.0..0.5.1
 [0.5.0]: https://github.com/tuist/FileSystem/compare/0.4.9..0.5.0
 [0.4.9]: https://github.com/tuist/FileSystem/compare/0.4.8..0.4.9
 [0.4.8]: https://github.com/tuist/FileSystem/compare/0.4.7..0.4.8
