@@ -553,7 +553,7 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [firstSourceFile, secondSourceFile, topFile])
         }
     }
-    
+
     func test_glob_with_file_in_a_nested_directory_with_a_component_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
@@ -632,7 +632,7 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [sourceFile])
         }
     }
-    
+
     func test_glob_with_path_wildcard_and_a_constant_file_name() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
