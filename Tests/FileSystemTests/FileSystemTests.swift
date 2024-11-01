@@ -760,4 +760,30 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [firstDirectory, sourceFile, secondDirectory])
         }
     }
+
+    func test_glob_with_symlink_and_only_a_directory_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstDirectory = temporaryDirectory.appending(component: "first")
+            let symlink = firstDirectory.appending(component: "symlink")
+            let secondDirectory = temporaryDirectory.appending(component: "second")
+            let sourceFile = secondDirectory.appending(component: "file.swift")
+            let symlinkSourceFilePath = symlink.appending(component: "file.swift")
+            try await subject.makeDirectory(at: firstDirectory)
+            try await subject.makeDirectory(at: secondDirectory)
+            try await subject.touch(sourceFile)
+            try await subject.createSymbolicLink(from: symlink, to: secondDirectory)
+
+            // When
+            let got = try await subject.glob(
+                directory: firstDirectory,
+                include: ["**/*.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [symlinkSourceFilePath])
+        }
+    }
 }
