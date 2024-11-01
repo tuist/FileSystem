@@ -608,7 +608,8 @@ public struct FileSystem: FileSysteming, Sendable {
             directory: URL(string: directory.pathString)!,
             include: try include
                 .flatMap { $0.contains("**/") ? [$0.replacingOccurrences(of: "**/", with: ""), $0] : [$0] }
-                .map { try Pattern($0) }
+                .map { try Pattern($0) },
+            skipHiddenFiles: false
         )
         .map {
             let path = $0.absoluteString.replacingOccurrences(of: "file://", with: "")

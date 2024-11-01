@@ -697,6 +697,27 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_glob_with_hidden_file_and_extension_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let directory = temporaryDirectory.appending(component: "directory")
+            let sourceFile = directory.appending(component: ".hidden.swift")
+            try await subject.makeDirectory(at: directory)
+            try await subject.touch(sourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: directory,
+                include: [".*.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [sourceFile])
+        }
+    }
+
     func test_glob_with_constant_file() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
