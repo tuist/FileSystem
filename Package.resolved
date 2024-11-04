@@ -28,15 +28,6 @@
       }
     },
     {
-      "identity" : "swift-glob",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tuist/swift-glob",
-      "state" : {
-        "revision" : "6e828ca92cb8b31a15f31bdd4edccc6d30017ee3",
-        "version" : "0.3.9"
-      }
-    },
-    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log",
