@@ -786,4 +786,35 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [symlinkSourceFilePath])
         }
     }
+
+    func test_glob_with_double_directory_wildcard() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstDirectory = temporaryDirectory.appending(component: "first")
+            let firstSourceFile = firstDirectory.appending(component: "first.swift")
+            let secondDirectory = firstDirectory.appending(component: "second")
+            let secondSourceFile = secondDirectory.appending(component: "second.swift")
+            let thirdDirectory = secondDirectory.appending(component: "third")
+            let thirdSourceFile = thirdDirectory.appending(component: "third.swift")
+            let fourthDirectory = thirdDirectory.appending(component: "fourth")
+            let fourthSourceFile = fourthDirectory.appending(component: "fourth.swift")
+
+            try await subject.makeDirectory(at: fourthDirectory)
+            try await subject.touch(firstSourceFile)
+            try await subject.touch(secondSourceFile)
+            try await subject.touch(thirdSourceFile)
+            try await subject.touch(fourthSourceFile)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["first/**/third/**/*.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [fourthSourceFile, thirdSourceFile])
+        }
+    }
 }

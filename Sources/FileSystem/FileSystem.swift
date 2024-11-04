@@ -607,7 +607,6 @@ public struct FileSystem: FileSysteming, Sendable {
         return Glob.search(
             directory: URL(string: directory.pathString)!,
             include: try include
-                .flatMap { $0.contains("**/") ? [$0.replacingOccurrences(of: "**/", with: ""), $0] : [$0] }
                 .map { try Pattern($0) },
             skipHiddenFiles: false
         )
