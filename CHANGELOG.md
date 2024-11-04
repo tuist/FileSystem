@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2024-11-04
+### Details
+#### Fix
+- Matching files with double globstar by @fortmarek in [#80](https://github.com/tuist/FileSystem/pull/80)
+
 ## [0.6.6] - 2024-11-01
 ### Details
 #### Chore
@@ -137,6 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.6.7]: https://github.com/tuist/FileSystem/compare/0.6.6..0.6.7
 [0.6.6]: https://github.com/tuist/FileSystem/compare/0.6.5..0.6.6
 [0.6.5]: https://github.com/tuist/FileSystem/compare/0.6.4..0.6.5
 [0.6.4]: https://github.com/tuist/FileSystem/compare/0.6.3..0.6.4
