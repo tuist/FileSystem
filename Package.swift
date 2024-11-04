@@ -1,7 +1,7 @@
 // swift-tools-version: 5.8.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
-import PackageDescription
+@preconcurrency import PackageDescription
 
 #if TUIST
     import ProjectDescription
@@ -29,17 +29,14 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.76.1")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.1")),
         .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
-        // We are depending on a fork as swift-glob currently can't handle some scenario that we need in tuist/tuist.
-        // For example, the package currently goes through all directories regradless of whether that's necessary.'
-        .package(url: "https://github.com/tuist/swift-glob", .upToNextMajor(from: "0.3.9")),
     ],
     targets: [
         .target(
             name: "FileSystem",
             dependencies: [
+                "Glob",
                 .product(name: "_NIOFileSystem", package: "swift-nio"),
                 .product(name: "Path", package: "Path"),
-                .product(name: "Glob", package: "swift-glob"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ],
@@ -51,6 +48,18 @@ let package = Package(
             name: "FileSystemTests",
             dependencies: [
                 "FileSystem",
+            ]
+        ),
+        .target(
+            name: "Glob",
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency"),
+            ]
+        ),
+        .testTarget(
+            name: "GlobTests",
+            dependencies: [
+                "Glob",
             ]
         ),
     ]
