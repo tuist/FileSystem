@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - 2024-11-05
+### Details
+#### Fix
+- Ignore .DS_Store results when globbing by @fortmarek in [#84](https://github.com/tuist/FileSystem/pull/84)
+
 ## [0.6.10] - 2024-11-05
 ### Details
 #### Fix
@@ -157,6 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.6.11]: https://github.com/tuist/FileSystem/compare/0.6.10..0.6.11
 [0.6.10]: https://github.com/tuist/FileSystem/compare/0.6.9..0.6.10
 [0.6.9]: https://github.com/tuist/FileSystem/compare/0.6.8..0.6.9
 [0.6.8]: https://github.com/tuist/FileSystem/compare/0.6.7..0.6.8
