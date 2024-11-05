@@ -608,6 +608,9 @@ public struct FileSystem: FileSysteming, Sendable {
             directory: URL(string: directory.pathString)!,
             include: try include
                 .map { try Pattern($0) },
+            exclude: [
+                try Pattern("**/.DS_Store"),
+            ],
             skipHiddenFiles: false
         )
         .map {

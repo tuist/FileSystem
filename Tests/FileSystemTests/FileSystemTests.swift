@@ -782,6 +782,30 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_glob_with_nested_files_and_only_a_directory_wildcard_when_ds_store_is_present() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let firstDirectory = temporaryDirectory.appending(component: "first")
+            let secondDirectory = firstDirectory.appending(component: "second")
+            let sourceFile = firstDirectory.appending(component: "file.swift")
+            try await subject.makeDirectory(at: secondDirectory)
+            try await subject.touch(sourceFile)
+            try await subject.touch(firstDirectory.appending(component: ".DS_Store"))
+            try await subject.touch(secondDirectory.appending(component: ".DS_Store"))
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got, [firstDirectory, sourceFile, secondDirectory])
+        }
+    }
+
     func test_glob_with_symlink_and_only_a_directory_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
