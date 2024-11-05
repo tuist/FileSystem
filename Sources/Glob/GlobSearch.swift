@@ -81,9 +81,18 @@ public func search(
                         continue
                     }
 
+                    let path = baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString
+                    let symbolicLinkDestination: URL?
+                    if let symbolicLinkDestinationAbsoluteString = try? FileManager.default
+                        .destinationOfSymbolicLink(atPath: path)
+                    {
+                        symbolicLinkDestination = URL(string: symbolicLinkDestinationAbsoluteString)
+                    } else {
+                        symbolicLinkDestination = nil
+                    }
                     var isDirectory: ObjCBool = false
                     guard FileManager.default.fileExists(
-                        atPath: baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString,
+                        atPath: symbolicLinkDestination?.absoluteString ?? path,
                         isDirectory: &isDirectory
                     ),
                         isDirectory.boolValue
@@ -91,7 +100,7 @@ public func search(
 
                     try await search(
                         directory: baseURL,
-                        symbolicLinkDestination: nil,
+                        symbolicLinkDestination: symbolicLinkDestination,
                         matching: { _, relativePath in
                             guard include.match(relativePath) else {
                                 // for patterns like `**/*.swift`, parent folders won't be matched but we don't want to skip those
