@@ -886,4 +886,41 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [fourthSourceFile, thirdSourceFile])
         }
     }
+
+    func test_remove_file() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let file = temporaryDirectory.appending(component: "test")
+            try await subject.touch(file)
+
+            // When
+            try await subject.remove(file)
+
+            // Then
+            let exists = try await subject.exists(file)
+            XCTAssertFalse(exists)
+        }
+    }
+
+    func test_remove_directory_with_files() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let directory = temporaryDirectory.appending(component: "directory")
+            let nestedDirectory = directory.appending(component: "nested")
+            let file = nestedDirectory.appending(component: "test")
+            try await subject.makeDirectory(at: nestedDirectory)
+            try await subject.touch(file)
+
+            // When
+            try await subject.remove(directory)
+
+            // Then
+            let directoryExists = try await subject.exists(directory)
+            let nestedDirectoryExists = try await subject.exists(nestedDirectory)
+            let fileExists = try await subject.exists(file)
+            XCTAssertFalse(directoryExists)
+            XCTAssertFalse(nestedDirectoryExists)
+            XCTAssertFalse(fileExists)
+        }
+    }
 }

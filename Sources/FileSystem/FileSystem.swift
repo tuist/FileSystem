@@ -78,12 +78,6 @@ public protocol FileSysteming {
     /// - Parameter path: The path to the file or directory to remove.
     func remove(_ path: AbsolutePath) async throws
 
-    /// It removes the file or directory at the given path.
-    /// - Parameters:
-    ///   - path: The path to the file or directory to remove.
-    ///   - recursively: When removing a directory, it removes the sub-directories recursively.
-    func remove(_ path: AbsolutePath, recursively: Bool) async throws
-
     /// Creates a temporary directory and returns its path.
     /// - Parameter prefix: Prefix for the randomly-generated directory name.
     /// - Returns: The path to the directory.
@@ -300,17 +294,12 @@ public struct FileSystem: FileSysteming, Sendable {
         }
     }
 
-    public func remove(_ path: Path.AbsolutePath) async throws {
-        try await remove(path, recursively: true)
-    }
-
-    public func remove(_ path: AbsolutePath, recursively: Bool) async throws {
-        if recursively {
-            logger?.debug("Removing the directory at path recursively: \(path.pathString).")
-        } else {
-            logger?.debug("Removing the file or directory at path: \(path.pathString).")
+    public func remove(_ path: AbsolutePath) async throws {
+        logger?.debug("Removing the file or directory at path: \(path.pathString).")
+        try await Task {
+            try FileManager.default.removeItem(atPath: path.pathString)
         }
-        try await NIOFileSystem.FileSystem.shared.removeItem(at: .init(path.pathString), recursively: recursively)
+        .value
     }
 
     public func makeTemporaryDirectory(prefix: String) async throws -> AbsolutePath {
