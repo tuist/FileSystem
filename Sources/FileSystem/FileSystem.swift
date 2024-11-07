@@ -296,6 +296,7 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func remove(_ path: AbsolutePath) async throws {
         logger?.debug("Removing the file or directory at path: \(path.pathString).")
+        guard try await exists(path) else { return }
         try await Task {
             try FileManager.default.removeItem(atPath: path.pathString)
         }

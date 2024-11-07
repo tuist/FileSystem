@@ -902,6 +902,16 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_remove_non_existing_file() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let file = temporaryDirectory.appending(component: "test")
+
+            // When / Then
+            try await subject.remove(file)
+        }
+    }
+
     func test_remove_directory_with_files() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
