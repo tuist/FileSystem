@@ -271,8 +271,19 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
         logger?.debug("Checking if a file or directory exists at path \(path.pathString).")
-        let info = try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString))
-        return info != nil
+
+        do {
+            return try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) != nil
+        } catch let error as NIOFileSystem.FileSystemError {
+            /**
+             There are scenarios where a valid path can lead to system errors trying to check for its existence. For example, assuming the file /foo/bar/File.swift
+             exists in the system, checking whether /foo/bar/File.swift/test causes this function to error with:
+             ('stat' system call failed with '(20) Not a directory'.)
+
+             This catch catches those errors and returns false instead, which reflects the fact that the provided path doesn't exist.
+             */
+            return false
+        }
     }
 
     public func exists(_ path: AbsolutePath, isDirectory: Bool) async throws -> Bool {
@@ -281,10 +292,15 @@ public struct FileSystem: FileSysteming, Sendable {
         } else {
             logger?.debug("Checking if a file exists at path \(path.pathString).")
         }
-        guard let info = try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
+
+        do {
+            guard let info = try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
+                return false
+            }
+            return info.type == (isDirectory ? .directory : .regular)
+        } catch let error as NIOFileSystem.FileSystemError {
             return false
         }
-        return info.type == (isDirectory ? .directory : .regular)
     }
 
     public func touch(_ path: Path.AbsolutePath) async throws {

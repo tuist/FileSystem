@@ -17,6 +17,31 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         try await super.tearDown()
     }
 
+    func test_exists_when_theFileDoesntExist() async throws {
+        // Given
+        let path = try AbsolutePath(validating: "/invalid/path/from/system")
+
+        // When
+        let got = try await subject.exists(path)
+
+        // Then
+        XCTAssertFalse(got)
+    }
+
+    func test_exists_when_xxx() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let filePath = temporaryDirectory.appending(component: "File")
+            try await subject.touch(filePath)
+
+            // When
+            let got = try await subject.exists(filePath.appending(component: "Directory"))
+
+            // Then
+            XCTAssertFalse(got)
+        }
+    }
+
     func test_createTemporaryDirectory_returnsAValidDirectory() async throws {
         // Given
         let temporaryDirectory = try await subject.makeTemporaryDirectory(prefix: "FileSystem")
