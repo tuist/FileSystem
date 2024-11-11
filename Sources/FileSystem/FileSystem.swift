@@ -590,6 +590,23 @@ public struct FileSystem: FileSysteming, Sendable {
         }
     }
 
+    private func expandBraces(in regexString: String) throws -> [String] {
+        let pattern = #"\{[^}]+\}"#
+        let regex = try Regex(pattern)
+
+        guard let match = regexString.firstMatch(of: regex) else {
+            return [regexString]
+        }
+
+        return regexString[match.range]
+            .dropFirst()
+            .dropLast()
+            .split(separator: ",")
+            .map { option in
+                regexString.replacingCharacters(in: match.range, with: option)
+            }
+    }
+
     public func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
         let logMessage =
             "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", "))."
@@ -597,6 +614,7 @@ public struct FileSystem: FileSysteming, Sendable {
         return Glob.search(
             directory: URL(string: directory.pathString)!,
             include: try include
+                .flatMap { try expandBraces(in: $0) }
                 .map { try Pattern($0) },
             exclude: [
                 try Pattern("**/.DS_Store"),

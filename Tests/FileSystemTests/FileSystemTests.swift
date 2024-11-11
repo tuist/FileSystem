@@ -887,6 +887,32 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_glob_with_extension_group() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let swiftSourceFile = temporaryDirectory.appending(component: "file.swift")
+            let cppSourceFile = temporaryDirectory.appending(component: "file.cpp")
+            let jsSourceFile = temporaryDirectory.appending(component: "file.js")
+            try await subject.touch(swiftSourceFile)
+            try await subject.touch(cppSourceFile)
+            try await subject.touch(jsSourceFile)
+
+            // When
+            let got = try await subject.glob(directory: temporaryDirectory, include: ["*.{swift,cpp}"])
+                .collect()
+                .sorted()
+
+            // Then
+            XCTAssertEqual(
+                got,
+                [
+                    cppSourceFile,
+                    swiftSourceFile,
+                ]
+            )
+        }
+    }
+
     func test_remove_file() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
