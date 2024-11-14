@@ -29,6 +29,7 @@ public struct MatchResult {
 ///   - skipHiddenFiles: When true, hidden files will not be returned.
 /// - Returns: An async collection of urls.
 @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+// swiftlint:disable:next function_body_length
 public func search(
     // swiftformat:disable unusedArguments
     directory baseURL: URL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
@@ -110,7 +111,17 @@ public func search(
                                     case .pathWildcard:
                                         return true
                                     case .componentWildcard:
-                                        return index != include.sections.endIndex - 1
+                                        if index == include.sections.endIndex - 1 {
+                                            return false
+                                        } else if index == include.sections.endIndex - 2 {
+                                            if case let .constant(constant) = include.sections.last {
+                                                return constant.contains("/")
+                                            } else {
+                                                return true
+                                            }
+                                        } else {
+                                            return true
+                                        }
                                     default:
                                         return false
                                     }
