@@ -337,7 +337,7 @@ public struct FileSystem: FileSysteming, Sendable {
         do {
             if options.contains(.createTargetParentDirectories) {
                 if !(try await exists(to.parentDirectory, isDirectory: true)) {
-                    try await makeDirectory(at: to.parentDirectory, options: [.createTargetParentDirectories])
+                    try? await makeDirectory(at: to.parentDirectory, options: [.createTargetParentDirectories])
                 }
             }
             try await NIOFileSystem.FileSystem.shared.moveItem(at: .init(from.pathString), to: .init(to.pathString))
