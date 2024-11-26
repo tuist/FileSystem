@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.19] - 2024-11-26
+### Details
+#### Chore
+- Update dependency apple/swift-log to from: "1.6.2" by @renovate[bot] in [#93](https://github.com/tuist/FileSystem/pull/93)
+
 ## [0.6.18] - 2024-11-15
 ### Details
 #### Fix
@@ -197,6 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.6.19]: https://github.com/tuist/FileSystem/compare/0.6.18..0.6.19
 [0.6.18]: https://github.com/tuist/FileSystem/compare/0.6.17..0.6.18
 [0.6.17]: https://github.com/tuist/FileSystem/compare/0.6.16..0.6.17
 [0.6.16]: https://github.com/tuist/FileSystem/compare/0.6.15..0.6.16
