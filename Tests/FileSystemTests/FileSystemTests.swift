@@ -855,7 +855,41 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertEqual(got, [symlinkSourceFilePath])
         }
     }
+  
+    func test_glob_with_relative_symlink() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let frameworkDir = temporaryDirectory.appending(component: "Framework")
+            let sourceDir = frameworkDir.appending(component: "Source")
+            let spmResourcesDir = sourceDir.appending(component: "SwiftPackageResources")
+            let modelSymLinkPath = spmResourcesDir.appending(component: "MyModel.xcdatamodeld")
+          
+            let actualResourcesDir = frameworkDir.appending(component: "Resources")
+            let actualModelPath = actualResourcesDir.appending(component: "MyModel.xcdatamodeld")
+            let versionPath = actualModelPath.appending(component: "MyModel_0.xcdatamodel")
+          
+            try await subject.makeDirectory(at: spmResourcesDir)
+            try await subject.makeDirectory(at: actualResourcesDir)
+            try await subject.makeDirectory(at: actualModelPath)
+            try await subject.touch(versionPath)
+        
+            let relativeActualModelPath = try RelativePath(validating: "../../Resources/MyModel.xcdatamodeld")
+            try await subject.createSymbolicLink(from: modelSymLinkPath, to: relativeActualModelPath)
 
+            // When
+            let got = try await subject.glob(
+                directory: modelSymLinkPath,
+                include: ["*.xcdatamodel"]
+            )
+            .collect()
+            .sorted()
+          
+            // Then
+            XCTAssertEqual(got.count, 1)
+            XCTAssertEqual(got.map(\.basename), [versionPath.basename])
+        }
+    }
+  
     func test_glob_with_double_directory_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
