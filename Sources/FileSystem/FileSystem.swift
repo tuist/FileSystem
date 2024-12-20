@@ -548,18 +548,18 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func createSymbolicLink(from: AbsolutePath, to: AbsolutePath) async throws {
-        logger?.debug("Creating symbolic link from \(from.pathString) to \(to.pathString).")
-        try await NIOFileSystem.FileSystem.shared.createSymbolicLink(
-            at: FilePath(from.pathString),
-            withDestination: FilePath(to.pathString)
-        )
+      try await createSymbolicLink(fromPathString: from.pathString, toPathString: to.pathString)
     }
 
     public func createSymbolicLink(from: AbsolutePath, to: RelativePath) async throws {
-        logger?.debug("Creating symbolic link from \(from.pathString) to \(to.pathString).")
+      try await createSymbolicLink(fromPathString: from.pathString, toPathString: to.pathString)
+    }
+  
+    private func createSymbolicLink(fromPathString: String, toPathString: String) async throws {
+        logger?.debug("Creating symbolic link from \(fromPathString) to \(toPathString).")
         try await NIOFileSystem.FileSystem.shared.createSymbolicLink(
-            at: FilePath(from.pathString),
-            withDestination: FilePath(to.pathString)
+            at: FilePath(fromPathString),
+            withDestination: FilePath(toPathString)
         )
     }
 
