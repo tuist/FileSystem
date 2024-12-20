@@ -219,6 +219,12 @@ public protocol FileSysteming {
     ///   - from: The path where the symlink is created.
     ///   - to: The path the symlink points to.
     func createSymbolicLink(from: AbsolutePath, to: AbsolutePath) async throws
+  
+    /// Creates a relative symlink.
+    /// - Parameters:
+    ///   - from: The path where the symlink is created.
+    ///   - to: The relative path the symlink points to.
+    func createSymbolicLink(from: AbsolutePath, to: RelativePath) async throws
 
     /// Given a symlink, it resolves it returning the path to the file or directory the symlink is pointing to.
     /// - Parameter symlinkPath: The absolute path to the symlink.
