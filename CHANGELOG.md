@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-01-09
+### Details
+#### Feat
+- Handle relative symbolic links by @KaiOelfke in [#98](https://github.com/tuist/FileSystem/pull/98)
+
+## New Contributors
+* @KaiOelfke made their first contribution in [#98](https://github.com/tuist/FileSystem/pull/98)
 ## [0.6.24] - 2025-01-09
 ### Details
 #### Chore
@@ -227,6 +234,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.7.0]: https://github.com/tuist/FileSystem/compare/0.6.24..0.7.0
 [0.6.24]: https://github.com/tuist/FileSystem/compare/0.6.23..0.6.24
 [0.6.23]: https://github.com/tuist/FileSystem/compare/0.6.22..0.6.23
 [0.6.22]: https://github.com/tuist/FileSystem/compare/0.6.21..0.6.22
