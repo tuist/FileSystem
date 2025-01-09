@@ -7,7 +7,7 @@ on:
   pull_request: {}
 
 env:
-  TUIST_CONFIG_CLOUD_TOKEN: ${{ secrets.TUIST_CONFIG_CLOUD_TOKEN }}
+  TUIST_CONFIG_TOKEN: ${{ secrets.TUIST_CONFIG_TOKEN }}
 
 concurrency:
   group: file-system-${{ github.head_ref }}
