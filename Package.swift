@@ -26,7 +26,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
-        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.78.0")),
+        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.79.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.2")),
         .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
     ],
