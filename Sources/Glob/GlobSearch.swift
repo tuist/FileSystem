@@ -46,17 +46,17 @@ public func search(
                     case let .constant(constant):
                         if constant.hasSuffix("/") {
                             (
-                                baseURL.appending(path: constant.dropLast()),
+                                baseURL.appendingPath(constant.dropLast()),
                                 Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
                             )
                         } else if include.sections.count == 1 {
                             (
-                                baseURL.appending(path: constant),
+                                baseURL.appendingPath(constant),
                                 Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
                             )
                         } else if case .componentWildcard = include.sections[1] {
                             (
-                                baseURL.appending(path: constant.components(separatedBy: "/").dropLast().joined(separator: "/")),
+                                baseURL.appendingPath(constant.components(separatedBy: "/").dropLast().joined(separator: "/")),
                                 Pattern(
                                     sections: [.constant(constant.components(separatedBy: "/").last ?? "")] +
                                         Array(include.sections.dropFirst()),
@@ -65,7 +65,7 @@ public func search(
                             )
                         } else {
                             (
-                                baseURL.appending(path: constant),
+                                baseURL.appendingPath(constant),
                                 Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
                             )
                         }
@@ -83,7 +83,7 @@ public func search(
                     }
 
                     let path = baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString
-                    let symbolicLinkDestination = URL(filePath: path).resolvingSymlinksInPath()
+                    let symbolicLinkDestination = URL.with(filePath: path).resolvingSymlinksInPath()
                     var isDirectory: ObjCBool = false
 
                     let symbolicLinkDestinationPath: String = symbolicLinkDestination
@@ -182,7 +182,7 @@ private func search(
 
             let matchResult = try matching(url, relativePath)
 
-            let foundPath = directory.appending(path: url.relativePath)
+            let foundPath = directory.appendingPath(url.lastPathComponent)
 
             if matchResult.matches {
                 continuation.yield(foundPath)
@@ -220,5 +220,25 @@ private func search(
         }
 
         try await group.waitForAll()
+    }
+}
+
+extension URL {
+    public static func with(filePath: String) -> URL {
+        #if os(Linux)
+            return URL(fileURLWithPath: filePath)
+        #else
+            return URL(filePath: filePath)
+        #endif
+    }
+
+    public func appendingPath(_ path: any StringProtocol) -> URL {
+        #if os(Linux)
+            return path
+                .split(separator: "/")
+                .reduce(self) { $0.appendingPathComponent(String($1)) }
+        #else
+            return appending(path: path)
+        #endif
     }
 }

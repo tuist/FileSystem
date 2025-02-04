@@ -15,7 +15,7 @@ let package = Package(
     name: "FileSystem",
     platforms: [
         .macOS("13.0"),
-        .iOS("13.0"),
+        .iOS("16.0"),
     ],
     products: [
         .library(
@@ -28,7 +28,7 @@ let package = Package(
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
         .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.79.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.6.2")),
-        .package(url: "https://github.com/weichsel/ZIPFoundation", .upToNextMajor(from: "0.9.19")),
+        .package(url: "https://github.com/weichsel/ZIPFoundation", branch: "development"),
     ],
     targets: [
         .target(
