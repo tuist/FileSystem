@@ -314,9 +314,9 @@ public struct FileSystem: FileSysteming, Sendable {
 
         /// The path to the directory /var is a symlink to /var/private.
         /// NSTemporaryDirectory() returns the path to the symlink, so the logic here removes the symlink from it.
-        if systemTemporaryDirectory.starts(with: "/var/") {
-            systemTemporaryDirectory = "/private\(systemTemporaryDirectory)"
-        }
+//        if systemTemporaryDirectory.starts(with: "/var/") {
+//            systemTemporaryDirectory = "/private\(systemTemporaryDirectory)"
+//        }
         let temporaryDirectory = try AbsolutePath(validating: systemTemporaryDirectory)
             .appending(component: "\(prefix)-\(UUID().uuidString)")
         logger?.debug("Creating a temporary directory at path \(temporaryDirectory.pathString).")

@@ -182,7 +182,7 @@ private func search(
 
             let matchResult = try matching(url, relativePath)
 
-            let foundPath = directory.appendingPath(url.relativePath)
+            let foundPath = directory.appendingPath(url.lastPathComponent)
 
             if matchResult.matches {
                 continuation.yield(foundPath)
