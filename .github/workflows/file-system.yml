@@ -3,7 +3,7 @@ name: FileSystem
 on:
   push:
     branches:
-    - main
+      - main
   pull_request: {}
 
 env:
@@ -15,88 +15,48 @@ concurrency:
 
 jobs:
   build:
-    name: "Release build on macOS 14"
-    runs-on: macos-14
+    name: Release build on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run build-spm
-
-  build-linux:
-    name: "Release build on Linux"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run build-linux
-
-  build_tuist:
-    name: "Tuist build"
-    runs-on: "macos-14"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Select Xcode
-      run: sudo xcode-select -switch /Applications/Xcode_$(cat .xcode-version).app
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: |
-        mise x -- tuist install
-        mise run build
+      - uses: actions/checkout@v4
+      - uses: SwiftyLab/setup-swift@latest
+        if: runner.os == 'Linux' || runner.os == 'Windows'
+        with:
+          swift-version: "6.0"
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run build
 
   test:
-    name: "Test on macOS 14"
-    runs-on: macos-14
+    name: Test on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run test-spm
-
-  test_linux:
-    name: "Test on Linux"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run test-linux
-
-  test_tuist:
-    name: "Tuist test"
-    runs-on: "macos-14"
-    env:
-      TUIST_CONFIG_CLOUD_TOKEN: ${{ secrets.TUIST_CONFIG_CLOUD_TOKEN }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Select Xcode
-      run: sudo xcode-select -switch /Applications/Xcode_$(cat .xcode-version).app
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: |
-        mise x -- tuist install
-        mise run test
+      - uses: actions/checkout@v4
+      - uses: SwiftyLab/setup-swift@latest
+        if: runner.os == 'Linux' || runner.os == 'Windows'
+        with:
+          swift-version: "6.0"
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run test
 
   lint:
     name: Lint
     runs-on: macos-14
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run lint
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run lint

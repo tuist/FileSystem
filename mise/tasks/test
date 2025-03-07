@@ -1,0 +1,17 @@
+#!/bin/bash
+# mise description="Test the project using Swift Package Manager"
+#USAGE flag "-l --linux-vm" help="Virtualize the build"
+set -eo pipefail
+
+if [ "$usage_linux_vm" = "true" ]; then
+    CONTAINER_RUNTIME=$(command -v podman || command -v docker)
+
+    $CONTAINER_RUNTIME run --rm \
+        --volume "$MISE_PROJECT_ROOT:/package" \
+        --workdir "/package" \
+        swift:6.0.3 \
+        /bin/bash -c \
+        "swift test --build-path ./.build/linux"
+else
+    swift test
+fi
