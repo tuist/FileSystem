@@ -48,7 +48,11 @@ jobs:
         with:
           experimental: true
       - name: Run
+        if: runner.os == 'Linux' || runner.os == 'macOS'
         run: mise run test
+      - name: Run
+        if: runner.os == 'Windows'
+        run: swift test
 
   lint:
     name: Lint
@@ -59,4 +63,8 @@ jobs:
         with:
           experimental: true
       - name: Run
-        run: mise run lint
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: mise run build
+      - name: Run
+        if: runner.os == 'Windows'
+        run: swift build --configuration release
