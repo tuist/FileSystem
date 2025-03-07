@@ -1,5 +1,0 @@
-#!/bin/bash
-# mise description="Build the project using Tuist"
-set -euo pipefail
-
-tuist build --path $MISE_PROJECT_ROOT
