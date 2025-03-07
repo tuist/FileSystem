@@ -35,10 +35,10 @@ let package = Package(
             name: "FileSystem",
             dependencies: [
                 "Glob",
-                .product(name: "_NIOFileSystem", package: "swift-nio"),
+                .product(name: "_NIOFileSystem", package: "swift-nio", condition: .when(platforms: [.macOS, .linux])),
                 .product(name: "Path", package: "Path"),
                 .product(name: "Logging", package: "swift-log"),
-                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+                .product(name: "ZIPFoundation", package: "ZIPFoundation", condition: .when(platforms: [.macOS, .linux])),
             ],
             swiftSettings: [
                 .define("MOCKING", .when(configuration: .debug)),
