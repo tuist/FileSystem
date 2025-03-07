@@ -30,7 +30,11 @@ jobs:
         with:
           experimental: true
       - name: Run
+        if: runner.os == 'Linux' || runner.os == 'macOS'
         run: mise run build
+      - name: Run
+        if: runner.os == 'Windows'
+        run: swift build --configuration release
 
   test:
     name: Test on ${{ matrix.os }}
