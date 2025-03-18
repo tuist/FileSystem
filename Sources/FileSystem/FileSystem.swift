@@ -54,20 +54,20 @@ public enum MakeDirectoryOptions: String {
 
 /// Options to configure the writing of text files.
 public enum WriteTextOptions {
-    /// When passed, it overrides any existing files.
-    case overriding
+    /// When passed, it ovewrites any existing files.
+    case overwrite
 }
 
 /// Options to configure the writing of Plist files.
 public enum WritePlistOptions {
-    /// When passed, it overrides any existing files.
-    case overriding
+    /// When passed, it ovewrites any existing files.
+    case overwrite
 }
 
 /// Options to configure the writing of JSON files.
 public enum WriteJSONOptions {
-    /// When passed, it overrides any existing files.
-    case overriding
+    /// When passed, it ovewrites any existing files.
+    case overwrite
 }
 
 public protocol FileSysteming {
@@ -494,7 +494,7 @@ public struct FileSystem: FileSysteming, Sendable {
             throw FileSystemError.cantEncodeText(text, encoding)
         }
 
-        if try await exists(path), options.contains(.overriding) {
+        if options.contains(.overwrite), try await exists(path) {
             try await remove(path)
         }
 
@@ -529,7 +529,7 @@ public struct FileSystem: FileSysteming, Sendable {
     ) async throws {
         logger?.debug("Writing .plist at path \(path.pathString).")
 
-        if try await exists(path), options.contains(.overriding) {
+        if options.contains(.overwrite), try await exists(path) {
             try await remove(path)
         }
 
@@ -566,7 +566,7 @@ public struct FileSystem: FileSysteming, Sendable {
         logger?.debug("Writing .json at path \(path.pathString).")
 
         let json = try encoder.encode(item)
-        if try await exists(path), options.contains(.overriding) {
+        if options.contains(.overwrite), try await exists(path) {
             try await remove(path)
         }
 

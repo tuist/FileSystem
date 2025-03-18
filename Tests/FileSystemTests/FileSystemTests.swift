@@ -161,12 +161,12 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func test_writeTextFile_and_readTextFile_returnsTheContent_when_whenOverridingFile() async throws {
+    func test_writeTextFile_and_readTextFile_returnsTheContent_when_whenOverwritingFile() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
             let filePath = temporaryDirectory.appending(component: "file")
-            try await subject.writeText("test", at: filePath, options: Set([.overriding]))
-            try await subject.writeText("test", at: filePath, options: Set([.overriding]))
+            try await subject.writeText("test", at: filePath, options: Set([.overwrite]))
+            try await subject.writeText("test", at: filePath, options: Set([.overwrite]))
 
             // When
             let got = try await subject.readTextFile(at: filePath)
@@ -193,7 +193,7 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func test_writeAsJSON_and_readJSONFile_returnsTheContent_when_whenOverridingFile() async throws {
+    func test_writeAsJSON_and_readJSONFile_returnsTheContent_when_whenOverwritingFile() async throws {
         struct CodableStruct: Codable, Equatable { let name: String }
 
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
@@ -235,8 +235,8 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             // Given
             let item = CodableStruct(name: "tuist")
             let filePath = temporaryDirectory.appending(component: "file")
-            try await subject.writeAsPlist(item, at: filePath, options: Set([.overriding]))
-            try await subject.writeAsPlist(item, at: filePath, options: Set([.overriding]))
+            try await subject.writeAsPlist(item, at: filePath, options: Set([.overwrite]))
+            try await subject.writeAsPlist(item, at: filePath, options: Set([.overwrite]))
 
             // When
             let got: CodableStruct = try await subject.readPlistFile(at: filePath)
