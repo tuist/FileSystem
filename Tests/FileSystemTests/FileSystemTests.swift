@@ -200,8 +200,8 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             // Given
             let item = CodableStruct(name: "tuist")
             let filePath = temporaryDirectory.appending(component: "file")
-            try await subject.writeAsJSON(item, at: filePath, options: Set([.overriding]))
-            try await subject.writeAsJSON(item, at: filePath, options: Set([.overriding]))
+            try await subject.writeAsJSON(item, at: filePath, options: Set([.overwrite]))
+            try await subject.writeAsJSON(item, at: filePath, options: Set([.overwrite]))
 
             // When
             let got: CodableStruct = try await subject.readJSONFile(at: filePath)
