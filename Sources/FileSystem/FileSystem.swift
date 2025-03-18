@@ -309,6 +309,7 @@ public protocol FileSysteming {
     //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
 }
 
+// swiftlint:disable:next type_body_length
 public struct FileSystem: FileSysteming, Sendable {
     fileprivate let logger: Logger?
     fileprivate let environmentVariables: [String: String]
