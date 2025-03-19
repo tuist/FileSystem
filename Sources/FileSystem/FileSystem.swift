@@ -52,6 +52,24 @@ public enum MakeDirectoryOptions: String {
     case createTargetParentDirectories
 }
 
+/// Options to configure the writing of text files.
+public enum WriteTextOptions {
+    /// When passed, it ovewrites any existing files.
+    case overwrite
+}
+
+/// Options to configure the writing of Plist files.
+public enum WritePlistOptions {
+    /// When passed, it ovewrites any existing files.
+    case overwrite
+}
+
+/// Options to configure the writing of JSON files.
+public enum WriteJSONOptions {
+    /// When passed, it ovewrites any existing files.
+    case overwrite
+}
+
 public protocol FileSysteming {
     func runInTemporaryDirectory<T>(
         prefix: String,
@@ -137,6 +155,14 @@ public protocol FileSysteming {
     ///   - encoding: The encoding to encode the text as data.
     func writeText(_ text: String, at: AbsolutePath, encoding: String.Encoding) async throws
 
+    /// It writes the text at the given path.
+    /// - Parameters:
+    ///   - text: Text to be written.
+    ///   - at: Path at which the text will be written.
+    ///   - encoding: The encoding to encode the text as data.
+    ///   - options: Options to configure the writing of the file.
+    func writeText(_ text: String, at: AbsolutePath, encoding: String.Encoding, options: Set<WriteTextOptions>) async throws
+
     /// Reads a property list file at a given path, and decodes it into the provided decodable type.
     /// - Parameter at: The path to the property list file.
     /// - Returns: The decoded structure.
@@ -162,6 +188,19 @@ public protocol FileSysteming {
     ///   - encoder: The PropertyListEncoder instance to encode the item.
     func writeAsPlist<T: Encodable>(_ item: T, at: AbsolutePath, encoder: PropertyListEncoder) async throws
 
+    /// Given an `Encodable` instance, it encodes it as a Plist, and writes it at the given path.
+    /// - Parameters:
+    ///   - item: Item to be encoded as Plist.
+    ///   - at: Path at which the Plist will be written.
+    ///   - encoder: The PropertyListEncoder instance to encode the item.
+    ///   - options: Options to configure the writing of the plist file.
+    func writeAsPlist<T: Encodable>(
+        _ item: T,
+        at: AbsolutePath,
+        encoder: PropertyListEncoder,
+        options: Set<WritePlistOptions>
+    ) async throws
+
     /// Reads a JSON  file at a given path, and decodes it into the provided decodable type.
     /// - Parameter at: The path to the property list file.
     /// - Returns: The decoded structure.
@@ -186,6 +225,14 @@ public protocol FileSysteming {
     ///   - at: Path at which the JSON will be written.
     ///   - encoder: The JSONEncoder instance to encode the item.
     func writeAsJSON<T: Encodable>(_ item: T, at: AbsolutePath, encoder: JSONEncoder) async throws
+
+    /// Given an `Encodable` instance, it encodes it as a JSON, and writes it at the given path.
+    /// - Parameters:
+    ///   - item: Item to be encoded as JSON.
+    ///   - at: Path at which the JSON will be written.
+    ///   - encoder: The JSONEncoder instance to encode the item.
+    ///   - options: Options to configure the writing of the JSON file.
+    func writeAsJSON<T: Encodable>(_ item: T, at: AbsolutePath, encoder: JSONEncoder, options: Set<WriteJSONOptions>) async throws
 
     /// Returns the size of a file at a given path. If the file doesn't exist, it returns nil.
     /// - Parameter at: Path to the file whose size will be returned.
@@ -262,6 +309,7 @@ public protocol FileSysteming {
     //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
 }
 
+// swiftlint:disable:next type_body_length
 public struct FileSystem: FileSysteming, Sendable {
     fileprivate let logger: Logger?
     fileprivate let environmentVariables: [String: String]
@@ -432,10 +480,24 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func writeText(_ text: String, at path: AbsolutePath, encoding: String.Encoding) async throws {
+        try await writeText(text, at: path, encoding: encoding, options: Set())
+    }
+
+    public func writeText(
+        _ text: String,
+        at path: AbsolutePath,
+        encoding: String.Encoding,
+        options: Set<WriteTextOptions>
+    ) async throws {
         logger?.debug("Writing text at path \(path.pathString).")
         guard let data = text.data(using: encoding) else {
             throw FileSystemError.cantEncodeText(text, encoding)
         }
+
+        if options.contains(.overwrite), try await exists(path) {
+            try await remove(path)
+        }
+
         _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
             try await handler.write(contentsOf: data, toAbsoluteOffset: 0)
         }
@@ -456,7 +518,20 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func writeAsPlist(_ item: some Encodable, at path: AbsolutePath, encoder: PropertyListEncoder) async throws {
+        try await writeAsPlist(item, at: path, encoder: encoder, options: Set())
+    }
+
+    public func writeAsPlist(
+        _ item: some Encodable,
+        at path: AbsolutePath,
+        encoder: PropertyListEncoder,
+        options: Set<WritePlistOptions>
+    ) async throws {
         logger?.debug("Writing .plist at path \(path.pathString).")
+
+        if options.contains(.overwrite), try await exists(path) {
+            try await remove(path)
+        }
 
         let json = try encoder.encode(item)
         _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
@@ -479,9 +554,22 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func writeAsJSON(_ item: some Encodable, at path: AbsolutePath, encoder: JSONEncoder) async throws {
+        try await writeAsJSON(item, at: path, encoder: encoder, options: Set())
+    }
+
+    public func writeAsJSON(
+        _ item: some Encodable,
+        at path: Path.AbsolutePath,
+        encoder: JSONEncoder,
+        options: Set<WriteJSONOptions>
+    ) async throws {
         logger?.debug("Writing .json at path \(path.pathString).")
 
         let json = try encoder.encode(item)
+        if options.contains(.overwrite), try await exists(path) {
+            try await remove(path)
+        }
+
         _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
             try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
         }
@@ -657,5 +745,19 @@ extension AnyThrowingAsyncSequenceable where Element == Path.AbsolutePath {
 extension FilePath {
     fileprivate var path: AbsolutePath {
         try! AbsolutePath(validating: string) // swiftlint:disable:this force_try
+    }
+}
+
+extension FileSystem {
+    public func writeText(_ text: String, at path: AbsolutePath, options: Set<WriteTextOptions>) async throws {
+        try await writeText(text, at: path, encoding: .utf8, options: options)
+    }
+
+    public func writeAsPlist(_ item: some Encodable, at path: AbsolutePath, options: Set<WritePlistOptions>) async throws {
+        try await writeAsPlist(item, at: path, encoder: PropertyListEncoder(), options: options)
+    }
+
+    public func writeAsJSON(_ item: some Encodable, at path: Path.AbsolutePath, options: Set<WriteJSONOptions>) async throws {
+        try await writeAsJSON(item, at: path, encoder: JSONEncoder(), options: options)
     }
 }
