@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.9] - 2025-03-24
+### Details
+#### Fix
+- Crash from long strings when building in Debug by @waltflanagan in [#112](https://github.com/tuist/FileSystem/pull/112)
+
+## New Contributors
+* @waltflanagan made their first contribution in [#112](https://github.com/tuist/FileSystem/pull/112)
 ## [0.7.8] - 2025-03-19
 ### Details
 #### Chore
@@ -277,6 +284,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.7.9]: https://github.com/tuist/FileSystem/compare/0.7.8..0.7.9
 [0.7.8]: https://github.com/tuist/FileSystem/compare/0.7.7..0.7.8
 [0.7.7]: https://github.com/tuist/FileSystem/compare/0.7.6..0.7.7
 [0.7.6]: https://github.com/tuist/FileSystem/compare/0.7.5..0.7.6
