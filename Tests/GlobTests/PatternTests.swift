@@ -52,6 +52,22 @@ final class PatternTests: XCTestCase {
         try XCTAssertMatches("Target/AutoMockable/Sources/AutoMockable.generated.swift", pattern: "**/AutoMockable*.swift")
     }
 
+    func test_matchingLongStrings_onSecondaryThread_doesNotCrash() async throws {
+        // In Debug when using async methods, long strings would cause crashes with recursion for strings approaching ~90
+        // characters.
+        // Test that our implementation can handle long strings in async cases.
+        try await Task {
+            try await runStressTest()
+        }.value
+    }
+
+    func runStressTest() async throws {
+        try XCTAssertMatches(
+            "base/Shared/Tests/Objects/Utilities/PathsMoreAbitraryStringLengthSomeVeryLongTypeNameThat+SomeLongExtensionNameTests.swift",
+            pattern: "base/**/Tests/**/*Tests.swift"
+        )
+    }
+
     func test_pathWildcard_pathComponentsOnly_doesNotMatchPath() throws {
         var options = Pattern.Options.default
         options.supportsPathLevelWildcards = false
