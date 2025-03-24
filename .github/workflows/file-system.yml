@@ -36,21 +36,6 @@ jobs:
     - name: Run
       run: mise run build-linux
 
-  build_tuist:
-    name: "Tuist build"
-    runs-on: "macos-14"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Select Xcode
-      run: sudo xcode-select -switch /Applications/Xcode_$(cat .xcode-version).app
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: |
-        mise x -- tuist install
-        mise run build
-
   test:
     name: "Test on macOS 14"
     runs-on: macos-14
