@@ -722,6 +722,7 @@ public struct FileSystem: FileSysteming, Sendable {
                 .map { try Pattern($0) },
             exclude: [
                 try Pattern("**/.DS_Store"),
+                try Pattern("**/.gitkeep"),
             ],
             skipHiddenFiles: false
         )
