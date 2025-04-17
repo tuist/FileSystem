@@ -670,7 +670,11 @@ public struct FileSystem: FileSysteming, Sendable {
             return symlinkPath
         }
         let path = try await NIOFileSystem.FileSystem.shared.destinationOfSymbolicLink(at: FilePath(symlinkPath.pathString))
-        return try AbsolutePath(validating: path.string)
+        if path.starts(with: "/") {
+            return try AbsolutePath(validating: path.string)
+        } else {
+            return AbsolutePath(symlinkPath.parentDirectory, try RelativePath(validating: path.string))
+        }
     }
 
     public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {

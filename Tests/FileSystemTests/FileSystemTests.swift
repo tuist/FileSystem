@@ -476,6 +476,22 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_resolveSymbolicLink_whenTheDestinationIsRelative() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let symbolicPath = temporaryDirectory.appending(component: "symbolic")
+            let destinationPath = temporaryDirectory.appending(component: "destination")
+            try await subject.touch(destinationPath)
+            try await subject.createSymbolicLink(from: symbolicPath, to: RelativePath(validating: "destination"))
+
+            // When
+            let got = try await subject.resolveSymbolicLink(symbolicPath)
+
+            // Then
+            XCTAssertEqual(got, destinationPath)
+        }
+    }
+
     func test_resolveSymbolicLink_whenThePathIsNotASymbolicLink() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
