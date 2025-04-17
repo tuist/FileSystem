@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.13] - 2025-04-17
+### Details
+#### Fix
+- Resolve relative symbolic link by @fortmarek in [#116](https://github.com/tuist/FileSystem/pull/116)
+
 ## [0.7.12] - 2025-04-15
 ### Details
 #### Chore
@@ -301,6 +306,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.7.13]: https://github.com/tuist/FileSystem/compare/0.7.12..0.7.13
 [0.7.12]: https://github.com/tuist/FileSystem/compare/0.7.11..0.7.12
 [0.7.11]: https://github.com/tuist/FileSystem/compare/0.7.10..0.7.11
 [0.7.10]: https://github.com/tuist/FileSystem/compare/0.7.9..0.7.10
