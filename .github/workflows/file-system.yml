@@ -3,7 +3,7 @@ name: FileSystem
 on:
   push:
     branches:
-    - main
+      - main
   pull_request: {}
 
 env:
@@ -15,56 +15,81 @@ concurrency:
 
 jobs:
   build:
-    name: "Release build on macOS 14"
-    runs-on: macos-14
+    name: "Release build on macOS"
+    runs-on: macos-15
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run build-spm
+      - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.3.app # Swift 6.1
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run build-spm
 
   build-linux:
     name: "Release build on Linux"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run build-linux
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run build-linux
+
+  build-windows:
+    name: "Release build on Windows"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - name: Run
+        run: swift build --configuration release
 
   test:
-    name: "Test on macOS 14"
-    runs-on: macos-14
+    name: "Test on macOS"
+    runs-on: macos-15
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run test-spm
+      - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.3.app # Swift 6.1
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run test-spm
 
   test_linux:
     name: "Test on Linux"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run test-linux
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run test-linux
+
+  test_windows:
+    name: "Test on Windows"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - name: Run
+        run: swift test
 
   lint:
     name: Lint
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run lint
+      - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.3.app # Swift 6.1
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run lint
