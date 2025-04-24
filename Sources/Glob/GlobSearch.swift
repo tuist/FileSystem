@@ -209,11 +209,12 @@ private func search(
                 // an ancestor directory of the current path.
                 let shouldSkipDirectory =
                     if let symbolicLinkDestination,
-                       pathHasAncestor(maybeChild: directory, maybeAncestor: symbolicLinkDestination) {
-                        true
-                    } else {
-                        false
-                    }
+                    pathHasAncestor(maybeChild: directory, maybeAncestor: symbolicLinkDestination)
+                {
+                    true
+                } else {
+                    false
+                }
 
                 if !shouldSkipDirectory {
                     group.addTask {
@@ -240,11 +241,14 @@ private func pathHasAncestor(maybeChild: URL, maybeAncestor: URL) -> Bool {
     let maybeAncestorFileURL = maybeAncestor.isFileURL ? maybeAncestor : .with(filePath: maybeAncestor.path)
 
     do {
-        let maybeChildResourceValues = try maybeChildFileURL.standardizedFileURL.resolvingSymlinksInPath().resourceValues(forKeys: [.canonicalPathKey])
-        let maybeAncestorResourceValues = try maybeAncestorFileURL.standardizedFileURL.resolvingSymlinksInPath().resourceValues(forKeys: [.canonicalPathKey])
+        let maybeChildResourceValues = try maybeChildFileURL.standardizedFileURL.resolvingSymlinksInPath()
+            .resourceValues(forKeys: [.canonicalPathKey])
+        let maybeAncestorResourceValues = try maybeAncestorFileURL.standardizedFileURL.resolvingSymlinksInPath()
+            .resourceValues(forKeys: [.canonicalPathKey])
 
         if let canonicalChildPath = maybeChildResourceValues.canonicalPath,
-            let canonicalAncestorPath = maybeAncestorResourceValues.canonicalPath {
+           let canonicalAncestorPath = maybeAncestorResourceValues.canonicalPath
+        {
             return canonicalChildPath.hasPrefix(canonicalAncestorPath)
         }
         return false
