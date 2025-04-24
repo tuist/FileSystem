@@ -227,10 +227,10 @@ private func search(
     }
 }
 
-private extension URL {
-    func isAncestorOf(_ maybeChild: URL) -> Bool {
+extension URL {
+    fileprivate func isAncestorOf(_ maybeChild: URL) -> Bool {
         let maybeChildFileURL = maybeChild.isFileURL ? maybeChild : .with(filePath: maybeChild.path)
-        let maybeAncestorFileURL = self.isFileURL ? self : .with(filePath: self.path)
+        let maybeAncestorFileURL = isFileURL ? self : .with(filePath: path)
 
         do {
             let maybeChildResourceValues = try maybeChildFileURL.standardizedFileURL.resolvingSymlinksInPath()
