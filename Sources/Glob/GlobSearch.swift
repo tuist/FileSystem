@@ -209,7 +209,7 @@ private func search(
                 // an ancestor directory of the current path.
                 let shouldSkipDirectory =
                     if let symbolicLinkDestination,
-                    pathHasAncestor(maybeChild: directory, maybeAncestor: symbolicLinkDestination)
+                    isURL(symbolicLinkDestination, ancestorOf: directory)
                 {
                     true
                 } else {
@@ -236,7 +236,7 @@ private func search(
     }
 }
 
-private func pathHasAncestor(maybeChild: URL, maybeAncestor: URL) -> Bool {
+private func isURL(_ maybeAncestor: URL, ancestorOf maybeChild: URL) -> Bool {
     let maybeChildFileURL = maybeChild.isFileURL ? maybeChild : .with(filePath: maybeChild.path)
     let maybeAncestorFileURL = maybeAncestor.isFileURL ? maybeAncestor : .with(filePath: maybeAncestor.path)
 
