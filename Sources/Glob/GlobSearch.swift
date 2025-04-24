@@ -205,21 +205,51 @@ private func search(
                 symbolicLinkDestination = nil
             }
             if isDirectory {
-                group.addTask {
-                    try await search(
-                        directory: foundPath,
-                        symbolicLinkDestination: symbolicLinkDestination,
-                        matching: matching,
-                        includingPropertiesForKeys: keys,
-                        skipHiddenFiles: skipHiddenFiles,
-                        relativePath: relativePath + "/",
-                        continuation: continuation
-                    )
+                // This check is to prevent infinite loops when a symbolic link points to
+                // an ancestor directory of the current path.
+                let shouldSkipDirectory =
+                    if let symbolicLinkDestination,
+                       pathHasAncestor(maybeChild: directory, maybeAncestor: symbolicLinkDestination) {
+                        true
+                    } else {
+                        false
+                    }
+
+                if !shouldSkipDirectory {
+                    group.addTask {
+                        try await search(
+                            directory: foundPath,
+                            symbolicLinkDestination: symbolicLinkDestination,
+                            matching: matching,
+                            includingPropertiesForKeys: keys,
+                            skipHiddenFiles: skipHiddenFiles,
+                            relativePath: relativePath + "/",
+                            continuation: continuation
+                        )
+                    }
                 }
             }
         }
 
         try await group.waitForAll()
+    }
+}
+
+private func pathHasAncestor(maybeChild: URL, maybeAncestor: URL) -> Bool {
+    let maybeChildFileURL = maybeChild.isFileURL ? maybeChild : .with(filePath: maybeChild.path)
+    let maybeAncestorFileURL = maybeAncestor.isFileURL ? maybeAncestor : .with(filePath: maybeAncestor.path)
+
+    do {
+        let maybeChildResourceValues = try maybeChildFileURL.standardizedFileURL.resolvingSymlinksInPath().resourceValues(forKeys: [.canonicalPathKey])
+        let maybeAncestorResourceValues = try maybeAncestorFileURL.standardizedFileURL.resolvingSymlinksInPath().resourceValues(forKeys: [.canonicalPathKey])
+
+        if let canonicalChildPath = maybeChildResourceValues.canonicalPath,
+            let canonicalAncestorPath = maybeAncestorResourceValues.canonicalPath {
+            return canonicalChildPath.hasPrefix(canonicalAncestorPath)
+        }
+        return false
+    } catch {
+        return false
     }
 }
 

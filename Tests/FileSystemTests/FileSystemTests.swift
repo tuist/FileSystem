@@ -981,6 +981,37 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_glob_with_relative_directory_symlink() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let frameworkDir = temporaryDirectory.appending(component: "MyFramework")
+            let testsDir = temporaryDirectory.appending(component: "Tests")
+            let customSQLiteDir = testsDir.appending(component: "CustomSQLite")
+
+            let myStructPath = frameworkDir.appending(component: "MyStruct.swift")
+
+            try await subject.makeDirectory(at: frameworkDir)
+            try await subject.makeDirectory(at: customSQLiteDir)
+            try await subject.touch(myStructPath)
+
+            let rootDirSymLinkPath = customSQLiteDir.appending(component: "MyFramework")
+            let relativeRootDirPath = try RelativePath(validating: "../..")
+            try await subject.createSymbolicLink(from: rootDirSymLinkPath, to: relativeRootDirPath)
+
+            // When
+            let got = try await subject.glob(
+                directory: temporaryDirectory,
+                include: ["**/*.swift"]
+            )
+            .collect()
+            .sorted()
+
+            // Then
+            XCTAssertEqual(got.count, 1)
+            XCTAssertEqual(got.map(\.basename), [myStructPath.basename])
+        }
+    }
+
     func test_glob_with_double_directory_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
