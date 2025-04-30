@@ -754,7 +754,7 @@ extension FilePath {
 }
 
 extension FileSystem {
-    /// Creates and passes a temporary to the given action coupling its lifecycle to the action's.
+    /// Creates and passes a temporary directory to the given action, coupling its lifecycle to the action's.
     /// - Parameter action: The action to run with the temporary directory.
     /// - Returns: Any value returned by the action.
     public func runInTemporaryDirectory<T>(
