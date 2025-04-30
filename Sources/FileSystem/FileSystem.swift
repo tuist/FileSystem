@@ -754,6 +754,15 @@ extension FilePath {
 }
 
 extension FileSystem {
+    /// Creates and passes a temporary directory to the given action, coupling its lifecycle to the action's.
+    /// - Parameter action: The action to run with the temporary directory.
+    /// - Returns: Any value returned by the action.
+    public func runInTemporaryDirectory<T>(
+        _ action: @Sendable (_ temporaryDirectory: AbsolutePath) async throws -> T
+    ) async throws -> T {
+        try await runInTemporaryDirectory(prefix: UUID().uuidString, action)
+    }
+
     public func writeText(_ text: String, at path: AbsolutePath, options: Set<WriteTextOptions>) async throws {
         try await writeText(text, at: path, encoding: .utf8, options: options)
     }
