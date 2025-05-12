@@ -15,10 +15,11 @@ concurrency:
 
 jobs:
   build:
-    name: "Release build on macOS 14"
-    runs-on: macos-14
+    name: "Release build on macOS"
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v2
         with:
           experimental: true
@@ -37,10 +38,11 @@ jobs:
         run: mise run build-linux
 
   test:
-    name: "Test on macOS 14"
-    runs-on: macos-14
+    name: "Test on macOS"
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v2
         with:
           experimental: true
@@ -60,9 +62,10 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v2
         with:
           experimental: true
