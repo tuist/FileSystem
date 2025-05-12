@@ -3,11 +3,11 @@ name: FileSystem
 on:
   push:
     branches:
-    - main
+      - main
   pull_request: {}
 
 env:
-  TUIST_CONFIG_TOKEN: ${{ secrets.TUIST_CONFIG_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 concurrency:
   group: file-system-${{ github.head_ref }}
@@ -18,53 +18,53 @@ jobs:
     name: "Release build on macOS 14"
     runs-on: macos-14
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run build-spm
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run build-spm
 
   build-linux:
     name: "Release build on Linux"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run build-linux
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run build-linux
 
   test:
     name: "Test on macOS 14"
     runs-on: macos-14
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run test-spm
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run test-spm
 
   test_linux:
     name: "Test on Linux"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run test-linux
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run test-linux
 
   lint:
     name: Lint
     runs-on: macos-14
     steps:
-    - uses: actions/checkout@v4
-    - uses: jdx/mise-action@v2
-      with:
-        experimental: true
-    - name: Run
-      run: mise run lint
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - name: Run
+        run: mise run lint
