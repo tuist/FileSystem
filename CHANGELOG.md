@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.18] - 2025-05-12
+### Details
+#### Chore
+- Update dependency apple/swift-nio to from: "2.83.0" by @renovate[bot]
+
 ## [0.7.17] - 2025-05-12
 ### Details
 #### Chore
@@ -330,6 +335,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.7.18]: https://github.com/tuist/FileSystem/compare/0.7.17..0.7.18
 [0.7.17]: https://github.com/tuist/FileSystem/compare/0.7.16..0.7.17
 [0.7.16]: https://github.com/tuist/FileSystem/compare/0.7.15..0.7.16
 [0.7.15]: https://github.com/tuist/FileSystem/compare/0.7.14..0.7.15
