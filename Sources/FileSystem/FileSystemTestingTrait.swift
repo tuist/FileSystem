@@ -10,7 +10,7 @@
             @TaskLocal public static var testTemporaryDirectory: AbsolutePath?
         }
 
-        public struct FileSystemTestingTrait: TestTrait, SuiteTrait, TestScoping {
+        public struct FileSystemTestingTrait: TestTrait, SuiteTrait {
             public func provideScope(
                 for _: Test,
                 testCase _: Test.Case?,
