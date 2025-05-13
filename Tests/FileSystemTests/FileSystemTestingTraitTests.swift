@@ -1,7 +1,7 @@
 import FileSystem
 import Testing
 
-struct FileSystemTestingTraitTestsTests {
+struct FileSystemTestingTraitTests {
     @Test(.inTemporaryDirectory) func testTemporaryDirectory() async throws {
         // Given
         let temporaryDirectory = try #require(FileSystem.testTemporaryDirectory)
