@@ -1,5 +1,4 @@
-#if DEBUG
-    #if canImport(Testing)
+#if DEBUG && canImport(Testing)
         import Path
         import Testing
 
