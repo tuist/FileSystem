@@ -6,7 +6,7 @@
             /// It returns the temporary directory created when using the `@Test(.inTemporaryDirectory)`.
             /// Note that since the value is only propagated through Swift structured concurrency, if you use DispatchQueue,
             /// values won't be propagated so you'll have to make sure they are explicitly passed down.
-            @TaskLocal public static var testTemporaryDirectory: AbsolutePath?
+            @TaskLocal public static var temporaryTestDirectory: AbsolutePath?
         }
 
         public struct FileSystemTestingTrait: TestTrait, SuiteTrait {
