@@ -9,7 +9,7 @@ extension FileSystem {
     @TaskLocal public static var temporaryTestDirectory: AbsolutePath?
 }
 
-public struct FileSystemTestingTrait: TestTrait, SuiteTrait {
+public struct FileSystemTestingTrait: TestTrait, SuiteTrait, TestScoping {
     public func provideScope(
         for _: Test,
         testCase _: Test.Case?,
