@@ -4,7 +4,7 @@ import Testing
 struct FileSystemTestingTraitTests {
     @Test(.inTemporaryDirectory) func testTemporaryDirectory() async throws {
         // Given
-        let temporaryDirectory = try #require(FileSystem.testTemporaryDirectory)
+        let temporaryDirectory = try #require(FileSystem.temporaryTestDirectory)
         let filePath = temporaryDirectory.appending(component: "test")
 
         // Then
