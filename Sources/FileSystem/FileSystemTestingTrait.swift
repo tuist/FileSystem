@@ -1,4 +1,4 @@
-#if DEBUG && canImport(Testing)
+#if DEBUG && canImport(Testing) && compiler(>=6.1)
     import Path
     import Testing
 
