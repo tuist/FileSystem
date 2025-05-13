@@ -8,6 +8,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  MISE_EXPERIMENTAL: "1"
 
 concurrency:
   group: file-system-${{ github.head_ref }}
@@ -15,13 +16,12 @@ concurrency:
 
 jobs:
   build:
-    name: "Release build on macOS 14"
-    runs-on: macos-14
+    name: "Release build on macOS"
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v2
-        with:
-          experimental: true
       - name: Run
         run: mise run build-spm
 
@@ -31,19 +31,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-        with:
-          experimental: true
       - name: Run
         run: mise run build-linux
 
   test:
-    name: "Test on macOS 14"
-    runs-on: macos-14
+    name: "Test on macOS"
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v2
-        with:
-          experimental: true
       - name: Run
         run: mise run test-spm
 
@@ -53,18 +50,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-        with:
-          experimental: true
       - name: Run
         run: mise run test-linux
 
   lint:
     name: Lint
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v2
-        with:
-          experimental: true
       - name: Run
         run: mise run lint
