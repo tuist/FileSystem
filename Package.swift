@@ -15,6 +15,11 @@ let package = Package(
             type: .static,
             targets: ["FileSystem"]
         ),
+        .library(
+            name: "FileSystemTesting",
+            type: .static,
+            targets: ["FileSystemTesting"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
@@ -40,6 +45,19 @@ let package = Package(
             name: "FileSystemTests",
             dependencies: [
                 "FileSystem",
+            ]
+        ),
+        .target(
+            name: "FileSystemTesting",
+            dependencies: [
+                "FileSystem",
+            ]
+        ),
+        .testTarget(
+            name: "FileSystemTestingTests",
+            dependencies: [
+                "FileSystem",
+                "FileSystemTesting",
             ]
         ),
         .target(
