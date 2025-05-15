@@ -1,4 +1,5 @@
-#if DEBUG && canImport(Testing) && compiler(>=6.1)
+#if canImport(Testing)
+    import FileSystem
     import Path
     import Testing
 
@@ -27,5 +28,4 @@
         /// Creates a temporary directory and scopes its lifecycle to the lifecycle of the test.
         public static var inTemporaryDirectory: Self { Self() }
     }
-
 #endif
