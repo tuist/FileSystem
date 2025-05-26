@@ -20,6 +20,11 @@ let package = Package(
             type: .static,
             targets: ["FileSystemTesting"]
         ),
+        .library(
+            name: "Glob",
+            type: .static,
+            targets: ["Glob"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
