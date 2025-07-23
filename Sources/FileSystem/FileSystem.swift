@@ -239,6 +239,11 @@ public protocol FileSysteming {
     /// - Returns: The file size, otherwise `nil`
     func fileSizeInBytes(at: AbsolutePath) async throws -> Int64?
 
+    /// Returns the date when a file was last modified. If the file doesn't exist, it returns nil.
+    /// - Parameter path: Absolute path to the file.
+    /// - Returns: The date it was last modified.
+    func fileLastModificationDate(at path: AbsolutePath) async throws -> Date?
+
     /// Given a path, it replaces it with the file or directory at the other path.
     /// - Parameters:
     ///   - to: The path to be replaced.
@@ -625,6 +630,17 @@ public struct FileSystem: FileSysteming, Sendable {
             infoAboutSymbolicLink: true
         ) else { return nil }
         return info.size
+    }
+
+    public func fileLastModificationDate(at path: AbsolutePath) async throws -> Date? {
+        logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
+        guard let info = try await NIOFileSystem.FileSystem.shared.info(
+            forFileAt: .init(path.pathString),
+            infoAboutSymbolicLink: true
+        ) else { return nil }
+        let lastModified = info.lastDataModificationTime
+        let modificationTimeInterval = Double(lastModified.seconds) + Double(lastModified.nanoseconds) / 1_000_000_000
+        return Date(timeIntervalSince1970: modificationTimeInterval)
     }
 
     public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {
