@@ -633,7 +633,7 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func fileLastModificationDate(at path: AbsolutePath) async throws -> Date? {
-        logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
+        logger?.debug("Getting the last modification date of file at path \(path.pathString).")
         guard let info = try await NIOFileSystem.FileSystem.shared.info(
             forFileAt: .init(path.pathString),
             infoAboutSymbolicLink: true
