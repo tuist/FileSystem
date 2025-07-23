@@ -273,30 +273,30 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func test_fileLastModificationDate_when_fileAbsent() async throws {
+    func test_fileMetadata_when_fileAbsent() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
             let path = temporaryDirectory.appending(component: "file")
 
             // When
-            let modificationDate = try await subject.fileLastModificationDate(at: path)
+            let modificationDate = try await subject.fileMetadata(at: path)
 
             // Then
             XCTAssertNil(modificationDate)
         }
     }
 
-    func test_fileLastModificationDate_when_filePresent() async throws {
+    func test_fileMetadata_when_filePresent() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
             let path = temporaryDirectory.appending(component: "file")
             try await subject.touch(path)
 
             // When
-            let modificationDate = try await subject.fileLastModificationDate(at: path)
+            let metadata = try await subject.fileMetadata(at: path)
 
             // Then
-            XCTAssertNotNil(modificationDate)
+            XCTAssertNotNil(metadata?.lastModificationDate)
         }
     }
 
