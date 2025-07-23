@@ -273,6 +273,33 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
+    func test_fileMetadata_when_fileAbsent() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let path = temporaryDirectory.appending(component: "file")
+
+            // When
+            let modificationDate = try await subject.fileMetadata(at: path)
+
+            // Then
+            XCTAssertNil(modificationDate)
+        }
+    }
+
+    func test_fileMetadata_when_filePresent() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let path = temporaryDirectory.appending(component: "file")
+            try await subject.touch(path)
+
+            // When
+            let metadata = try await subject.fileMetadata(at: path)
+
+            // Then
+            XCTAssertNotNil(metadata?.lastModificationDate)
+        }
+    }
+
     func test_replace_replaces_when_replacingPathIsADirectory_and_targetDirectoryIsAbsent() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given

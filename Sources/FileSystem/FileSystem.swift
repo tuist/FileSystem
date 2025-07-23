@@ -11,6 +11,15 @@ public enum FileSystemItemType: CaseIterable, Equatable {
     case file
 }
 
+/// A struct containing information about a particular file.
+public struct FileMetadata {
+    /// The size of the file in bytes.
+    public let size: Int64
+
+    /// The date the file was last modified.
+    public let lastModificationDate: Date
+}
+
 public enum FileSystemError: Equatable, Error, CustomStringConvertible {
     case moveNotFound(from: AbsolutePath, to: AbsolutePath)
     case makeDirectoryAbsentParent(AbsolutePath)
@@ -237,7 +246,18 @@ public protocol FileSysteming {
     /// Returns the size of a file at a given path. If the file doesn't exist, it returns nil.
     /// - Parameter at: Path to the file whose size will be returned.
     /// - Returns: The file size, otherwise `nil`
+    @available(
+        *,
+        deprecated,
+        renamed: "fileMetadata",
+        message: "Read the file size from the metadata, which contains other attributes"
+    )
     func fileSizeInBytes(at: AbsolutePath) async throws -> Int64?
+
+    /// Returns metadata of a file at a given path.
+    /// - Parameter path: Absolute path to the file.
+    /// - Returns: The file metadata.
+    func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata?
 
     /// Given a path, it replaces it with the file or directory at the other path.
     /// - Parameters:
@@ -618,6 +638,12 @@ public struct FileSystem: FileSysteming, Sendable {
         }
     }
 
+    @available(
+        *,
+        deprecated,
+        renamed: "fileMetadata",
+        message: "Read the file size from the metadata, which contains other attributes"
+    )
     public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
         logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
         guard let info = try await NIOFileSystem.FileSystem.shared.info(
@@ -625,6 +651,17 @@ public struct FileSystem: FileSysteming, Sendable {
             infoAboutSymbolicLink: true
         ) else { return nil }
         return info.size
+    }
+
+    public func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata? {
+        logger?.debug("Getting the metadata of file at path \(path.pathString).")
+        guard let info = try await NIOFileSystem.FileSystem.shared.info(
+            forFileAt: .init(path.pathString),
+            infoAboutSymbolicLink: true
+        ) else { return nil }
+        let lastModified = info.lastDataModificationTime
+        let modificationTimeInterval = Double(lastModified.seconds) + Double(lastModified.nanoseconds) / 1_000_000_000
+        return FileMetadata(size: info.size, lastModificationDate: Date(timeIntervalSince1970: modificationTimeInterval))
     }
 
     public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {

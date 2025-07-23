@@ -20,3 +20,6 @@ jobs:
       - uses: CondeNast/conventional-pull-request-action@v0.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          commitTitleMatch: false
+          ignoreCommits: true # PRs are merged squashing with the commit title matching the PR title.
