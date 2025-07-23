@@ -11,12 +11,13 @@ public enum FileSystemItemType: CaseIterable, Equatable {
     case file
 }
 
+/// A struct containing information about a particular file.
 public struct FileMetadata {
     /// The size of the file in bytes.
-    var size: Int64
+    public let size: Int64
 
     /// The date the file was last modified.
-    var lastModificationDate: Date
+    public let lastModificationDate: Date
 }
 
 public enum FileSystemError: Equatable, Error, CustomStringConvertible {
