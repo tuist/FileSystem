@@ -1,8 +1,8 @@
+import _NIOFileSystem
 import Foundation
 import Glob
 import Logging
 import NIOCore
-import NIOFileSystem
 import Path
 import ZIPFoundation
 
@@ -340,12 +340,12 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func currentWorkingDirectory() async throws -> AbsolutePath {
-        try await NIOFileSystem.FileSystem.shared.currentWorkingDirectory.path
+        try await _NIOFileSystem.FileSystem.shared.currentWorkingDirectory.path
     }
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
         logger?.debug("Checking if a file or directory exists at path \(path.pathString).")
-        let info = try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString))
+        let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString))
         return info != nil
     }
 
@@ -355,7 +355,7 @@ public struct FileSystem: FileSysteming, Sendable {
         } else {
             logger?.debug("Checking if a file exists at path \(path.pathString).")
         }
-        guard let info = try await NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
+        guard let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
             return false
         }
         return info.type == (isDirectory ? .directory : .regular)
@@ -363,7 +363,7 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func touch(_ path: Path.AbsolutePath) async throws {
         logger?.debug("Touching a file at path \(path.pathString).")
-        _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { writer in
+        _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { writer in
             try await writer.write(contentsOf: "".data(using: .utf8)!, toAbsoluteOffset: 0)
         }
     }
@@ -416,8 +416,8 @@ public struct FileSystem: FileSysteming, Sendable {
                     try? await makeDirectory(at: to.parentDirectory, options: [.createTargetParentDirectories])
                 }
             }
-            try await NIOFileSystem.FileSystem.shared.moveItem(at: .init(from.pathString), to: .init(to.pathString))
-        } catch let error as NIOFileSystem.FileSystemError {
+            try await _NIOFileSystem.FileSystem.shared.moveItem(at: .init(from.pathString), to: .init(to.pathString))
+        } catch let error as _NIOFileSystem.FileSystemError {
             if error.code == .notFound {
                 throw FileSystemError.moveNotFound(from: from, to: to)
             } else {
@@ -440,12 +440,12 @@ public struct FileSystem: FileSysteming, Sendable {
             logger?.debug("Creating directory at path \(at.pathString).")
         }
         do {
-            try await NIOFileSystem.FileSystem.shared.createDirectory(
+            try await _NIOFileSystem.FileSystem.shared.createDirectory(
                 at: .init(at.pathString),
                 withIntermediateDirectories: options
                     .contains(.createTargetParentDirectories)
             )
-        } catch let error as NIOFileSystem.FileSystemError {
+        } catch let error as _NIOFileSystem.FileSystemError {
             if error.code == .invalidArgument {
                 throw FileSystemError.makeDirectoryAbsentParent(at)
             } else {
@@ -462,7 +462,7 @@ public struct FileSystem: FileSysteming, Sendable {
         if log {
             logger?.debug("Reading file at path \(path.pathString).")
         }
-        let handle = try await NIOFileSystem.FileSystem.shared.openFile(forReadingAt: .init(path.pathString), options: .init())
+        let handle = try await _NIOFileSystem.FileSystem.shared.openFile(forReadingAt: .init(path.pathString), options: .init())
 
         let result: Result<Data, Error>
         do {
@@ -518,7 +518,7 @@ public struct FileSystem: FileSysteming, Sendable {
             try await remove(path)
         }
 
-        _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
+        _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
             try await handler.write(contentsOf: data, toAbsoluteOffset: 0)
         }
     }
@@ -554,7 +554,7 @@ public struct FileSystem: FileSysteming, Sendable {
         }
 
         let json = try encoder.encode(item)
-        _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
+        _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
             try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
         }
     }
@@ -590,7 +590,7 @@ public struct FileSystem: FileSysteming, Sendable {
             try await remove(path)
         }
 
-        _ = try await NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
+        _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
             try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
         }
     }
@@ -603,7 +603,7 @@ public struct FileSystem: FileSysteming, Sendable {
         if !(try await exists(to.parentDirectory)) {
             try await makeDirectory(at: to.parentDirectory)
         }
-        try await NIOFileSystem.FileSystem.shared.replaceItem(at: .init(to.pathString), withItemAt: .init(path.pathString))
+        try await _NIOFileSystem.FileSystem.shared.replaceItem(at: .init(to.pathString), withItemAt: .init(path.pathString))
     }
 
     public func copy(_ from: AbsolutePath, to: AbsolutePath) async throws {
@@ -614,7 +614,7 @@ public struct FileSystem: FileSysteming, Sendable {
         if !(try await exists(to.parentDirectory)) {
             try await makeDirectory(at: to.parentDirectory)
         }
-        try await NIOFileSystem.FileSystem.shared.copyItem(at: .init(from.pathString), to: .init(to.pathString))
+        try await _NIOFileSystem.FileSystem.shared.copyItem(at: .init(from.pathString), to: .init(to.pathString))
     }
 
     public func runInTemporaryDirectory<T>(
@@ -646,7 +646,7 @@ public struct FileSystem: FileSysteming, Sendable {
     )
     public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
         logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
-        guard let info = try await NIOFileSystem.FileSystem.shared.info(
+        guard let info = try await _NIOFileSystem.FileSystem.shared.info(
             forFileAt: .init(path.pathString),
             infoAboutSymbolicLink: true
         ) else { return nil }
@@ -655,7 +655,7 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata? {
         logger?.debug("Getting the metadata of file at path \(path.pathString).")
-        guard let info = try await NIOFileSystem.FileSystem.shared.info(
+        guard let info = try await _NIOFileSystem.FileSystem.shared.info(
             forFileAt: .init(path.pathString),
             infoAboutSymbolicLink: true
         ) else { return nil }
@@ -684,7 +684,7 @@ public struct FileSystem: FileSysteming, Sendable {
 
     private func createSymbolicLink(fromPathString: String, toPathString: String) async throws {
         logger?.debug("Creating symbolic link from \(fromPathString) to \(toPathString).")
-        try await NIOFileSystem.FileSystem.shared.createSymbolicLink(
+        try await _NIOFileSystem.FileSystem.shared.createSymbolicLink(
             at: FilePath(fromPathString),
             withDestination: FilePath(toPathString)
         )
@@ -695,7 +695,7 @@ public struct FileSystem: FileSysteming, Sendable {
         if !(try await exists(symlinkPath)) {
             throw FileSystemError.absentSymbolicLink(symlinkPath)
         }
-        guard let info = try await NIOFileSystem.FileSystem.shared.info(
+        guard let info = try await _NIOFileSystem.FileSystem.shared.info(
             forFileAt: FilePath(symlinkPath.pathString),
             infoAboutSymbolicLink: true
         )
@@ -706,7 +706,7 @@ public struct FileSystem: FileSysteming, Sendable {
         default:
             return symlinkPath
         }
-        let path = try await NIOFileSystem.FileSystem.shared.destinationOfSymbolicLink(at: FilePath(symlinkPath.pathString))
+        let path = try await _NIOFileSystem.FileSystem.shared.destinationOfSymbolicLink(at: FilePath(symlinkPath.pathString))
         if path.starts(with: "/") {
             return try AbsolutePath(validating: path.string)
         } else {
