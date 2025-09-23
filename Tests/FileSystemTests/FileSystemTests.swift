@@ -1142,4 +1142,25 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
             XCTAssertFalse(fileExists)
         }
     }
+
+    func test_get_contents_of_directory() async throws {
+        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+            // Given
+            let file1 = temporaryDirectory.appending(component: "README.md")
+            let file2 = temporaryDirectory.appending(component: "Foo")
+            let nestedDirectory = temporaryDirectory.appending(component: "nested")
+            let nestedFile = nestedDirectory.appending(component: "test")
+            try await subject.touch(file1)
+            try await subject.touch(file2)
+            try await subject.makeDirectory(at: nestedDirectory)
+            try await subject.touch(nestedFile)
+
+            // When
+            let contents = try await subject.contentsOfDirectory(temporaryDirectory)
+
+            // Then
+            let fileNames = contents.map(\.basename)
+            XCTAssertEqual(fileNames, ["README.md", "Foo", "nested"])
+        }
+    }
 }

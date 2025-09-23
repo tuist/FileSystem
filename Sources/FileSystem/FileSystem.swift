@@ -321,11 +321,12 @@ public protocol FileSysteming {
     /// Returns the path of the current working directory.
     func currentWorkingDirectory() async throws -> AbsolutePath
 
+    func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath]
+
     // TODO:
     //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
     //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
     //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
-    //       func contentsOfDirectory(_ path: AbsolutePath) throws -> [AbsolutePath]
     //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
 }
 
@@ -341,6 +342,18 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func currentWorkingDirectory() async throws -> AbsolutePath {
         try await _NIOFileSystem.FileSystem.shared.currentWorkingDirectory.path
+    }
+
+    public func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath] {
+        try await _NIOFileSystem.FileSystem.shared.withDirectoryHandle(
+            atPath: .init(path.pathString)
+        ) { directory in
+            try await directory
+                .listContents()
+                .reduce(into: []) { $0.append($1) }
+                .map(\.path)
+        }
+        .map(\.path)
     }
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
