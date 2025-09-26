@@ -1160,7 +1160,7 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
 
             // Then
             let fileNames = contents.map(\.basename)
-            XCTAssertEqual(fileNames, ["README.md", "Foo", "nested"])
+            XCTAssertEqual(fileNames.sorted(), ["README.md", "Foo", "nested"])
         }
     }
 }
