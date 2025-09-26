@@ -1146,8 +1146,8 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
     func test_get_contents_of_directory() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
             // Given
-            let file1 = temporaryDirectory.appending(component: "README.md")
-            let file2 = temporaryDirectory.appending(component: "Foo")
+            let file1 = temporaryDirectory.appending(component: "readme.md")
+            let file2 = temporaryDirectory.appending(component: "foo")
             let nestedDirectory = temporaryDirectory.appending(component: "nested")
             let nestedFile = nestedDirectory.appending(component: "test")
             try await subject.touch(file1)
@@ -1160,7 +1160,7 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
 
             // Then
             let fileNames = contents.map(\.basename)
-            XCTAssertEqual(fileNames.sorted(using: .localized), ["Foo", "nested", "README.md"])
+            XCTAssertEqual(fileNames.sorted(), ["foo", "nested", "readme.md"])
         }
     }
 }
