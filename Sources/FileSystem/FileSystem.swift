@@ -321,6 +321,11 @@ public protocol FileSysteming {
     /// Returns the path of the current working directory.
     func currentWorkingDirectory() async throws -> AbsolutePath
 
+    /// Returns the contents of a directory as an array of absolute paths.
+    ///
+    /// - Parameter path: The absolute path to the directory whose contents should be listed.
+    /// - Returns: An array of `AbsolutePath` objects representing all items in the directory.
+    /// - Throws: An error if the directory cannot be read or accessed.
     func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath]
 
     // TODO:
