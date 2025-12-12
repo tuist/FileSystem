@@ -81,7 +81,9 @@ jobs:
           }
           swift --version
       - name: Build
-        run: swift build --configuration release
+        shell: cmd
+        run: |
+          swift build --configuration release -v 2>&1
 
   test-windows:
     name: "Test on Windows"
@@ -111,7 +113,9 @@ jobs:
           }
           swift --version
       - name: Test
-        run: swift test
+        shell: cmd
+        run: |
+          swift test -v 2>&1
 
   lint:
     name: Lint
