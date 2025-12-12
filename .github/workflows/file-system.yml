@@ -58,6 +58,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Visual Studio components
+        run: |
+          winget install --id Microsoft.VisualStudio.2022.Community --exact --force --accept-source-agreements --accept-package-agreements --override "--quiet --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
       - name: Install Swift
         run: |
           winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
@@ -85,6 +88,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Visual Studio components
+        run: |
+          winget install --id Microsoft.VisualStudio.2022.Community --exact --force --accept-source-agreements --accept-package-agreements --override "--quiet --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
       - name: Install Swift
         run: |
           winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
