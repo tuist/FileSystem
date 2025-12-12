@@ -79,7 +79,7 @@ public enum WriteJSONOptions {
     case overwrite
 }
 
-public protocol FileSysteming {
+public protocol FileSysteming: Sendable {
     func runInTemporaryDirectory<T>(
         prefix: String,
         _ action: @Sendable (_ temporaryDirectory: AbsolutePath) async throws -> T
