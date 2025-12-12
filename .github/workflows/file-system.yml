@@ -61,10 +61,22 @@ jobs:
       - name: Install Swift
         run: |
           winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
-          echo "$env:ProgramFiles\Swift\Toolchains\6.1.0+Asserts\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$env:ProgramFiles\Swift\Platforms\6.1.0\Windows.platform\Developer\SDKs\Windows.sdk\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$env:ProgramFiles\Swift\Platforms\6.1.0\Windows.platform\Developer\Library\XCTest-development\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$env:ProgramFiles\Swift\Runtimes\6.1.0\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # Refresh PATH from registry to pick up Swift installation
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machinePath;$userPath"
+          # Find swift.exe and add to GITHUB_PATH for subsequent steps
+          $swiftPath = (Get-Command swift -ErrorAction SilentlyContinue).Source
+          if ($swiftPath) {
+            $swiftDir = Split-Path $swiftPath
+            echo $swiftDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          # Also add common Swift paths
+          Get-ChildItem -Path "$env:ProgramFiles\Swift" -Recurse -Filter "swift.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+            $dir = Split-Path $_.FullName
+            echo $dir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          swift --version
       - name: Build
         run: swift build --configuration release
 
@@ -76,10 +88,22 @@ jobs:
       - name: Install Swift
         run: |
           winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
-          echo "$env:ProgramFiles\Swift\Toolchains\6.1.0+Asserts\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$env:ProgramFiles\Swift\Platforms\6.1.0\Windows.platform\Developer\SDKs\Windows.sdk\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$env:ProgramFiles\Swift\Platforms\6.1.0\Windows.platform\Developer\Library\XCTest-development\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$env:ProgramFiles\Swift\Runtimes\6.1.0\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # Refresh PATH from registry to pick up Swift installation
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machinePath;$userPath"
+          # Find swift.exe and add to GITHUB_PATH for subsequent steps
+          $swiftPath = (Get-Command swift -ErrorAction SilentlyContinue).Source
+          if ($swiftPath) {
+            $swiftDir = Split-Path $swiftPath
+            echo $swiftDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          # Also add common Swift paths
+          Get-ChildItem -Path "$env:ProgramFiles\Swift" -Recurse -Filter "swift.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+            $dir = Split-Path $_.FullName
+            echo $dir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          swift --version
       - name: Test
         run: swift test
 
