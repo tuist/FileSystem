@@ -4,7 +4,10 @@ import Glob
 import Logging
 import NIOCore
 import Path
-import ZIPFoundation
+
+#if !os(Windows)
+    import ZIPFoundation
+#endif
 
 public enum FileSystemItemType: CaseIterable, Equatable {
     case directory
@@ -298,18 +301,20 @@ public protocol FileSysteming: Sendable {
     /// - Returns: The resolved path.
     func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath
 
-    /// Zips a file or the content of a given directory.
-    /// - Parameters:
-    ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to a
-    /// directory, the content of the directory is zipped.
-    ///   - to: Path to where the zip file will be created.
-    func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws
+    #if !os(Windows)
+        /// Zips a file or the content of a given directory.
+        /// - Parameters:
+        ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to a
+        /// directory, the content of the directory is zipped.
+        ///   - to: Path to where the zip file will be created.
+        func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws
 
-    /// Unzips a zip file.
-    /// - Parameters:
-    ///   - zipPath: Path to the zip file.
-    ///   - to: Path to the directory into which the content will be unzipped.
-    func unzip(_ zipPath: AbsolutePath, to: AbsolutePath) async throws
+        /// Unzips a zip file.
+        /// - Parameters:
+        ///   - zipPath: Path to the zip file.
+        ///   - to: Path to the directory into which the content will be unzipped.
+        func unzip(_ zipPath: AbsolutePath, to: AbsolutePath) async throws
+    #endif
 
     /// Looks up files and directories that match a set of glob patterns.
     /// - Parameters:
@@ -732,26 +737,28 @@ public struct FileSystem: FileSysteming, Sendable {
         }
     }
 
-    public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
-        logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
-        try await NIOSingletons.posixBlockingThreadPool.runIfActive {
-            try FileManager.default.zipItem(
-                at: URL(fileURLWithPath: path.pathString),
-                to: URL(fileURLWithPath: to.pathString),
-                shouldKeepParent: false
-            )
+    #if !os(Windows)
+        public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
+            logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
+            try await NIOSingletons.posixBlockingThreadPool.runIfActive {
+                try FileManager.default.zipItem(
+                    at: URL(fileURLWithPath: path.pathString),
+                    to: URL(fileURLWithPath: to.pathString),
+                    shouldKeepParent: false
+                )
+            }
         }
-    }
 
-    public func unzip(_ zipPath: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
-        logger?.debug("Unzipping the file at path \(zipPath.pathString) to \(to.pathString)")
-        try await NIOSingletons.posixBlockingThreadPool.runIfActive {
-            try FileManager.default.unzipItem(
-                at: URL(fileURLWithPath: zipPath.pathString),
-                to: URL(fileURLWithPath: to.pathString)
-            )
+        public func unzip(_ zipPath: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
+            logger?.debug("Unzipping the file at path \(zipPath.pathString) to \(to.pathString)")
+            try await NIOSingletons.posixBlockingThreadPool.runIfActive {
+                try FileManager.default.unzipItem(
+                    at: URL(fileURLWithPath: zipPath.pathString),
+                    to: URL(fileURLWithPath: to.pathString)
+                )
+            }
         }
-    }
+    #endif
 
     private func expandBraces(in regexString: String) throws -> [String] {
         let pattern = #"\{[^}]+\}"#
