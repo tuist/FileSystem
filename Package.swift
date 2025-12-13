@@ -28,8 +28,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
-        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.91.0")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.8.0")),
+        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.91.0")),
         .package(url: "https://github.com/tuist/ZIPFoundation", .upToNextMajor(from: "0.9.20")),
     ],
     targets: [
@@ -37,10 +37,18 @@ let package = Package(
             name: "FileSystem",
             dependencies: [
                 "Glob",
-                .product(name: "_NIOFileSystem", package: "swift-nio"),
                 .product(name: "Path", package: "Path"),
                 .product(name: "Logging", package: "swift-log"),
-                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+                .product(
+                    name: "_NIOFileSystem",
+                    package: "swift-nio",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .linux, .android, .openbsd])
+                ),
+                .product(
+                    name: "ZIPFoundation",
+                    package: "ZIPFoundation",
+                    condition: .when(platforms: [.macOS, .iOS, .tvOS, .watchOS, .linux, .android, .openbsd])
+                ),
             ],
             swiftSettings: [
                 .define("MOCKING", .when(configuration: .debug)),
