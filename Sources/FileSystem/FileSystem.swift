@@ -306,7 +306,8 @@ public protocol FileSysteming: Sendable {
     #if !os(Windows)
         /// Zips a file or the content of a given directory.
         /// - Parameters:
-        ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to a
+        ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to
+        /// a
         /// directory, the content of the directory is zipped.
         ///   - to: Path to where the zip file will be created.
         func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws
@@ -542,7 +543,10 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             return try Data(contentsOf: URL(fileURLWithPath: path.pathString))
         #else
-            let handle = try await _NIOFileSystem.FileSystem.shared.openFile(forReadingAt: .init(path.pathString), options: .init())
+            let handle = try await _NIOFileSystem.FileSystem.shared.openFile(
+                forReadingAt: .init(path.pathString),
+                options: .init()
+            )
 
             let result: Result<Data, Error>
             do {
