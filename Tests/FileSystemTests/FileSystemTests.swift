@@ -467,71 +467,74 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func test_createSymbolicLink() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let filePath = temporaryDirectory.appending(component: "file")
-            let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
-            try await subject.touch(filePath)
+    // Symbolic link tests are skipped on Windows because symlinks require elevated permissions
+    #if !os(Windows)
+        func test_createSymbolicLink() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let filePath = temporaryDirectory.appending(component: "file")
+                let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+                try await subject.touch(filePath)
 
-            // When
-            try await subject.createSymbolicLink(from: symbolicLinkPath, to: filePath)
-            let got = try await subject.resolveSymbolicLink(symbolicLinkPath)
+                // When
+                try await subject.createSymbolicLink(from: symbolicLinkPath, to: filePath)
+                let got = try await subject.resolveSymbolicLink(symbolicLinkPath)
 
-            // Then
-            XCTAssertEqual(got, filePath)
-        }
-    }
-
-    func test_createSymbolicLink_whenTheSymbolicLinkDoesntExist() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let filePath = temporaryDirectory.appending(component: "file")
-            let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
-            try await subject.touch(filePath)
-
-            // When
-            var _error: FileSystemError?
-            do {
-                _ = try await subject.resolveSymbolicLink(symbolicLinkPath)
-            } catch {
-                _error = error as? FileSystemError
+                // Then
+                XCTAssertEqual(got, filePath)
             }
-
-            // Then
-            XCTAssertEqual(_error, FileSystemError.absentSymbolicLink(symbolicLinkPath))
         }
-    }
 
-    func test_resolveSymbolicLink_whenTheDestinationIsRelative() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let symbolicPath = temporaryDirectory.appending(component: "symbolic")
-            let destinationPath = temporaryDirectory.appending(component: "destination")
-            try await subject.touch(destinationPath)
-            try await subject.createSymbolicLink(from: symbolicPath, to: RelativePath(validating: "destination"))
+        func test_createSymbolicLink_whenTheSymbolicLinkDoesntExist() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let filePath = temporaryDirectory.appending(component: "file")
+                let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+                try await subject.touch(filePath)
 
-            // When
-            let got = try await subject.resolveSymbolicLink(symbolicPath)
+                // When
+                var _error: FileSystemError?
+                do {
+                    _ = try await subject.resolveSymbolicLink(symbolicLinkPath)
+                } catch {
+                    _error = error as? FileSystemError
+                }
 
-            // Then
-            XCTAssertEqual(got, destinationPath)
+                // Then
+                XCTAssertEqual(_error, FileSystemError.absentSymbolicLink(symbolicLinkPath))
+            }
         }
-    }
 
-    func test_resolveSymbolicLink_whenThePathIsNotASymbolicLink() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let directoryPath = temporaryDirectory.appending(component: "symbolic")
-            try await subject.makeDirectory(at: directoryPath)
+        func test_resolveSymbolicLink_whenTheDestinationIsRelative() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let symbolicPath = temporaryDirectory.appending(component: "symbolic")
+                let destinationPath = temporaryDirectory.appending(component: "destination")
+                try await subject.touch(destinationPath)
+                try await subject.createSymbolicLink(from: symbolicPath, to: RelativePath(validating: "destination"))
 
-            // When
-            let got = try await subject.resolveSymbolicLink(directoryPath)
+                // When
+                let got = try await subject.resolveSymbolicLink(symbolicPath)
 
-            // Then
-            XCTAssertEqual(got, directoryPath)
+                // Then
+                XCTAssertEqual(got, destinationPath)
+            }
         }
-    }
+
+        func test_resolveSymbolicLink_whenThePathIsNotASymbolicLink() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let directoryPath = temporaryDirectory.appending(component: "symbolic")
+                try await subject.makeDirectory(at: directoryPath)
+
+                // When
+                let got = try await subject.resolveSymbolicLink(directoryPath)
+
+                // Then
+                XCTAssertEqual(got, directoryPath)
+            }
+        }
+    #endif
 
     #if !os(Windows)
         func test_zipping() async throws {
@@ -926,120 +929,123 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func test_glob_with_symlink_and_only_a_directory_wildcard() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let firstDirectory = temporaryDirectory.appending(component: "first")
-            let symlink = firstDirectory.appending(component: "symlink")
-            let secondDirectory = temporaryDirectory.appending(component: "second")
-            let sourceFile = secondDirectory.appending(component: "file.swift")
-            let symlinkSourceFilePath = symlink.appending(component: "file.swift")
-            try await subject.makeDirectory(at: firstDirectory)
-            try await subject.makeDirectory(at: secondDirectory)
-            try await subject.touch(sourceFile)
-            try await subject.createSymbolicLink(from: symlink, to: secondDirectory)
+    // Glob tests involving symlinks are skipped on Windows because symlinks require elevated permissions
+    #if !os(Windows)
+        func test_glob_with_symlink_and_only_a_directory_wildcard() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let firstDirectory = temporaryDirectory.appending(component: "first")
+                let symlink = firstDirectory.appending(component: "symlink")
+                let secondDirectory = temporaryDirectory.appending(component: "second")
+                let sourceFile = secondDirectory.appending(component: "file.swift")
+                let symlinkSourceFilePath = symlink.appending(component: "file.swift")
+                try await subject.makeDirectory(at: firstDirectory)
+                try await subject.makeDirectory(at: secondDirectory)
+                try await subject.touch(sourceFile)
+                try await subject.createSymbolicLink(from: symlink, to: secondDirectory)
 
-            // When
-            let got = try await subject.glob(
-                directory: firstDirectory,
-                include: ["**/*.swift"]
-            )
-            .collect()
-            .sorted()
+                // When
+                let got = try await subject.glob(
+                    directory: firstDirectory,
+                    include: ["**/*.swift"]
+                )
+                .collect()
+                .sorted()
 
-            // Then
-            XCTAssertEqual(got, [symlinkSourceFilePath])
+                // Then
+                XCTAssertEqual(got, [symlinkSourceFilePath])
+            }
         }
-    }
 
-    func test_glob_with_symlink_as_base_url() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let symlink = temporaryDirectory.appending(component: "symlink")
-            let firstDirectory = temporaryDirectory.appending(component: "first")
-            let sourceFile = firstDirectory.appending(component: "file.swift")
-            let symlinkSourceFilePath = symlink.appending(component: "file.swift")
-            try await subject.makeDirectory(at: firstDirectory)
-            try await subject.touch(sourceFile)
-            try await subject.createSymbolicLink(from: symlink, to: firstDirectory)
+        func test_glob_with_symlink_as_base_url() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let symlink = temporaryDirectory.appending(component: "symlink")
+                let firstDirectory = temporaryDirectory.appending(component: "first")
+                let sourceFile = firstDirectory.appending(component: "file.swift")
+                let symlinkSourceFilePath = symlink.appending(component: "file.swift")
+                try await subject.makeDirectory(at: firstDirectory)
+                try await subject.touch(sourceFile)
+                try await subject.createSymbolicLink(from: symlink, to: firstDirectory)
 
-            // When
-            let got = try await subject.glob(
-                directory: symlink,
-                include: ["*.swift"]
-            )
-            .collect()
-            .sorted()
+                // When
+                let got = try await subject.glob(
+                    directory: symlink,
+                    include: ["*.swift"]
+                )
+                .collect()
+                .sorted()
 
-            // Then
-            XCTAssertEqual(got, [symlinkSourceFilePath])
+                // Then
+                XCTAssertEqual(got, [symlinkSourceFilePath])
+            }
         }
-    }
 
-    func test_glob_with_relative_symlink() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let frameworkDir = temporaryDirectory.appending(component: "Framework")
-            let sourceDir = frameworkDir.appending(component: "Source")
-            let spmResourcesDir = sourceDir.appending(component: "SwiftPackageResources")
-            let modelSymLinkPath = spmResourcesDir.appending(component: "MyModel.xcdatamodeld")
+        func test_glob_with_relative_symlink() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let frameworkDir = temporaryDirectory.appending(component: "Framework")
+                let sourceDir = frameworkDir.appending(component: "Source")
+                let spmResourcesDir = sourceDir.appending(component: "SwiftPackageResources")
+                let modelSymLinkPath = spmResourcesDir.appending(component: "MyModel.xcdatamodeld")
 
-            let actualResourcesDir = frameworkDir.appending(component: "Resources")
-            let actualModelPath = actualResourcesDir.appending(component: "MyModel.xcdatamodeld")
-            let versionPath = actualModelPath.appending(component: "MyModel_0.xcdatamodel")
+                let actualResourcesDir = frameworkDir.appending(component: "Resources")
+                let actualModelPath = actualResourcesDir.appending(component: "MyModel.xcdatamodeld")
+                let versionPath = actualModelPath.appending(component: "MyModel_0.xcdatamodel")
 
-            try await subject.makeDirectory(at: spmResourcesDir)
-            try await subject.makeDirectory(at: actualResourcesDir)
-            try await subject.makeDirectory(at: actualModelPath)
-            try await subject.touch(versionPath)
+                try await subject.makeDirectory(at: spmResourcesDir)
+                try await subject.makeDirectory(at: actualResourcesDir)
+                try await subject.makeDirectory(at: actualModelPath)
+                try await subject.touch(versionPath)
 
-            let relativeActualModelPath = try RelativePath(validating: "../../Resources/MyModel.xcdatamodeld")
-            try await subject.createSymbolicLink(from: modelSymLinkPath, to: relativeActualModelPath)
+                let relativeActualModelPath = try RelativePath(validating: "../../Resources/MyModel.xcdatamodeld")
+                try await subject.createSymbolicLink(from: modelSymLinkPath, to: relativeActualModelPath)
 
-            // When
-            let got = try await subject.glob(
-                directory: modelSymLinkPath,
-                include: ["*.xcdatamodel"]
-            )
-            .collect()
-            .sorted()
+                // When
+                let got = try await subject.glob(
+                    directory: modelSymLinkPath,
+                    include: ["*.xcdatamodel"]
+                )
+                .collect()
+                .sorted()
 
-            // Then
-            XCTAssertEqual(got.count, 1)
-            XCTAssertEqual(got.map(\.basename), [versionPath.basename])
+                // Then
+                XCTAssertEqual(got.count, 1)
+                XCTAssertEqual(got.map(\.basename), [versionPath.basename])
+            }
         }
-    }
 
-    func test_glob_with_relative_directory_symlink() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let frameworkDir = temporaryDirectory.appending(component: "MyFramework")
-            let testsDir = temporaryDirectory.appending(component: "Tests")
-            let customSQLiteDir = testsDir.appending(component: "CustomSQLite")
+        func test_glob_with_relative_directory_symlink() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let frameworkDir = temporaryDirectory.appending(component: "MyFramework")
+                let testsDir = temporaryDirectory.appending(component: "Tests")
+                let customSQLiteDir = testsDir.appending(component: "CustomSQLite")
 
-            let myStructPath = frameworkDir.appending(component: "MyStruct.swift")
+                let myStructPath = frameworkDir.appending(component: "MyStruct.swift")
 
-            try await subject.makeDirectory(at: frameworkDir)
-            try await subject.makeDirectory(at: customSQLiteDir)
-            try await subject.touch(myStructPath)
+                try await subject.makeDirectory(at: frameworkDir)
+                try await subject.makeDirectory(at: customSQLiteDir)
+                try await subject.touch(myStructPath)
 
-            let rootDirSymLinkPath = customSQLiteDir.appending(component: "MyFramework")
-            let relativeRootDirPath = try RelativePath(validating: "../..")
-            try await subject.createSymbolicLink(from: rootDirSymLinkPath, to: relativeRootDirPath)
+                let rootDirSymLinkPath = customSQLiteDir.appending(component: "MyFramework")
+                let relativeRootDirPath = try RelativePath(validating: "../..")
+                try await subject.createSymbolicLink(from: rootDirSymLinkPath, to: relativeRootDirPath)
 
-            // When
-            let got = try await subject.glob(
-                directory: temporaryDirectory,
-                include: ["**/*.swift"]
-            )
-            .collect()
-            .sorted()
+                // When
+                let got = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["**/*.swift"]
+                )
+                .collect()
+                .sorted()
 
-            // Then
-            XCTAssertEqual(got.count, 1)
-            XCTAssertEqual(got.map(\.basename), [myStructPath.basename])
+                // Then
+                XCTAssertEqual(got.count, 1)
+                XCTAssertEqual(got.map(\.basename), [myStructPath.basename])
+            }
         }
-    }
+    #endif
 
     func test_glob_with_double_directory_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
