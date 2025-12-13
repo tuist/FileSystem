@@ -533,24 +533,26 @@ final class FileSystemTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func test_zipping() async throws {
-        try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-            // Given
-            let filePath = temporaryDirectory.appending(component: "file")
-            let zipPath = temporaryDirectory.appending(component: "file.zip")
-            let unzippedPath = temporaryDirectory.appending(component: "unzipped")
-            try await subject.makeDirectory(at: unzippedPath)
-            try await subject.touch(filePath)
+    #if !os(Windows)
+        func test_zipping() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let filePath = temporaryDirectory.appending(component: "file")
+                let zipPath = temporaryDirectory.appending(component: "file.zip")
+                let unzippedPath = temporaryDirectory.appending(component: "unzipped")
+                try await subject.makeDirectory(at: unzippedPath)
+                try await subject.touch(filePath)
 
-            // When
-            try await subject.zipFileOrDirectoryContent(at: filePath, to: zipPath)
-            try await subject.unzip(zipPath, to: unzippedPath)
+                // When
+                try await subject.zipFileOrDirectoryContent(at: filePath, to: zipPath)
+                try await subject.unzip(zipPath, to: unzippedPath)
 
-            // Then
-            let exists = try await subject.exists(unzippedPath.appending(component: "file"))
-            XCTAssertTrue(exists)
+                // Then
+                let exists = try await subject.exists(unzippedPath.appending(component: "file"))
+                XCTAssertTrue(exists)
+            }
         }
-    }
+    #endif
 
     func test_glob_component_wildcard() async throws {
         try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
