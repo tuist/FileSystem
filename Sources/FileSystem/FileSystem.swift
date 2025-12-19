@@ -427,10 +427,14 @@ public struct FileSystem: FileSysteming, Sendable {
     public func remove(_ path: AbsolutePath) async throws {
         logger?.debug("Removing the file or directory at path: \(path.pathString).")
         guard try await exists(path) else { return }
-        try await Task {
-            try FileManager.default.removeItem(atPath: path.pathString)
-        }
-        .value
+        #if os(Windows)
+            try await WindowsAsyncFileOperations.removeItem(at: path.pathString)
+        #else
+            try await Task {
+                try FileManager.default.removeItem(atPath: path.pathString)
+            }
+            .value
+        #endif
     }
 
     public func makeTemporaryDirectory(prefix: String) async throws -> AbsolutePath {
@@ -446,10 +450,17 @@ public struct FileSystem: FileSysteming, Sendable {
         let temporaryDirectory = try AbsolutePath(validating: systemTemporaryDirectory)
             .appending(component: "\(prefix)-\(UUID().uuidString)")
         logger?.debug("Creating a temporary directory at path \(temporaryDirectory.pathString).")
-        try FileManager.default.createDirectory(
-            at: URL(fileURLWithPath: temporaryDirectory.pathString),
-            withIntermediateDirectories: true
-        )
+        #if os(Windows)
+            try await WindowsAsyncFileOperations.createDirectory(
+                at: temporaryDirectory.pathString,
+                withIntermediateDirectories: true
+            )
+        #else
+            try FileManager.default.createDirectory(
+                at: URL(fileURLWithPath: temporaryDirectory.pathString),
+                withIntermediateDirectories: true
+            )
+        #endif
         return temporaryDirectory
     }
 

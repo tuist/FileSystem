@@ -134,6 +134,11 @@
             }
         }
 
+        /// Removes a file or directory (recursively) using Foundation
+        static func removeItem(at path: String) throws {
+            try FileManager.default.removeItem(atPath: path)
+        }
+
         /// Creates a directory using WinSDK
         static func createDirectory(at path: String, withIntermediateDirectories: Bool) throws {
             if withIntermediateDirectories {
@@ -288,6 +293,11 @@
         /// Deletes a directory
         static func deleteDirectory(at path: String) async throws {
             try await run { try WindowsFileOperations.deleteDirectory(at: path) }
+        }
+
+        /// Removes a file or directory (recursively)
+        static func removeItem(at path: String) async throws {
+            try await run { try WindowsFileOperations.removeItem(at: path) }
         }
 
         /// Creates a directory
