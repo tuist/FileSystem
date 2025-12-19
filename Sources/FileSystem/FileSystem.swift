@@ -771,6 +771,9 @@ public struct FileSystem: FileSysteming, Sendable {
     public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
         logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
         #if os(Windows)
+            guard FileManager.default.fileExists(atPath: path.pathString) else {
+                return nil
+            }
             do {
                 let attrs = try await WindowsAsyncFileOperations.getFileAttributes(at: path.pathString)
                 let size = (Int64(attrs.nFileSizeHigh) << 32) | Int64(attrs.nFileSizeLow)
@@ -790,6 +793,9 @@ public struct FileSystem: FileSysteming, Sendable {
     public func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata? {
         logger?.debug("Getting the metadata of file at path \(path.pathString).")
         #if os(Windows)
+            guard FileManager.default.fileExists(atPath: path.pathString) else {
+                return nil
+            }
             do {
                 let attrs = try await WindowsAsyncFileOperations.getFileAttributes(at: path.pathString)
                 let size = (Int64(attrs.nFileSizeHigh) << 32) | Int64(attrs.nFileSizeLow)
