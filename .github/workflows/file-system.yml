@@ -62,8 +62,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: compnerd/gha-setup-swift@main
         with:
-          branch: swift-6.0.3-release
-          tag: 6.0.3-RELEASE
+          swift-version: swift-6.0.3-release
+          swift-build: 6.0.3-RELEASE
       - name: Build
         run: swift build --configuration release
 
@@ -75,8 +75,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: compnerd/gha-setup-swift@main
         with:
-          branch: swift-6.0.3-release
-          tag: 6.0.3-RELEASE
+          swift-version: swift-6.0.3-release
+          swift-build: 6.0.3-RELEASE
       - name: Test
         run: swift test
 
