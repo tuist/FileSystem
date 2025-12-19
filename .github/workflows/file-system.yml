@@ -63,11 +63,31 @@ jobs:
       - name: Install Visual Studio components
         run: |
           winget install --id Microsoft.VisualStudio.2022.Community --exact --force --accept-source-agreements --accept-package-agreements --override "--quiet --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-      - uses: compnerd/gha-setup-swift@main
-        with:
-          swift-version: swift-6.0.3-release
-          swift-build: 6.0.3-RELEASE
+      - name: Install Swift
+        run: |
+          winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machinePath;$userPath"
+          $swiftPath = (Get-Command swift -ErrorAction SilentlyContinue).Source
+          if ($swiftPath) {
+            $swiftDir = Split-Path $swiftPath
+            echo $swiftDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
+          Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "bin" -ErrorAction SilentlyContinue | ForEach-Object {
+            echo $_.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+      - name: Setup Swift environment
+        shell: pwsh
+        run: |
+          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
+          $windowsSdk = Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "Windows.sdk" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($windowsSdk) {
+            echo "SDKROOT=$($windowsSdk.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
       - name: Build
+        shell: cmd
         run: swift build --configuration release
 
   test-windows:
@@ -79,11 +99,31 @@ jobs:
       - name: Install Visual Studio components
         run: |
           winget install --id Microsoft.VisualStudio.2022.Community --exact --force --accept-source-agreements --accept-package-agreements --override "--quiet --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-      - uses: compnerd/gha-setup-swift@main
-        with:
-          swift-version: swift-6.0.3-release
-          swift-build: 6.0.3-RELEASE
+      - name: Install Swift
+        run: |
+          winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
+          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          $env:Path = "$machinePath;$userPath"
+          $swiftPath = (Get-Command swift -ErrorAction SilentlyContinue).Source
+          if ($swiftPath) {
+            $swiftDir = Split-Path $swiftPath
+            echo $swiftDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
+          Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "bin" -ErrorAction SilentlyContinue | ForEach-Object {
+            echo $_.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+      - name: Setup Swift environment
+        shell: pwsh
+        run: |
+          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
+          $windowsSdk = Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "Windows.sdk" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($windowsSdk) {
+            echo "SDKROOT=$($windowsSdk.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
       - name: Test
+        shell: cmd
         run: swift test
 
   lint:
