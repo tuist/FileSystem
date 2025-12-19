@@ -175,55 +175,66 @@ private func search(
         options: options
     )
 
-    try await withThrowingTaskGroup(of: Void.self) { group in
-        for url in contents {
-            let relativePath = relativeDirectoryPath + url.lastPathComponent
+    func handleEntry(_ url: URL) async throws {
+        let relativePath = relativeDirectoryPath + url.lastPathComponent
 
-            let matchResult = try matching(url, relativePath)
+        let matchResult = try matching(url, relativePath)
 
-            let foundPath = directory.appendingPath(url.lastPathComponent)
+        let foundPath = directory.appendingPath(url.lastPathComponent)
 
-            if matchResult.matches {
-                continuation.yield(foundPath)
-            }
-
-            guard !matchResult.skipDescendents else { continue }
-
-            let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-            let isDirectory: Bool
-            let symbolicLinkDestination: URL?
-            if resourceValues.isDirectory == true {
-                isDirectory = true
-                symbolicLinkDestination = nil
-            } else if resourceValues.isSymbolicLink == true {
-                let resourceValues = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
-                isDirectory = resourceValues.isDirectory == true
-                symbolicLinkDestination = url.resolvingSymlinksInPath()
-            } else {
-                isDirectory = false
-                symbolicLinkDestination = nil
-            }
-            if isDirectory {
-                // This check prevents infinite loops when a symbolic link
-                // points to an ancestor directory of the current path.
-                if symbolicLinkDestination?.isAncestorOf(directory) != true {
-                    group.addTask {
-                        try await search(
-                            directory: foundPath,
-                            symbolicLinkDestination: symbolicLinkDestination,
-                            matching: matching,
-                            includingPropertiesForKeys: keys,
-                            skipHiddenFiles: skipHiddenFiles,
-                            relativePath: relativePath + "/",
-                            continuation: continuation
-                        )
-                    }
-                }
-            }
+        if matchResult.matches {
+            continuation.yield(foundPath)
         }
 
-        try await group.waitForAll()
+        guard !matchResult.skipDescendents else { return }
+
+        let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        let isDirectory: Bool
+        let symbolicLinkDestination: URL?
+        if resourceValues.isDirectory == true {
+            isDirectory = true
+            symbolicLinkDestination = nil
+        } else if resourceValues.isSymbolicLink == true {
+            let resourceValues = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
+            isDirectory = resourceValues.isDirectory == true
+            symbolicLinkDestination = url.resolvingSymlinksInPath()
+        } else {
+            isDirectory = false
+            symbolicLinkDestination = nil
+        }
+        if isDirectory {
+            // This check prevents infinite loops when a symbolic link
+            // points to an ancestor directory of the current path.
+            if symbolicLinkDestination?.isAncestorOf(directory) != true {
+                try await search(
+                    directory: foundPath,
+                    symbolicLinkDestination: symbolicLinkDestination,
+                    matching: matching,
+                    includingPropertiesForKeys: keys,
+                    skipHiddenFiles: skipHiddenFiles,
+                    relativePath: relativePath + "/",
+                    continuation: continuation
+                )
+            }
+        }
     }
+
+    #if os(Windows)
+        // Windows CI has known hangs with highly-parallel FileManager traversal.
+        for url in contents {
+            try await handleEntry(url)
+        }
+    #else
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for url in contents {
+                group.addTask {
+                    try await handleEntry(url)
+                }
+            }
+
+            try await group.waitForAll()
+        }
+    #endif
 }
 
 extension URL {
