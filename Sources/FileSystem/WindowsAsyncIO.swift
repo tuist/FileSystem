@@ -2,138 +2,247 @@
     import Foundation
     import WinSDK
 
-    /// Windows I/O errors
+    /// Windows I/O errors with descriptive path information
     enum WindowsIOError: LocalizedError {
-        case openFailed(DWORD)
-        case readFailed(DWORD)
-        case writeFailed(DWORD)
-        case associationFailed(DWORD)
-        case operationFailed(DWORD)
-        case invalidHandle
-        case getFileSizeFailed(DWORD)
+        case openFailed(path: String, code: DWORD)
+        case readFailed(path: String, code: DWORD)
+        case writeFailed(path: String, code: DWORD)
+        case operationFailed(path: String, operation: String, code: DWORD)
+        case copyFailed(from: String, to: String, code: DWORD)
+        case moveFailed(from: String, to: String, code: DWORD)
+        case deleteFailed(path: String, code: DWORD)
+        case createDirectoryFailed(path: String, code: DWORD)
+        case listDirectoryFailed(path: String, code: DWORD)
+        case getAttributesFailed(path: String, code: DWORD)
+        case createSymlinkFailed(from: String, to: String, code: DWORD)
 
         var errorDescription: String? {
             switch self {
-            case let .openFailed(code):
-                return "Failed to open file (error code: \(code))"
-            case let .readFailed(code):
-                return "Failed to read file (error code: \(code))"
-            case let .writeFailed(code):
-                return "Failed to write file (error code: \(code))"
-            case let .associationFailed(code):
-                return "Failed to associate handle with IOCP (error code: \(code))"
-            case let .operationFailed(code):
-                return "I/O operation failed (error code: \(code))"
-            case .invalidHandle:
-                return "Invalid file handle"
-            case let .getFileSizeFailed(code):
-                return "Failed to get file size (error code: \(code))"
+            case let .openFailed(path, code):
+                return "Failed to open file at '\(path)' (error code: \(code))"
+            case let .readFailed(path, code):
+                return "Failed to read file at '\(path)' (error code: \(code))"
+            case let .writeFailed(path, code):
+                return "Failed to write file at '\(path)' (error code: \(code))"
+            case let .operationFailed(path, operation, code):
+                return "Failed to \(operation) at '\(path)' (error code: \(code))"
+            case let .copyFailed(from, to, code):
+                return "Failed to copy from '\(from)' to '\(to)' (error code: \(code))"
+            case let .moveFailed(from, to, code):
+                return "Failed to move from '\(from)' to '\(to)' (error code: \(code))"
+            case let .deleteFailed(path, code):
+                return "Failed to delete '\(path)' (error code: \(code))"
+            case let .createDirectoryFailed(path, code):
+                return "Failed to create directory at '\(path)' (error code: \(code))"
+            case let .listDirectoryFailed(path, code):
+                return "Failed to list directory at '\(path)' (error code: \(code))"
+            case let .getAttributesFailed(path, code):
+                return "Failed to get attributes for '\(path)' (error code: \(code))"
+            case let .createSymlinkFailed(from, to, code):
+                return "Failed to create symbolic link from '\(from)' to '\(to)' (error code: \(code))"
             }
         }
     }
 
-    /// Async file handle for Windows
-    struct WindowsAsyncFileHandle: @unchecked Sendable {
-        nonisolated(unsafe) let handle: HANDLE
+    /// Windows file operations using Foundation's synchronous APIs.
+    /// These are wrapped to provide async/await interface while using
+    /// Foundation's well-tested Windows implementations.
+    enum WindowsFileOperations {
 
-        /// Opens a file for async reading
-        static func openForReading(path: String) throws -> WindowsAsyncFileHandle {
-            let handle: HANDLE? = path.withCString(encodedAs: UTF16.self) { pathPtr in
-                CreateFileW(
-                    pathPtr,
-                    DWORD(GENERIC_READ),
-                    DWORD(FILE_SHARE_READ),
-                    nil,
-                    DWORD(OPEN_EXISTING),
-                    DWORD(FILE_FLAG_OVERLAPPED),
-                    nil
-                )
+        /// Reads a file synchronously using Foundation
+        static func readFile(at path: String) throws -> Data {
+            let url = URL(fileURLWithPath: path)
+            do {
+                return try Data(contentsOf: url)
+            } catch {
+                throw WindowsIOError.readFailed(path: path, code: DWORD(GetLastError()))
             }
-
-            guard let handle, handle != INVALID_HANDLE_VALUE else {
-                throw WindowsIOError.openFailed(GetLastError())
-            }
-
-            return WindowsAsyncFileHandle(handle: handle)
         }
 
-        /// Opens a file for async writing (creates if not exists)
-        static func openForWriting(path: String) throws -> WindowsAsyncFileHandle {
-            let handle: HANDLE? = path.withCString(encodedAs: UTF16.self) { pathPtr in
-                CreateFileW(
-                    pathPtr,
-                    DWORD(GENERIC_WRITE),
-                    0,
-                    nil,
-                    DWORD(CREATE_ALWAYS),
-                    DWORD(FILE_FLAG_OVERLAPPED),
-                    nil
-                )
+        /// Writes data to a file synchronously using Foundation
+        static func writeFile(at path: String, data: Data) throws {
+            let url = URL(fileURLWithPath: path)
+            do {
+                try data.write(to: url)
+            } catch {
+                throw WindowsIOError.writeFailed(path: path, code: DWORD(GetLastError()))
             }
-
-            guard let handle, handle != INVALID_HANDLE_VALUE else {
-                throw WindowsIOError.openFailed(GetLastError())
-            }
-
-            return WindowsAsyncFileHandle(handle: handle)
         }
 
-        /// Gets the file size
-        func getFileSize() throws -> Int64 {
-            var size: LARGE_INTEGER = LARGE_INTEGER()
-            if !GetFileSizeEx(handle, &size) {
-                throw WindowsIOError.getFileSizeFailed(GetLastError())
+        /// Copies a file using WinSDK
+        static func copyFile(from source: String, to destination: String) throws {
+            let success = source.withCString(encodedAs: UTF16.self) { sourcePtr in
+                destination.withCString(encodedAs: UTF16.self) { destPtr in
+                    CopyFileW(sourcePtr, destPtr, false)
+                }
             }
-            return size.QuadPart
+            if !success {
+                throw WindowsIOError.copyFailed(from: source, to: destination, code: GetLastError())
+            }
         }
 
-        /// Closes the file handle
-        func close() {
-            CloseHandle(handle)
-        }
-    }
-
-    /// High-level async file operations for Windows
-    enum WindowsAsyncFileOperations {
-        /// Reads a file asynchronously using overlapped I/O
-        static func readFile(at path: String) async throws -> Data {
-            let handle = try WindowsAsyncFileHandle.openForReading(path: path)
-            defer { handle.close() }
-
-            let fileSize = try handle.getFileSize()
-            if fileSize == 0 {
-                return Data()
+        /// Moves a file using WinSDK
+        static func moveFile(from source: String, to destination: String) throws {
+            let success = source.withCString(encodedAs: UTF16.self) { sourcePtr in
+                destination.withCString(encodedAs: UTF16.self) { destPtr in
+                    MoveFileExW(sourcePtr, destPtr, DWORD(MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
+                }
             }
+            if !success {
+                throw WindowsIOError.moveFailed(from: source, to: destination, code: GetLastError())
+            }
+        }
 
-            return try await withCheckedThrowingContinuation { continuation in
-                Task.detached {
-                    do {
-                        var buffer = [UInt8](repeating: 0, count: Int(fileSize))
-                        var bytesRead: DWORD = 0
-                        var overlapped = OVERLAPPED()
+        /// Deletes a file using WinSDK
+        static func deleteFile(at path: String) throws {
+            let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                DeleteFileW(pathPtr)
+            }
+            if !success {
+                let error = GetLastError()
+                // ERROR_FILE_NOT_FOUND is acceptable for delete
+                if error != DWORD(ERROR_FILE_NOT_FOUND) {
+                    throw WindowsIOError.deleteFailed(path: path, code: error)
+                }
+            }
+        }
 
-                        let success = buffer.withUnsafeMutableBufferPointer { bufferPtr in
-                            ReadFile(
-                                handle.handle,
-                                bufferPtr.baseAddress,
-                                DWORD(fileSize),
-                                &bytesRead,
-                                &overlapped
-                            )
-                        }
+        /// Deletes a directory using WinSDK
+        static func deleteDirectory(at path: String) throws {
+            let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                RemoveDirectoryW(pathPtr)
+            }
+            if !success {
+                let error = GetLastError()
+                if error != DWORD(ERROR_FILE_NOT_FOUND) && error != DWORD(ERROR_PATH_NOT_FOUND) {
+                    throw WindowsIOError.deleteFailed(path: path, code: error)
+                }
+            }
+        }
 
-                        // Wait for completion if pending
-                        if !success && GetLastError() == DWORD(ERROR_IO_PENDING) {
-                            var transferred: DWORD = 0
-                            if !GetOverlappedResult(handle.handle, &overlapped, &transferred, true) {
-                                throw WindowsIOError.readFailed(GetLastError())
+        /// Creates a directory using WinSDK
+        static func createDirectory(at path: String, withIntermediateDirectories: Bool) throws {
+            if withIntermediateDirectories {
+                var currentPath = ""
+                let components = path.replacingOccurrences(of: "\\", with: "/").split(separator: "/")
+
+                for (index, component) in components.enumerated() {
+                    if index == 0 && component.contains(":") {
+                        currentPath = String(component)
+                    } else {
+                        currentPath += "\\" + component
+                    }
+
+                    let success = currentPath.withCString(encodedAs: UTF16.self) { pathPtr in
+                        CreateDirectoryW(pathPtr, nil)
+                    }
+
+                    if !success {
+                        let error = GetLastError()
+                        if error != DWORD(ERROR_ALREADY_EXISTS) && error != DWORD(ERROR_ACCESS_DENIED) {
+                            if !(index == 0 && component.contains(":")) {
+                                throw WindowsIOError.createDirectoryFailed(path: currentPath, code: error)
                             }
-                            bytesRead = transferred
-                        } else if !success {
-                            throw WindowsIOError.readFailed(GetLastError())
                         }
+                    }
+                }
+            } else {
+                let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                    CreateDirectoryW(pathPtr, nil)
+                }
+                if !success {
+                    let error = GetLastError()
+                    if error != DWORD(ERROR_ALREADY_EXISTS) {
+                        throw WindowsIOError.createDirectoryFailed(path: path, code: error)
+                    }
+                }
+            }
+        }
 
-                        continuation.resume(returning: Data(buffer[0 ..< Int(bytesRead)]))
+        /// Gets file attributes using WinSDK
+        static func getFileAttributes(at path: String) throws -> WIN32_FILE_ATTRIBUTE_DATA {
+            var attributeData = WIN32_FILE_ATTRIBUTE_DATA()
+            let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                GetFileAttributesExW(pathPtr, GetFileExInfoStandard, &attributeData)
+            }
+            if !success {
+                throw WindowsIOError.getAttributesFailed(path: path, code: GetLastError())
+            }
+            return attributeData
+        }
+
+        /// Lists directory contents using WinSDK
+        static func listDirectory(at path: String) throws -> [String] {
+            var results: [String] = []
+            var findData = WIN32_FIND_DATAW()
+
+            let searchPath = path + "\\*"
+            let handle: HANDLE? = searchPath.withCString(encodedAs: UTF16.self) { pathPtr in
+                FindFirstFileW(pathPtr, &findData)
+            }
+
+            guard let handle, handle != INVALID_HANDLE_VALUE else {
+                let error = GetLastError()
+                if error == DWORD(ERROR_FILE_NOT_FOUND) || error == DWORD(ERROR_PATH_NOT_FOUND) {
+                    return []
+                }
+                throw WindowsIOError.listDirectoryFailed(path: path, code: error)
+            }
+
+            defer { FindClose(handle) }
+
+            repeat {
+                let fileName = withUnsafePointer(to: findData.cFileName) { ptr in
+                    ptr.withMemoryRebound(to: UInt16.self, capacity: 260) { wcharPtr in
+                        String(decodingCString: wcharPtr, as: UTF16.self)
+                    }
+                }
+
+                if fileName != "." && fileName != ".." {
+                    results.append(fileName)
+                }
+            } while FindNextFileW(handle, &findData)
+
+            return results
+        }
+
+        /// Creates a symbolic link using WinSDK
+        static func createSymbolicLink(from source: String, to destination: String, isDirectory: Bool) throws {
+            let flags: DWORD = isDirectory
+                ? DWORD(SYMBOLIC_LINK_FLAG_DIRECTORY | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
+                : DWORD(SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
+
+            let result = source.withCString(encodedAs: UTF16.self) { sourcePtr in
+                destination.withCString(encodedAs: UTF16.self) { destPtr in
+                    CreateSymbolicLinkW(sourcePtr, destPtr, flags)
+                }
+            }
+
+            if result == 0 {
+                throw WindowsIOError.createSymlinkFailed(from: source, to: destination, code: GetLastError())
+            }
+        }
+    }
+
+    /// Async wrappers that run synchronous operations without blocking Swift's cooperative thread pool.
+    /// Uses a dedicated serial DispatchQueue to ensure I/O operations don't starve the async runtime.
+    enum WindowsAsyncFileOperations {
+        /// Dedicated queue for Windows I/O operations.
+        /// This ensures blocking I/O never exhausts Swift's cooperative thread pool.
+        private static let ioQueue = DispatchQueue(
+            label: "tuist.filesystem.windows.io",
+            qos: .userInitiated
+        )
+
+        /// Runs a blocking operation on the dedicated I/O queue and bridges to async/await
+        private static func runOnIOQueue<T: Sendable>(
+            _ operation: @escaping @Sendable () throws -> T
+        ) async throws -> T {
+            try await withCheckedThrowingContinuation { continuation in
+                ioQueue.async {
+                    do {
+                        let result = try operation()
+                        continuation.resume(returning: result)
                     } catch {
                         continuation.resume(throwing: error)
                     }
@@ -141,255 +250,89 @@
             }
         }
 
-        /// Writes data to a file asynchronously using overlapped I/O
-        static func writeFile(at path: String, data: Data) async throws {
-            let handle = try WindowsAsyncFileHandle.openForWriting(path: path)
-            defer { handle.close() }
-
+        /// Runs a blocking void operation on the dedicated I/O queue
+        private static func runOnIOQueue(
+            _ operation: @escaping @Sendable () throws -> Void
+        ) async throws {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task.detached {
+                ioQueue.async {
                     do {
-                        var overlapped = OVERLAPPED()
-                        var bytesWritten: DWORD = 0
-
-                        let success = data.withUnsafeBytes { buffer in
-                            WriteFile(
-                                handle.handle,
-                                buffer.baseAddress,
-                                DWORD(data.count),
-                                &bytesWritten,
-                                &overlapped
-                            )
-                        }
-
-                        // Wait for completion if pending
-                        if !success && GetLastError() == DWORD(ERROR_IO_PENDING) {
-                            var transferred: DWORD = 0
-                            if !GetOverlappedResult(handle.handle, &overlapped, &transferred, true) {
-                                throw WindowsIOError.writeFailed(GetLastError())
-                            }
-                        } else if !success {
-                            throw WindowsIOError.writeFailed(GetLastError())
-                        }
-
+                        try operation()
                         continuation.resume()
                     } catch {
                         continuation.resume(throwing: error)
                     }
                 }
+            }
+        }
+
+        /// Reads a file asynchronously
+        static func readFile(at path: String) async throws -> Data {
+            try await runOnIOQueue {
+                try WindowsFileOperations.readFile(at: path)
+            }
+        }
+
+        /// Writes data to a file asynchronously
+        static func writeFile(at path: String, data: Data) async throws {
+            try await runOnIOQueue {
+                try WindowsFileOperations.writeFile(at: path, data: data)
             }
         }
 
         /// Copies a file asynchronously
         static func copyFile(from source: String, to destination: String) async throws {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task.detached {
-                    let success = source.withCString(encodedAs: UTF16.self) { sourcePtr in
-                        destination.withCString(encodedAs: UTF16.self) { destPtr in
-                            CopyFileW(sourcePtr, destPtr, false)
-                        }
-                    }
-
-                    if !success {
-                        continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
-                    } else {
-                        continuation.resume()
-                    }
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.copyFile(from: source, to: destination)
             }
         }
 
         /// Moves a file asynchronously
         static func moveFile(from source: String, to destination: String) async throws {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task.detached {
-                    let success = source.withCString(encodedAs: UTF16.self) { sourcePtr in
-                        destination.withCString(encodedAs: UTF16.self) { destPtr in
-                            MoveFileExW(sourcePtr, destPtr, DWORD(MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
-                        }
-                    }
-
-                    if !success {
-                        continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
-                    } else {
-                        continuation.resume()
-                    }
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.moveFile(from: source, to: destination)
             }
         }
 
         /// Deletes a file asynchronously
         static func deleteFile(at path: String) async throws {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task.detached {
-                    let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
-                        DeleteFileW(pathPtr)
-                    }
-
-                    if !success {
-                        let error = GetLastError()
-                        // ERROR_FILE_NOT_FOUND is not an error for delete
-                        if error != DWORD(ERROR_FILE_NOT_FOUND) {
-                            continuation.resume(throwing: WindowsIOError.operationFailed(error))
-                            return
-                        }
-                    }
-                    continuation.resume()
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.deleteFile(at: path)
             }
         }
 
         /// Deletes a directory asynchronously
         static func deleteDirectory(at path: String) async throws {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task.detached {
-                    let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
-                        RemoveDirectoryW(pathPtr)
-                    }
-
-                    if !success {
-                        let error = GetLastError()
-                        if error != DWORD(ERROR_FILE_NOT_FOUND) && error != DWORD(ERROR_PATH_NOT_FOUND) {
-                            continuation.resume(throwing: WindowsIOError.operationFailed(error))
-                            return
-                        }
-                    }
-                    continuation.resume()
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.deleteDirectory(at: path)
             }
         }
 
         /// Creates a directory asynchronously
         static func createDirectory(at path: String, withIntermediateDirectories: Bool) async throws {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task.detached {
-                    if withIntermediateDirectories {
-                        // Create intermediate directories
-                        var currentPath = ""
-                        let components = path.replacingOccurrences(of: "\\", with: "/").split(separator: "/")
-
-                        for (index, component) in components.enumerated() {
-                            if index == 0 && component.contains(":") {
-                                // Drive letter (e.g., "C:")
-                                currentPath = String(component)
-                            } else {
-                                currentPath += "\\" + component
-                            }
-
-                            let success = currentPath.withCString(encodedAs: UTF16.self) { pathPtr in
-                                CreateDirectoryW(pathPtr, nil)
-                            }
-
-                            if !success {
-                                let error = GetLastError()
-                                // ERROR_ALREADY_EXISTS is not an error
-                                if error != DWORD(ERROR_ALREADY_EXISTS) && error != DWORD(ERROR_ACCESS_DENIED) {
-                                    // ERROR_ACCESS_DENIED can happen for drive root
-                                    if !(index == 0 && component.contains(":")) {
-                                        continuation.resume(throwing: WindowsIOError.operationFailed(error))
-                                        return
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
-                            CreateDirectoryW(pathPtr, nil)
-                        }
-
-                        if !success {
-                            let error = GetLastError()
-                            if error != DWORD(ERROR_ALREADY_EXISTS) {
-                                continuation.resume(throwing: WindowsIOError.operationFailed(error))
-                                return
-                            }
-                        }
-                    }
-                    continuation.resume()
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.createDirectory(at: path, withIntermediateDirectories: withIntermediateDirectories)
             }
         }
 
         /// Gets file attributes asynchronously
         static func getFileAttributes(at path: String) async throws -> WIN32_FILE_ATTRIBUTE_DATA {
-            try await withCheckedThrowingContinuation { continuation in
-                Task.detached {
-                    var attributeData = WIN32_FILE_ATTRIBUTE_DATA()
-                    let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
-                        GetFileAttributesExW(pathPtr, GetFileExInfoStandard, &attributeData)
-                    }
-
-                    if !success {
-                        continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
-                    } else {
-                        continuation.resume(returning: attributeData)
-                    }
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.getFileAttributes(at: path)
             }
         }
 
         /// Lists directory contents asynchronously
         static func listDirectory(at path: String) async throws -> [String] {
-            try await withCheckedThrowingContinuation { continuation in
-                Task.detached {
-                    var results: [String] = []
-                    var findData = WIN32_FIND_DATAW()
-
-                    let searchPath = path + "\\*"
-                    let handle: HANDLE? = searchPath.withCString(encodedAs: UTF16.self) { pathPtr in
-                        FindFirstFileW(pathPtr, &findData)
-                    }
-
-                    guard let handle, handle != INVALID_HANDLE_VALUE else {
-                        let error = GetLastError()
-                        if error == DWORD(ERROR_FILE_NOT_FOUND) || error == DWORD(ERROR_PATH_NOT_FOUND) {
-                            continuation.resume(returning: [])
-                        } else {
-                            continuation.resume(throwing: WindowsIOError.operationFailed(error))
-                        }
-                        return
-                    }
-
-                    defer { FindClose(handle) }
-
-                    repeat {
-                        let fileName = withUnsafePointer(to: findData.cFileName) { ptr in
-                            ptr.withMemoryRebound(to: UInt16.self, capacity: 260) { wcharPtr in
-                                String(decodingCString: wcharPtr, as: UTF16.self)
-                            }
-                        }
-
-                        if fileName != "." && fileName != ".." {
-                            results.append(fileName)
-                        }
-                    } while FindNextFileW(handle, &findData)
-
-                    continuation.resume(returning: results)
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.listDirectory(at: path)
             }
         }
 
         /// Creates a symbolic link asynchronously
         static func createSymbolicLink(from source: String, to destination: String, isDirectory: Bool) async throws {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                Task.detached {
-                    let flags: DWORD = isDirectory
-                        ? DWORD(SYMBOLIC_LINK_FLAG_DIRECTORY | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
-                        : DWORD(SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
-
-                    let result = source.withCString(encodedAs: UTF16.self) { sourcePtr in
-                        destination.withCString(encodedAs: UTF16.self) { destPtr in
-                            CreateSymbolicLinkW(sourcePtr, destPtr, flags)
-                        }
-                    }
-
-                    // CreateSymbolicLinkW returns BOOLEAN (which is UInt8), non-zero on success
-                    if result == 0 {
-                        continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
-                    } else {
-                        continuation.resume()
-                    }
-                }
+            try await runOnIOQueue {
+                try WindowsFileOperations.createSymbolicLink(from: source, to: destination, isDirectory: isDirectory)
             }
         }
     }
