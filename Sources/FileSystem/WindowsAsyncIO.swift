@@ -49,6 +49,10 @@
     /// These are wrapped to provide async/await interface while using
     /// Foundation's well-tested Windows implementations.
     enum WindowsFileOperations {
+        private static func isDirectory(at path: String) throws -> Bool {
+            let attributes = try getFileAttributes(at: path)
+            return (attributes.dwFileAttributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0
+        }
 
         /// Reads a file synchronously using Foundation
         static func readFile(at path: String) throws -> Data {
@@ -72,6 +76,15 @@
 
         /// Copies a file using WinSDK
         static func copyFile(from source: String, to destination: String) throws {
+            if try isDirectory(at: source) {
+                do {
+                    try FileManager.default.copyItem(atPath: source, toPath: destination)
+                } catch {
+                    throw WindowsIOError.copyFailed(from: source, to: destination, code: DWORD(GetLastError()))
+                }
+                return
+            }
+
             let success = source.withCString(encodedAs: UTF16.self) { sourcePtr in
                 destination.withCString(encodedAs: UTF16.self) { destPtr in
                     CopyFileW(sourcePtr, destPtr, false)
