@@ -82,7 +82,7 @@ jobs:
           swift-build: 6.0.3-RELEASE
           update-sdk-modules: true
       - name: Test
-        run: swift test
+        run: swift test -j 1 --no-parallel
 
   lint:
     name: Lint

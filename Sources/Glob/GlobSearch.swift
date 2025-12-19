@@ -1,3 +1,4 @@
+import Dispatch
 import Foundation
 
 /// The result of a custom matcher for searching directory components
@@ -39,118 +40,223 @@ public func search(
     skipHiddenFiles: Bool = true
 ) -> AsyncThrowingStream<URL, any Error> {
     AsyncThrowingStream(bufferingPolicy: .unbounded) { continuation in
-        let task = Task {
-            do {
-                for include in include {
-                    let (baseURL, include) = switch include.sections.first {
-                    case let .constant(constant):
-                        if constant.hasSuffix("/") {
-                            (
-                                baseURL.appendingPath(constant.dropLast()),
-                                Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
-                            )
-                        } else if include.sections.count == 1 {
-                            (
-                                baseURL.appendingPath(constant),
-                                Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
-                            )
-                        } else if case .componentWildcard = include.sections[1] {
-                            (
-                                baseURL.appendingPath(constant.components(separatedBy: "/").dropLast().joined(separator: "/")),
-                                Pattern(
-                                    sections: [.constant(constant.components(separatedBy: "/").last ?? "")] +
-                                        Array(include.sections.dropFirst()),
-                                    options: include.options
+        #if os(Windows)
+            DispatchQueue.global(qos: .utility).async {
+                do {
+                    for include in include {
+                        let (baseURL, include) = switch include.sections.first {
+                        case let .constant(constant):
+                            if constant.hasSuffix("/") {
+                                (
+                                    baseURL.appendingPath(constant.dropLast()),
+                                    Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
                                 )
-                            )
-                        } else {
-                            (
-                                baseURL.appendingPath(constant),
-                                Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
-                            )
+                            } else if include.sections.count == 1 {
+                                (
+                                    baseURL.appendingPath(constant),
+                                    Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
+                                )
+                            } else if case .componentWildcard = include.sections[1] {
+                                (
+                                    baseURL.appendingPath(constant.components(separatedBy: "/").dropLast().joined(separator: "/")),
+                                    Pattern(
+                                        sections: [.constant(constant.components(separatedBy: "/").last ?? "")] +
+                                            Array(include.sections.dropFirst()),
+                                        options: include.options
+                                    )
+                                )
+                            } else {
+                                (
+                                    baseURL.appendingPath(constant),
+                                    Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
+                                )
+                            }
+                        default:
+                            (baseURL, include)
                         }
-                    default:
-                        (baseURL, include)
-                    }
 
-                    if include.sections.isEmpty {
-                        if FileManager.default
-                            .fileExists(atPath: baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString)
-                        {
-                            continuation.yield(baseURL)
+                        if include.sections.isEmpty {
+                            if FileManager.default.fileExists(atPath: baseURL.path) {
+                                continuation.yield(baseURL)
+                            }
+                            continue
                         }
-                        continue
-                    }
 
-                    let path = baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString
-                    let symbolicLinkDestination = URL.with(filePath: path).resolvingSymlinksInPath()
-                    var isDirectory: ObjCBool = false
+                        let path = baseURL.path
+                        let symbolicLinkDestination = URL.with(filePath: path).resolvingSymlinksInPath()
+                        var isDirectory: ObjCBool = false
 
-                    let symbolicLinkDestinationPath: String = symbolicLinkDestination
-                        .path()
-                        .removingPercentEncoding ?? symbolicLinkDestination.path()
+                        let symbolicLinkDestinationPath: String = symbolicLinkDestination.path()
+                            .removingPercentEncoding ?? symbolicLinkDestination.path()
 
-                    guard FileManager.default.fileExists(
-                        atPath: symbolicLinkDestinationPath,
-                        isDirectory: &isDirectory
-                    ),
-                        isDirectory.boolValue
-                    else { continue }
+                        guard FileManager.default.fileExists(
+                            atPath: symbolicLinkDestinationPath,
+                            isDirectory: &isDirectory
+                        ),
+                            isDirectory.boolValue
+                        else { continue }
 
-                    try await search(
-                        directory: baseURL,
-                        symbolicLinkDestination: symbolicLinkDestination,
-                        matching: { _, relativePath in
-                            guard include.match(relativePath) else {
-                                // for patterns like `**/*.swift`, parent folders won't be matched but we don't want to skip those
-                                // folder's descendents or we won't find the files that do match
-                                let skipDescendents = !include.sections.enumerated().contains(where: { index, element in
-                                    switch element {
-                                    case .pathWildcard:
-                                        return true
-                                    case .componentWildcard:
-                                        if index == include.sections.endIndex - 1 {
-                                            return false
-                                        } else if index == include.sections.endIndex - 2 {
-                                            if case let .constant(constant) = include.sections.last {
-                                                return constant.contains("/")
+                        try searchSync(
+                            directory: baseURL,
+                            symbolicLinkDestination: symbolicLinkDestination,
+                            matching: { _, relativePath in
+                                guard include.match(relativePath) else {
+                                    // for patterns like `**/*.swift`, parent folders won't be matched but we don't want to skip those
+                                    // folder's descendents or we won't find the files that do match
+                                    let skipDescendents = !include.sections.enumerated().contains(where: { index, element in
+                                        switch element {
+                                        case .pathWildcard:
+                                            return true
+                                        case .componentWildcard:
+                                            if index == include.sections.endIndex - 1 {
+                                                return false
+                                            } else if index == include.sections.endIndex - 2 {
+                                                if case let .constant(constant) = include.sections.last {
+                                                    return constant.contains("/")
+                                                } else {
+                                                    return true
+                                                }
                                             } else {
                                                 return true
                                             }
-                                        } else {
-                                            return true
+                                        default:
+                                            return false
                                         }
-                                    default:
-                                        return false
-                                    }
-                                })
-                                return .init(matches: false, skipDescendents: skipDescendents)
-                            }
-
-                            for pattern in exclude {
-                                if pattern.match(relativePath) {
-                                    return .init(matches: false, skipDescendents: true)
+                                    })
+                                    return .init(matches: false, skipDescendents: skipDescendents)
                                 }
-                            }
 
-                            return .init(matches: true, skipDescendents: false)
-                        },
-                        includingPropertiesForKeys: keys,
-                        skipHiddenFiles: skipHiddenFiles,
-                        relativePath: "",
-                        continuation: continuation
-                    )
+                                for pattern in exclude {
+                                    if pattern.match(relativePath) {
+                                        return .init(matches: false, skipDescendents: true)
+                                    }
+                                }
+
+                                return .init(matches: true, skipDescendents: false)
+                            },
+                            includingPropertiesForKeys: keys,
+                            skipHiddenFiles: skipHiddenFiles,
+                            relativePath: "",
+                            continuation: continuation
+                        )
+                    }
+
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
                 }
-
-                continuation.finish()
-            } catch {
-                continuation.finish(throwing: error)
             }
-        }
+        #else
+            let task = Task {
+                do {
+                    for include in include {
+                        let (baseURL, include) = switch include.sections.first {
+                        case let .constant(constant):
+                            if constant.hasSuffix("/") {
+                                (
+                                    baseURL.appendingPath(constant.dropLast()),
+                                    Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
+                                )
+                            } else if include.sections.count == 1 {
+                                (
+                                    baseURL.appendingPath(constant),
+                                    Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
+                                )
+                            } else if case .componentWildcard = include.sections[1] {
+                                (
+                                    baseURL.appendingPath(constant.components(separatedBy: "/").dropLast().joined(separator: "/")),
+                                    Pattern(
+                                        sections: [.constant(constant.components(separatedBy: "/").last ?? "")] +
+                                            Array(include.sections.dropFirst()),
+                                        options: include.options
+                                    )
+                                )
+                            } else {
+                                (
+                                    baseURL.appendingPath(constant),
+                                    Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
+                                )
+                            }
+                        default:
+                            (baseURL, include)
+                        }
 
-        continuation.onTermination = { _ in
-            task.cancel()
-        }
+                        if include.sections.isEmpty {
+                            if FileManager.default.fileExists(atPath: baseURL.path) {
+                                continuation.yield(baseURL)
+                            }
+                            continue
+                        }
+
+                        let path = baseURL.path
+                        let symbolicLinkDestination = URL.with(filePath: path).resolvingSymlinksInPath()
+                        var isDirectory: ObjCBool = false
+
+                        let symbolicLinkDestinationPath: String = symbolicLinkDestination.path()
+                            .removingPercentEncoding ?? symbolicLinkDestination.path()
+
+                        guard FileManager.default.fileExists(
+                            atPath: symbolicLinkDestinationPath,
+                            isDirectory: &isDirectory
+                        ),
+                            isDirectory.boolValue
+                        else { continue }
+
+                        try await search(
+                            directory: baseURL,
+                            symbolicLinkDestination: symbolicLinkDestination,
+                            matching: { _, relativePath in
+                                guard include.match(relativePath) else {
+                                    // for patterns like `**/*.swift`, parent folders won't be matched but we don't want to skip those
+                                    // folder's descendents or we won't find the files that do match
+                                    let skipDescendents = !include.sections.enumerated().contains(where: { index, element in
+                                        switch element {
+                                        case .pathWildcard:
+                                            return true
+                                        case .componentWildcard:
+                                            if index == include.sections.endIndex - 1 {
+                                                return false
+                                            } else if index == include.sections.endIndex - 2 {
+                                                if case let .constant(constant) = include.sections.last {
+                                                    return constant.contains("/")
+                                                } else {
+                                                    return true
+                                                }
+                                            } else {
+                                                return true
+                                            }
+                                        default:
+                                            return false
+                                        }
+                                    })
+                                    return .init(matches: false, skipDescendents: skipDescendents)
+                                }
+
+                                for pattern in exclude {
+                                    if pattern.match(relativePath) {
+                                        return .init(matches: false, skipDescendents: true)
+                                    }
+                                }
+
+                                return .init(matches: true, skipDescendents: false)
+                            },
+                            includingPropertiesForKeys: keys,
+                            skipHiddenFiles: skipHiddenFiles,
+                            relativePath: "",
+                            continuation: continuation
+                        )
+                    }
+
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        #endif
     }
 }
 
@@ -176,56 +282,136 @@ private func search(
         options: options
     )
 
-    try await withThrowingTaskGroup(of: Void.self) { group in
-        for url in contents {
-            let relativePath = relativeDirectoryPath + url.lastPathComponent
+    func handleEntry(_ url: URL) async throws {
+        let relativePath = relativeDirectoryPath + url.lastPathComponent
 
-            let matchResult = try matching(url, relativePath)
+        let matchResult = try matching(url, relativePath)
 
-            let foundPath = directory.appendingPath(url.lastPathComponent)
+        let foundPath = directory.appendingPath(url.lastPathComponent)
 
-            if matchResult.matches {
-                continuation.yield(foundPath)
-            }
-
-            guard !matchResult.skipDescendents else { continue }
-
-            let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-            let isDirectory: Bool
-            let symbolicLinkDestination: URL?
-            if resourceValues.isDirectory == true {
-                isDirectory = true
-                symbolicLinkDestination = nil
-            } else if resourceValues.isSymbolicLink == true {
-                let resourceValues = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
-                isDirectory = resourceValues.isDirectory == true
-                symbolicLinkDestination = url.resolvingSymlinksInPath()
-            } else {
-                isDirectory = false
-                symbolicLinkDestination = nil
-            }
-            if isDirectory {
-                // This check prevents infinite loops when a symbolic link
-                // points to an ancestor directory of the current path.
-                if symbolicLinkDestination?.isAncestorOf(directory) != true {
-                    group.addTask {
-                        try await search(
-                            directory: foundPath,
-                            symbolicLinkDestination: symbolicLinkDestination,
-                            matching: matching,
-                            includingPropertiesForKeys: keys,
-                            skipHiddenFiles: skipHiddenFiles,
-                            relativePath: relativePath + "/",
-                            continuation: continuation
-                        )
-                    }
-                }
-            }
+        if matchResult.matches {
+            continuation.yield(foundPath)
         }
 
-        try await group.waitForAll()
+        guard !matchResult.skipDescendents else { return }
+
+        let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        let isDirectory: Bool
+        let symbolicLinkDestination: URL?
+        if resourceValues.isDirectory == true {
+            isDirectory = true
+            symbolicLinkDestination = nil
+        } else if resourceValues.isSymbolicLink == true {
+            let resourceValues = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
+            isDirectory = resourceValues.isDirectory == true
+            symbolicLinkDestination = url.resolvingSymlinksInPath()
+        } else {
+            isDirectory = false
+            symbolicLinkDestination = nil
+        }
+        if isDirectory {
+            // This check prevents infinite loops when a symbolic link
+            // points to an ancestor directory of the current path.
+            if symbolicLinkDestination?.isAncestorOf(directory) != true {
+                try await search(
+                    directory: foundPath,
+                    symbolicLinkDestination: symbolicLinkDestination,
+                    matching: matching,
+                    includingPropertiesForKeys: keys,
+                    skipHiddenFiles: skipHiddenFiles,
+                    relativePath: relativePath + "/",
+                    continuation: continuation
+                )
+            }
+        }
+    }
+
+    #if os(Windows)
+        // Windows CI has known hangs with highly-parallel FileManager traversal.
+        for url in contents {
+            try await handleEntry(url)
+        }
+    #else
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for url in contents {
+                group.addTask {
+                    try await handleEntry(url)
+                }
+            }
+
+            try await group.waitForAll()
+        }
+    #endif
+}
+
+#if os(Windows)
+@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+private func searchSync(
+    directory: URL,
+    symbolicLinkDestination: URL?,
+    matching: @escaping @Sendable (_ url: URL, _ relativePath: String) throws -> MatchResult,
+    includingPropertiesForKeys keys: [URLResourceKey],
+    skipHiddenFiles: Bool,
+    relativePath relativeDirectoryPath: String,
+    continuation: AsyncThrowingStream<URL, any Error>.Continuation
+) throws {
+    var options: FileManager.DirectoryEnumerationOptions = [
+        .producesRelativePathURLs,
+    ]
+    if skipHiddenFiles {
+        options.insert(.skipsHiddenFiles)
+    }
+    let contents = try FileManager.default.contentsOfDirectory(
+        at: symbolicLinkDestination ?? directory,
+        includingPropertiesForKeys: keys + [.isDirectoryKey],
+        options: options
+    )
+
+    for url in contents {
+        let relativePath = relativeDirectoryPath + url.lastPathComponent
+
+        let matchResult = try matching(url, relativePath)
+
+        let foundPath = directory.appendingPath(url.lastPathComponent)
+
+        if matchResult.matches {
+            continuation.yield(foundPath)
+        }
+
+        guard !matchResult.skipDescendents else { continue }
+
+        let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        let isDirectory: Bool
+        let symbolicLinkDestination: URL?
+        if resourceValues.isDirectory == true {
+            isDirectory = true
+            symbolicLinkDestination = nil
+        } else if resourceValues.isSymbolicLink == true {
+            let resourceValues = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
+            isDirectory = resourceValues.isDirectory == true
+            symbolicLinkDestination = url.resolvingSymlinksInPath()
+        } else {
+            isDirectory = false
+            symbolicLinkDestination = nil
+        }
+        if isDirectory {
+            // This check prevents infinite loops when a symbolic link
+            // points to an ancestor directory of the current path.
+            if symbolicLinkDestination?.isAncestorOf(directory) != true {
+                try searchSync(
+                    directory: foundPath,
+                    symbolicLinkDestination: symbolicLinkDestination,
+                    matching: matching,
+                    includingPropertiesForKeys: keys,
+                    skipHiddenFiles: skipHiddenFiles,
+                    relativePath: relativePath + "/",
+                    continuation: continuation
+                )
+            }
+        }
     }
 }
+#endif
 
 extension URL {
     fileprivate func isAncestorOf(_ maybeChild: URL) -> Bool {
