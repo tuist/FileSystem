@@ -1,4 +1,6 @@
-#if !os(Windows)
+#if os(Windows)
+    import WinSDK
+#else
     import _NIOFileSystem
     import NIOCore
 #endif
@@ -381,7 +383,9 @@ public struct FileSystem: FileSysteming, Sendable {
     public func exists(_ path: AbsolutePath) async throws -> Bool {
         logger?.debug("Checking if a file or directory exists at path \(path.pathString).")
         #if os(Windows)
-            return FileManager.default.fileExists(atPath: path.pathString)
+            return path.pathString.withCString(encodedAs: UTF16.self) { pointer in
+                GetFileAttributesW(pointer) != INVALID_FILE_ATTRIBUTES
+            }
         #else
             let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString))
             return info != nil
@@ -395,9 +399,12 @@ public struct FileSystem: FileSysteming, Sendable {
             logger?.debug("Checking if a file exists at path \(path.pathString).")
         }
         #if os(Windows)
-            var isDir: ObjCBool = false
-            let exists = FileManager.default.fileExists(atPath: path.pathString, isDirectory: &isDir)
-            return exists && isDir.boolValue == isDirectory
+            return path.pathString.withCString(encodedAs: UTF16.self) { pointer in
+                let attributes = GetFileAttributesW(pointer)
+                guard attributes != INVALID_FILE_ATTRIBUTES else { return false }
+                let isDir = (attributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0
+                return isDir == isDirectory
+            }
         #else
             guard let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
                 return false
