@@ -58,130 +58,30 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Visual Studio components
         run: |
           winget install --id Microsoft.VisualStudio.2022.Community --exact --force --accept-source-agreements --accept-package-agreements --override "--quiet --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-      - name: Install Swift
-        run: |
-          winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
-          # Refresh PATH from registry to pick up Swift installation
-          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
-          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-          $env:Path = "$machinePath;$userPath"
-          # Find swift.exe and add to GITHUB_PATH for subsequent steps
-          $swiftPath = (Get-Command swift -ErrorAction SilentlyContinue).Source
-          if ($swiftPath) {
-            $swiftDir = Split-Path $swiftPath
-            echo $swiftDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-          # Add all Swift bin directories (toolchain, runtime, platform)
-          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
-          Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "bin" -ErrorAction SilentlyContinue | ForEach-Object {
-            echo $_.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-          # Also check Program Files
-          Get-ChildItem -Path "$env:ProgramFiles\Swift" -Recurse -Directory -Filter "bin" -ErrorAction SilentlyContinue | ForEach-Object {
-            echo $_.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-      - name: Setup Swift environment
-        shell: pwsh
-        run: |
-          # Find and set SDKROOT for Windows platform
-          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
-          $platformDir = Get-ChildItem -Path $swiftRoot -Directory -Filter "Platforms" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($platformDir) {
-            $windowsSdk = Get-ChildItem -Path $platformDir.FullName -Recurse -Directory -Filter "Windows.sdk" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($windowsSdk) {
-              echo "SDKROOT=$($windowsSdk.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-              Write-Host "Set SDKROOT to $($windowsSdk.FullName)"
-            }
-          }
-          # Also set developer dir
-          $developerDir = Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "Developer" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($developerDir) {
-            echo "DEVELOPER_DIR=$($developerDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Write-Host "Set DEVELOPER_DIR to $($developerDir.FullName)"
-          }
-          # List Swift directory structure for debugging
-          Write-Host "Swift installation structure:"
-          Get-ChildItem -Path $swiftRoot -Recurse -Depth 3 | ForEach-Object { Write-Host $_.FullName }
-      - name: Debug PATH
-        shell: cmd
-        run: |
-          echo PATH=%PATH%
-          echo SDKROOT=%SDKROOT%
-          where swift
-          swift --version
+      - uses: SwiftyLab/setup-swift@latest
+        with:
+          swift-version: "6.0"
       - name: Build
-        shell: cmd
-        run: |
-          swift build --configuration release -v 2>&1
+        run: swift build --configuration release
 
   test-windows:
     name: "Test on Windows"
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Visual Studio components
         run: |
           winget install --id Microsoft.VisualStudio.2022.Community --exact --force --accept-source-agreements --accept-package-agreements --override "--quiet --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
-      - name: Install Swift
-        run: |
-          winget install --id Swift.Toolchain --exact --accept-source-agreements --accept-package-agreements
-          # Refresh PATH from registry to pick up Swift installation
-          $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
-          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-          $env:Path = "$machinePath;$userPath"
-          # Find swift.exe and add to GITHUB_PATH for subsequent steps
-          $swiftPath = (Get-Command swift -ErrorAction SilentlyContinue).Source
-          if ($swiftPath) {
-            $swiftDir = Split-Path $swiftPath
-            echo $swiftDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-          # Add all Swift bin directories (toolchain, runtime, platform)
-          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
-          Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "bin" -ErrorAction SilentlyContinue | ForEach-Object {
-            echo $_.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-          # Also check Program Files
-          Get-ChildItem -Path "$env:ProgramFiles\Swift" -Recurse -Directory -Filter "bin" -ErrorAction SilentlyContinue | ForEach-Object {
-            echo $_.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
-      - name: Setup Swift environment
-        shell: pwsh
-        run: |
-          # Find and set SDKROOT for Windows platform
-          $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
-          $platformDir = Get-ChildItem -Path $swiftRoot -Directory -Filter "Platforms" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($platformDir) {
-            $windowsSdk = Get-ChildItem -Path $platformDir.FullName -Recurse -Directory -Filter "Windows.sdk" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($windowsSdk) {
-              echo "SDKROOT=$($windowsSdk.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-              Write-Host "Set SDKROOT to $($windowsSdk.FullName)"
-            }
-          }
-          # Also set developer dir
-          $developerDir = Get-ChildItem -Path $swiftRoot -Recurse -Directory -Filter "Developer" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($developerDir) {
-            echo "DEVELOPER_DIR=$($developerDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Write-Host "Set DEVELOPER_DIR to $($developerDir.FullName)"
-          }
-          # List Swift directory structure for debugging
-          Write-Host "Swift installation structure:"
-          Get-ChildItem -Path $swiftRoot -Recurse -Depth 3 | ForEach-Object { Write-Host $_.FullName }
-      - name: Debug PATH
-        shell: cmd
-        run: |
-          echo PATH=%PATH%
-          echo SDKROOT=%SDKROOT%
-          where swift
-          swift --version
+      - uses: SwiftyLab/setup-swift@latest
+        with:
+          swift-version: "6.0"
       - name: Test
-        shell: cmd
-        run: |
-          swift test -v 2>&1
+        run: swift test
 
   lint:
     name: Lint
