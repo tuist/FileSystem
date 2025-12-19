@@ -33,12 +33,12 @@
     }
 
     /// Async file handle for Windows
-    struct WindowsAsyncFileHandle: Sendable {
-        let handle: HANDLE
+    struct WindowsAsyncFileHandle: @unchecked Sendable {
+        nonisolated(unsafe) let handle: HANDLE
 
         /// Opens a file for async reading
         static func openForReading(path: String) throws -> WindowsAsyncFileHandle {
-            let handle = path.withCString(encodedAs: UTF16.self) { pathPtr in
+            let handle: HANDLE? = path.withCString(encodedAs: UTF16.self) { pathPtr in
                 CreateFileW(
                     pathPtr,
                     DWORD(GENERIC_READ),
@@ -50,7 +50,7 @@
                 )
             }
 
-            if handle == INVALID_HANDLE_VALUE {
+            guard let handle, handle != INVALID_HANDLE_VALUE else {
                 throw WindowsIOError.openFailed(GetLastError())
             }
 
@@ -59,7 +59,7 @@
 
         /// Opens a file for async writing (creates if not exists)
         static func openForWriting(path: String) throws -> WindowsAsyncFileHandle {
-            let handle = path.withCString(encodedAs: UTF16.self) { pathPtr in
+            let handle: HANDLE? = path.withCString(encodedAs: UTF16.self) { pathPtr in
                 CreateFileW(
                     pathPtr,
                     DWORD(GENERIC_WRITE),
@@ -71,7 +71,7 @@
                 )
             }
 
-            if handle == INVALID_HANDLE_VALUE {
+            guard let handle, handle != INVALID_HANDLE_VALUE else {
                 throw WindowsIOError.openFailed(GetLastError())
             }
 
@@ -336,11 +336,11 @@
                     var findData = WIN32_FIND_DATAW()
 
                     let searchPath = path + "\\*"
-                    let handle = searchPath.withCString(encodedAs: UTF16.self) { pathPtr in
+                    let handle: HANDLE? = searchPath.withCString(encodedAs: UTF16.self) { pathPtr in
                         FindFirstFileW(pathPtr, &findData)
                     }
 
-                    if handle == INVALID_HANDLE_VALUE {
+                    guard let handle, handle != INVALID_HANDLE_VALUE else {
                         let error = GetLastError()
                         if error == DWORD(ERROR_FILE_NOT_FOUND) || error == DWORD(ERROR_PATH_NOT_FOUND) {
                             continuation.resume(returning: [])
