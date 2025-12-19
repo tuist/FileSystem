@@ -1,5 +1,15 @@
 # FileSystem
 
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftuist%2FFileSystem%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/tuist/FileSystem)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Ftuist%2FFileSystem%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/tuist/FileSystem)
+[![FileSystem](https://github.com/tuist/FileSystem/actions/workflows/file-system.yml/badge.svg)](https://github.com/tuist/FileSystem/actions/workflows/file-system.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+![macOS](https://img.shields.io/badge/macOS-13.0+-blue)
+![iOS](https://img.shields.io/badge/iOS-16.0+-blue)
+![Linux](https://img.shields.io/badge/Linux-supported-blue)
+![Windows](https://img.shields.io/badge/Windows-supported-blue)
+
 FileSystem is a Swift Package that provides a simple cross-platform API to interact with the file system.
 
 ## Motivation
