@@ -224,22 +224,16 @@
         }
     }
 
-    /// Async wrappers that run synchronous operations without blocking Swift's cooperative thread pool.
-    /// Uses a dedicated serial DispatchQueue to ensure I/O operations don't starve the async runtime.
+    /// Async wrappers that run synchronous operations on a dedicated thread.
+    /// Uses raw Thread to avoid any potential issues with GCD/Dispatch on Windows.
     enum WindowsAsyncFileOperations {
-        /// Dedicated queue for Windows I/O operations.
-        /// This ensures blocking I/O never exhausts Swift's cooperative thread pool.
-        private static let ioQueue = DispatchQueue(
-            label: "tuist.filesystem.windows.io",
-            qos: .userInitiated
-        )
 
-        /// Runs a blocking operation on the dedicated I/O queue and bridges to async/await
-        private static func runOnIOQueue<T: Sendable>(
+        /// Runs a blocking operation on a new thread and bridges to async/await
+        private static func runOnThread<T: Sendable>(
             _ operation: @escaping @Sendable () throws -> T
         ) async throws -> T {
             try await withCheckedThrowingContinuation { continuation in
-                ioQueue.async {
+                let thread = Thread {
                     do {
                         let result = try operation()
                         continuation.resume(returning: result)
@@ -247,15 +241,16 @@
                         continuation.resume(throwing: error)
                     }
                 }
+                thread.start()
             }
         }
 
-        /// Runs a blocking void operation on the dedicated I/O queue
-        private static func runOnIOQueue(
+        /// Runs a blocking void operation on a new thread
+        private static func runOnThread(
             _ operation: @escaping @Sendable () throws -> Void
         ) async throws {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                ioQueue.async {
+                let thread = Thread {
                     do {
                         try operation()
                         continuation.resume()
@@ -263,75 +258,76 @@
                         continuation.resume(throwing: error)
                     }
                 }
+                thread.start()
             }
         }
 
         /// Reads a file asynchronously
         static func readFile(at path: String) async throws -> Data {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.readFile(at: path)
             }
         }
 
         /// Writes data to a file asynchronously
         static func writeFile(at path: String, data: Data) async throws {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.writeFile(at: path, data: data)
             }
         }
 
         /// Copies a file asynchronously
         static func copyFile(from source: String, to destination: String) async throws {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.copyFile(from: source, to: destination)
             }
         }
 
         /// Moves a file asynchronously
         static func moveFile(from source: String, to destination: String) async throws {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.moveFile(from: source, to: destination)
             }
         }
 
         /// Deletes a file asynchronously
         static func deleteFile(at path: String) async throws {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.deleteFile(at: path)
             }
         }
 
         /// Deletes a directory asynchronously
         static func deleteDirectory(at path: String) async throws {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.deleteDirectory(at: path)
             }
         }
 
         /// Creates a directory asynchronously
         static func createDirectory(at path: String, withIntermediateDirectories: Bool) async throws {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.createDirectory(at: path, withIntermediateDirectories: withIntermediateDirectories)
             }
         }
 
         /// Gets file attributes asynchronously
         static func getFileAttributes(at path: String) async throws -> WIN32_FILE_ATTRIBUTE_DATA {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.getFileAttributes(at: path)
             }
         }
 
         /// Lists directory contents asynchronously
         static func listDirectory(at path: String) async throws -> [String] {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.listDirectory(at: path)
             }
         }
 
         /// Creates a symbolic link asynchronously
         static func createSymbolicLink(from source: String, to destination: String, isDirectory: Bool) async throws {
-            try await runOnIOQueue {
+            try await runOnThread {
                 try WindowsFileOperations.createSymbolicLink(from: source, to: destination, isDirectory: isDirectory)
             }
         }
