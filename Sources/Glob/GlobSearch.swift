@@ -75,19 +75,18 @@ public func search(
 
                     if include.sections.isEmpty {
                         if FileManager.default
-                            .fileExists(atPath: baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString)
+                            .fileExists(atPath: baseURL.path)
                         {
                             continuation.yield(baseURL)
                         }
                         continue
                     }
 
-                    let path = baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString
+                    let path = baseURL.path
                     let symbolicLinkDestination = URL.with(filePath: path).resolvingSymlinksInPath()
                     var isDirectory: ObjCBool = false
 
-                    let symbolicLinkDestinationPath: String = symbolicLinkDestination
-                        .path()
+                    let symbolicLinkDestinationPath: String = symbolicLinkDestination.path()
                         .removingPercentEncoding ?? symbolicLinkDestination.path()
 
                     guard FileManager.default.fileExists(
