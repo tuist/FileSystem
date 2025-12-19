@@ -65,6 +65,7 @@ jobs:
         with:
           swift-version: swift-6.0.3-release
           swift-build: 6.0.3-RELEASE
+          update-sdk-modules: true
       - name: Build
         run: swift build --configuration release
 
@@ -79,6 +80,7 @@ jobs:
         with:
           swift-version: swift-6.0.3-release
           swift-build: 6.0.3-RELEASE
+          update-sdk-modules: true
       - name: Test
         run: swift test
 
