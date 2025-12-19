@@ -2,122 +2,8 @@
     import Foundation
     import WinSDK
 
-    /// Manages Windows I/O Completion Port for async file operations
-    final class WindowsIOCP: @unchecked Sendable {
-        static let shared = WindowsIOCP()
-
-        private let completionPort: HANDLE
-        private let workerThread: Thread
-        private var pendingOperations: [UInt: CheckedContinuation<Int, Error>] = [:]
-        private let lock = NSLock()
-        private var nextKey: UInt = 1
-        private var isRunning = true
-
-        private init() {
-            // Create the I/O Completion Port
-            completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nil, 0, 1)
-
-            // Start the worker thread that processes completions
-            workerThread = Thread { [weak self] in
-                self?.processCompletions()
-            }
-            workerThread.start()
-        }
-
-        deinit {
-            isRunning = false
-            // Post a completion to wake up the worker thread
-            PostQueuedCompletionStatus(completionPort, 0, 0, nil)
-            CloseHandle(completionPort)
-        }
-
-        /// Associates a file handle with the completion port
-        func associateHandle(_ handle: HANDLE) throws {
-            let result = CreateIoCompletionPort(handle, completionPort, 0, 0)
-            if result == nil {
-                throw WindowsIOError.associationFailed(GetLastError())
-            }
-        }
-
-        /// Registers a pending operation and returns a unique key
-        func registerOperation(_ continuation: CheckedContinuation<Int, Error>) -> UInt {
-            lock.lock()
-            defer { lock.unlock() }
-            let key = nextKey
-            nextKey += 1
-            pendingOperations[key] = continuation
-            return key
-        }
-
-        /// Completes an operation with the given result
-        func completeOperation(key: UInt, bytesTransferred: Int) {
-            lock.lock()
-            let continuation = pendingOperations.removeValue(forKey: key)
-            lock.unlock()
-            continuation?.resume(returning: bytesTransferred)
-        }
-
-        /// Fails an operation with the given error
-        func failOperation(key: UInt, error: Error) {
-            lock.lock()
-            let continuation = pendingOperations.removeValue(forKey: key)
-            lock.unlock()
-            continuation?.resume(throwing: error)
-        }
-
-        private func processCompletions() {
-            var bytesTransferred: DWORD = 0
-            var completionKey: ULONG_PTR = 0
-            var overlapped: LPOVERLAPPED?
-
-            while isRunning {
-                let result = GetQueuedCompletionStatus(
-                    completionPort,
-                    &bytesTransferred,
-                    &completionKey,
-                    &overlapped,
-                    INFINITE
-                )
-
-                if !isRunning { break }
-
-                if let overlapped = overlapped {
-                    let asyncOp = Unmanaged<AsyncOperation>.fromOpaque(
-                        UnsafeRawPointer(overlapped)
-                    ).takeRetainedValue()
-
-                    if result != 0 {
-                        completeOperation(key: asyncOp.key, bytesTransferred: Int(bytesTransferred))
-                    } else {
-                        let error = GetLastError()
-                        failOperation(key: asyncOp.key, error: WindowsIOError.operationFailed(error))
-                    }
-                }
-            }
-        }
-    }
-
-    /// Represents an async I/O operation with its OVERLAPPED structure
-    final class AsyncOperation {
-        var overlapped: OVERLAPPED
-        let key: UInt
-        var buffer: UnsafeMutableRawPointer?
-        var bufferSize: Int = 0
-
-        init(key: UInt, offset: UInt64 = 0) {
-            self.key = key
-            self.overlapped = OVERLAPPED()
-            self.overlapped.Offset = DWORD(offset & 0xFFFFFFFF)
-            self.overlapped.OffsetHigh = DWORD(offset >> 32)
-        }
-
-        deinit {
-            buffer?.deallocate()
-        }
-    }
-
     /// Windows I/O errors
-    enum WindowsIOError: Error {
+    enum WindowsIOError: LocalizedError {
         case openFailed(DWORD)
         case readFailed(DWORD)
         case writeFailed(DWORD)
@@ -126,7 +12,7 @@
         case invalidHandle
         case getFileSizeFailed(DWORD)
 
-        var localizedDescription: String {
+        var errorDescription: String? {
             switch self {
             case let .openFailed(code):
                 return "Failed to open file (error code: \(code))"
@@ -168,7 +54,6 @@
                 throw WindowsIOError.openFailed(GetLastError())
             }
 
-            try WindowsIOCP.shared.associateHandle(handle)
             return WindowsAsyncFileHandle(handle: handle)
         }
 
@@ -190,105 +75,16 @@
                 throw WindowsIOError.openFailed(GetLastError())
             }
 
-            try WindowsIOCP.shared.associateHandle(handle)
             return WindowsAsyncFileHandle(handle: handle)
         }
 
         /// Gets the file size
         func getFileSize() throws -> Int64 {
             var size: LARGE_INTEGER = LARGE_INTEGER()
-            if GetFileSizeEx(handle, &size) == 0 {
+            if !GetFileSizeEx(handle, &size) {
                 throw WindowsIOError.getFileSizeFailed(GetLastError())
             }
             return size.QuadPart
-        }
-
-        /// Reads the entire file asynchronously
-        func readAll() async throws -> Data {
-            let fileSize = try getFileSize()
-            if fileSize == 0 {
-                return Data()
-            }
-
-            return try await withCheckedThrowingContinuation { continuation in
-                let key = WindowsIOCP.shared.registerOperation(
-                    CheckedContinuation<Int, Error>(continuation)
-                )
-                let asyncOp = AsyncOperation(key: key, offset: 0)
-
-                let bufferSize = Int(fileSize)
-                asyncOp.buffer = UnsafeMutableRawPointer.allocate(
-                    byteCount: bufferSize,
-                    alignment: MemoryLayout<UInt8>.alignment
-                )
-                asyncOp.bufferSize = bufferSize
-
-                let overlappedPtr = withUnsafeMutablePointer(to: &asyncOp.overlapped) { $0 }
-                var bytesRead: DWORD = 0
-
-                let result = ReadFile(
-                    handle,
-                    asyncOp.buffer,
-                    DWORD(bufferSize),
-                    &bytesRead,
-                    overlappedPtr
-                )
-
-                if result == 0 {
-                    let error = GetLastError()
-                    if error != DWORD(ERROR_IO_PENDING) {
-                        WindowsIOCP.shared.failOperation(
-                            key: key,
-                            error: WindowsIOError.readFailed(error)
-                        )
-                    }
-                    // If ERROR_IO_PENDING, the operation is pending and will complete via IOCP
-                }
-            }.flatMap { bytesRead in
-                // This is a workaround since we need to return Data
-                // In the actual implementation, we'd handle this differently
-                Data()
-            }
-        }
-
-        /// Writes data to the file asynchronously
-        func write(_ data: Data) async throws {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                let key = WindowsIOCP.shared.registerOperation(
-                    CheckedContinuation<Int, Error> { result in
-                        switch result {
-                        case .success:
-                            continuation.resume()
-                        case let .failure(error):
-                            continuation.resume(throwing: error)
-                        }
-                    }
-                )
-                let asyncOp = AsyncOperation(key: key, offset: 0)
-
-                data.withUnsafeBytes { buffer in
-                    let overlappedPtr = withUnsafeMutablePointer(to: &asyncOp.overlapped) { $0 }
-                    var bytesWritten: DWORD = 0
-
-                    let result = WriteFile(
-                        handle,
-                        buffer.baseAddress,
-                        DWORD(data.count),
-                        &bytesWritten,
-                        overlappedPtr
-                    )
-
-                    if result == 0 {
-                        let error = GetLastError()
-                        if error != DWORD(ERROR_IO_PENDING) {
-                            WindowsIOCP.shared.failOperation(
-                                key: key,
-                                error: WindowsIOError.writeFailed(error)
-                            )
-                        }
-                    }
-                }
-            }
         }
 
         /// Closes the file handle
@@ -299,7 +95,7 @@
 
     /// High-level async file operations for Windows
     enum WindowsAsyncFileOperations {
-        /// Reads a file asynchronously using IOCP
+        /// Reads a file asynchronously using overlapped I/O
         static func readFile(at path: String) async throws -> Data {
             let handle = try WindowsAsyncFileHandle.openForReading(path: path)
             defer { handle.close() }
@@ -309,8 +105,6 @@
                 return Data()
             }
 
-            // For simplicity, we'll use a synchronous read in a detached task
-            // A full IOCP implementation would use overlapped I/O
             return try await withCheckedThrowingContinuation { continuation in
                 Task.detached {
                     do {
@@ -318,7 +112,7 @@
                         var bytesRead: DWORD = 0
                         var overlapped = OVERLAPPED()
 
-                        let result = buffer.withUnsafeMutableBufferPointer { bufferPtr in
+                        let success = buffer.withUnsafeMutableBufferPointer { bufferPtr in
                             ReadFile(
                                 handle.handle,
                                 bufferPtr.baseAddress,
@@ -329,13 +123,13 @@
                         }
 
                         // Wait for completion if pending
-                        if result == 0 && GetLastError() == DWORD(ERROR_IO_PENDING) {
+                        if !success && GetLastError() == DWORD(ERROR_IO_PENDING) {
                             var transferred: DWORD = 0
-                            if GetOverlappedResult(handle.handle, &overlapped, &transferred, 1) == 0 {
+                            if !GetOverlappedResult(handle.handle, &overlapped, &transferred, true) {
                                 throw WindowsIOError.readFailed(GetLastError())
                             }
                             bytesRead = transferred
-                        } else if result == 0 {
+                        } else if !success {
                             throw WindowsIOError.readFailed(GetLastError())
                         }
 
@@ -347,7 +141,7 @@
             }
         }
 
-        /// Writes data to a file asynchronously using IOCP
+        /// Writes data to a file asynchronously using overlapped I/O
         static func writeFile(at path: String, data: Data) async throws {
             let handle = try WindowsAsyncFileHandle.openForWriting(path: path)
             defer { handle.close() }
@@ -358,7 +152,7 @@
                         var overlapped = OVERLAPPED()
                         var bytesWritten: DWORD = 0
 
-                        let result = data.withUnsafeBytes { buffer in
+                        let success = data.withUnsafeBytes { buffer in
                             WriteFile(
                                 handle.handle,
                                 buffer.baseAddress,
@@ -369,12 +163,12 @@
                         }
 
                         // Wait for completion if pending
-                        if result == 0 && GetLastError() == DWORD(ERROR_IO_PENDING) {
+                        if !success && GetLastError() == DWORD(ERROR_IO_PENDING) {
                             var transferred: DWORD = 0
-                            if GetOverlappedResult(handle.handle, &overlapped, &transferred, 1) == 0 {
+                            if !GetOverlappedResult(handle.handle, &overlapped, &transferred, true) {
                                 throw WindowsIOError.writeFailed(GetLastError())
                             }
-                        } else if result == 0 {
+                        } else if !success {
                             throw WindowsIOError.writeFailed(GetLastError())
                         }
 
@@ -388,16 +182,15 @@
 
         /// Copies a file asynchronously
         static func copyFile(from source: String, to destination: String) async throws {
-            // Use CopyFileExW with COPY_FILE_NO_BUFFERING for better async behavior
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 Task.detached {
-                    let result = source.withCString(encodedAs: UTF16.self) { sourcePtr in
+                    let success = source.withCString(encodedAs: UTF16.self) { sourcePtr in
                         destination.withCString(encodedAs: UTF16.self) { destPtr in
-                            CopyFileW(sourcePtr, destPtr, 0)
+                            CopyFileW(sourcePtr, destPtr, false)
                         }
                     }
 
-                    if result == 0 {
+                    if !success {
                         continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
                     } else {
                         continuation.resume()
@@ -410,13 +203,13 @@
         static func moveFile(from source: String, to destination: String) async throws {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 Task.detached {
-                    let result = source.withCString(encodedAs: UTF16.self) { sourcePtr in
+                    let success = source.withCString(encodedAs: UTF16.self) { sourcePtr in
                         destination.withCString(encodedAs: UTF16.self) { destPtr in
                             MoveFileExW(sourcePtr, destPtr, DWORD(MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED))
                         }
                     }
 
-                    if result == 0 {
+                    if !success {
                         continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
                     } else {
                         continuation.resume()
@@ -429,11 +222,11 @@
         static func deleteFile(at path: String) async throws {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 Task.detached {
-                    let result = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                    let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
                         DeleteFileW(pathPtr)
                     }
 
-                    if result == 0 {
+                    if !success {
                         let error = GetLastError()
                         // ERROR_FILE_NOT_FOUND is not an error for delete
                         if error != DWORD(ERROR_FILE_NOT_FOUND) {
@@ -450,11 +243,11 @@
         static func deleteDirectory(at path: String) async throws {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 Task.detached {
-                    let result = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                    let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
                         RemoveDirectoryW(pathPtr)
                     }
 
-                    if result == 0 {
+                    if !success {
                         let error = GetLastError()
                         if error != DWORD(ERROR_FILE_NOT_FOUND) && error != DWORD(ERROR_PATH_NOT_FOUND) {
                             continuation.resume(throwing: WindowsIOError.operationFailed(error))
@@ -483,11 +276,11 @@
                                 currentPath += "\\" + component
                             }
 
-                            let result = currentPath.withCString(encodedAs: UTF16.self) { pathPtr in
+                            let success = currentPath.withCString(encodedAs: UTF16.self) { pathPtr in
                                 CreateDirectoryW(pathPtr, nil)
                             }
 
-                            if result == 0 {
+                            if !success {
                                 let error = GetLastError()
                                 // ERROR_ALREADY_EXISTS is not an error
                                 if error != DWORD(ERROR_ALREADY_EXISTS) && error != DWORD(ERROR_ACCESS_DENIED) {
@@ -500,11 +293,11 @@
                             }
                         }
                     } else {
-                        let result = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                        let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
                             CreateDirectoryW(pathPtr, nil)
                         }
 
-                        if result == 0 {
+                        if !success {
                             let error = GetLastError()
                             if error != DWORD(ERROR_ALREADY_EXISTS) {
                                 continuation.resume(throwing: WindowsIOError.operationFailed(error))
@@ -522,11 +315,11 @@
             try await withCheckedThrowingContinuation { continuation in
                 Task.detached {
                     var attributeData = WIN32_FILE_ATTRIBUTE_DATA()
-                    let result = path.withCString(encodedAs: UTF16.self) { pathPtr in
+                    let success = path.withCString(encodedAs: UTF16.self) { pathPtr in
                         GetFileAttributesExW(pathPtr, GetFileExInfoStandard, &attributeData)
                     }
 
-                    if result == 0 {
+                    if !success {
                         continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
                     } else {
                         continuation.resume(returning: attributeData)
@@ -569,7 +362,7 @@
                         if fileName != "." && fileName != ".." {
                             results.append(fileName)
                         }
-                    } while FindNextFileW(handle, &findData) != 0
+                    } while FindNextFileW(handle, &findData)
 
                     continuation.resume(returning: results)
                 }
@@ -590,6 +383,7 @@
                         }
                     }
 
+                    // CreateSymbolicLinkW returns BOOLEAN (which is UInt8), non-zero on success
                     if result == 0 {
                         continuation.resume(throwing: WindowsIOError.operationFailed(GetLastError()))
                     } else {
