@@ -1,4 +1,4 @@
-#if canImport(Testing)
+#if canImport(Testing) && !os(Windows)
     import FileSystem
     import Path
     import Testing
