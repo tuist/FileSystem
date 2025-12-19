@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request: {}
+  workflow_dispatch: {}
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,6 +53,36 @@ jobs:
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run test-linux
+
+  build-windows:
+    name: "Release build on Windows"
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: compnerd/gha-setup-vsdevenv@main
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          swift-version: swift-6.0.3-release
+          swift-build: 6.0.3-RELEASE
+          update-sdk-modules: true
+      - name: Build
+        run: swift build --configuration release
+
+  test-windows:
+    name: "Test on Windows"
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: compnerd/gha-setup-vsdevenv@main
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          swift-version: swift-6.0.3-release
+          swift-build: 6.0.3-RELEASE
+          update-sdk-modules: true
+      - name: Test
+        run: swift test
 
   lint:
     name: Lint
