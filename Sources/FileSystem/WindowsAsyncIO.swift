@@ -1,4 +1,5 @@
 #if os(Windows)
+    import Dispatch
     import Foundation
     import WinSDK
 
@@ -225,58 +226,86 @@
     }
 
     /// Async wrappers for Windows file operations.
-    /// Note: Due to limitations with Swift's concurrency runtime on Windows,
-    /// these operations run synchronously but expose an async interface for API compatibility.
-    /// True async I/O would require implementing Windows I/O Completion Ports (IOCP).
+    /// These operations run on a dedicated dispatch queue to avoid blocking the Swift
+    /// cooperative executor while still using the synchronous WinSDK/Foundation APIs.
     enum WindowsAsyncFileOperations {
+        private static let ioQueue = DispatchQueue(
+            label: "com.tuist.filesystem.windows-io",
+            qos: .utility,
+            attributes: .concurrent
+        )
+
+        private static func run<T>(_ operation: @escaping () throws -> T) async throws -> T {
+            try await withCheckedThrowingContinuation { continuation in
+                ioQueue.async {
+                    do {
+                        continuation.resume(returning: try operation())
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        }
+
         /// Reads a file
         static func readFile(at path: String) async throws -> Data {
-            try WindowsFileOperations.readFile(at: path)
+            try await run { try WindowsFileOperations.readFile(at: path) }
         }
 
         /// Writes data to a file
         static func writeFile(at path: String, data: Data) async throws {
-            try WindowsFileOperations.writeFile(at: path, data: data)
+            try await run { try WindowsFileOperations.writeFile(at: path, data: data) }
         }
 
         /// Copies a file
         static func copyFile(from source: String, to destination: String) async throws {
-            try WindowsFileOperations.copyFile(from: source, to: destination)
+            try await run { try WindowsFileOperations.copyFile(from: source, to: destination) }
         }
 
         /// Moves a file
         static func moveFile(from source: String, to destination: String) async throws {
-            try WindowsFileOperations.moveFile(from: source, to: destination)
+            try await run { try WindowsFileOperations.moveFile(from: source, to: destination) }
         }
 
         /// Deletes a file
         static func deleteFile(at path: String) async throws {
-            try WindowsFileOperations.deleteFile(at: path)
+            try await run { try WindowsFileOperations.deleteFile(at: path) }
         }
 
         /// Deletes a directory
         static func deleteDirectory(at path: String) async throws {
-            try WindowsFileOperations.deleteDirectory(at: path)
+            try await run { try WindowsFileOperations.deleteDirectory(at: path) }
         }
 
         /// Creates a directory
         static func createDirectory(at path: String, withIntermediateDirectories: Bool) async throws {
-            try WindowsFileOperations.createDirectory(at: path, withIntermediateDirectories: withIntermediateDirectories)
+            try await run {
+                try WindowsFileOperations.createDirectory(
+                    at: path,
+                    withIntermediateDirectories: withIntermediateDirectories
+                )
+            }
         }
 
         /// Gets file attributes
         static func getFileAttributes(at path: String) async throws -> WIN32_FILE_ATTRIBUTE_DATA {
-            try WindowsFileOperations.getFileAttributes(at: path)
+            try await run { try WindowsFileOperations.getFileAttributes(at: path) }
         }
 
         /// Lists directory contents
         static func listDirectory(at path: String) async throws -> [String] {
-            try WindowsFileOperations.listDirectory(at: path)
+            try await run { try WindowsFileOperations.listDirectory(at: path) }
         }
 
         /// Creates a symbolic link
         static func createSymbolicLink(from source: String, to destination: String, isDirectory: Bool) async throws {
-            try WindowsFileOperations.createSymbolicLink(from: source, to: destination, isDirectory: isDirectory)
+            try await run {
+                try WindowsFileOperations.createSymbolicLink(
+                    from: source,
+                    to: destination,
+                    isDirectory: isDirectory
+                )
+            }
         }
     }
 #endif
