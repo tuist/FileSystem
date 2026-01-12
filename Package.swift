@@ -4,23 +4,23 @@
 @preconcurrency import PackageDescription
 
 #if os(Windows)
-let zipFoundationDependency: [Package.Dependency] = []
-let zipFoundationTarget: [Target.Dependency] = []
-let swiftNioDependency: [Package.Dependency] = []
-let swiftNioTarget: [Target.Dependency] = []
+    let zipFoundationDependency: [Package.Dependency] = []
+    let zipFoundationTarget: [Target.Dependency] = []
+    let swiftNioDependency: [Package.Dependency] = []
+    let swiftNioTarget: [Target.Dependency] = []
 #else
-let zipFoundationDependency: [Package.Dependency] = [
-    .package(url: "https://github.com/tuist/ZIPFoundation", .upToNextMajor(from: "0.9.20")),
-]
-let zipFoundationTarget: [Target.Dependency] = [
-    .product(name: "ZIPFoundation", package: "ZIPFoundation"),
-]
-let swiftNioDependency: [Package.Dependency] = [
-    .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.92.0")),
-]
-let swiftNioTarget: [Target.Dependency] = [
-    .product(name: "_NIOFileSystem", package: "swift-nio"),
-]
+    let zipFoundationDependency: [Package.Dependency] = [
+        .package(url: "https://github.com/tuist/ZIPFoundation", .upToNextMajor(from: "0.9.20")),
+    ]
+    let zipFoundationTarget: [Target.Dependency] = [
+        .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+    ]
+    let swiftNioDependency: [Package.Dependency] = [
+        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.92.0")),
+    ]
+    let swiftNioTarget: [Target.Dependency] = [
+        .product(name: "_NIOFileSystem", package: "swift-nio"),
+    ]
 #endif
 
 let package = Package(
