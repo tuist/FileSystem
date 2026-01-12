@@ -736,6 +736,27 @@ private struct TestError: Error, Equatable {}
             }
         }
 
+        func test_glob_with_hash_character_in_directory_name() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given: A directory with a # character in its name (common in Azure AD usernames)
+                let directory = temporaryDirectory.appending(component: "user#EXT#@domain")
+                try await subject.makeDirectory(at: directory)
+                let sourceFile = directory.appending(component: "file.swift")
+                try await subject.touch(sourceFile)
+
+                // When
+                let got = try await subject.glob(
+                    directory: directory,
+                    include: ["**"]
+                )
+                .collect()
+                .sorted()
+
+                // Then
+                XCTAssertEqual(got, [sourceFile])
+            }
+        }
+
         func test_glob_with_path_wildcard_and_a_constant_file_name() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given

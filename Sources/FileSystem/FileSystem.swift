@@ -900,8 +900,10 @@ public struct FileSystem: FileSysteming, Sendable {
         let logMessage =
             "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", "))."
         logger?.debug("\(logMessage)")
+        let encodedPath = directory.pathString.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? directory
+            .pathString
         return Glob.search(
-            directory: URL(string: directory.pathString)!,
+            directory: URL(string: encodedPath)!,
             include: try include
                 .flatMap { try expandBraces(in: $0) }
                 .map { try Pattern($0) },
@@ -912,11 +914,8 @@ public struct FileSystem: FileSysteming, Sendable {
             skipHiddenFiles: false
         )
         .map {
-            let path = $0.absoluteString.replacingOccurrences(of: "file://", with: "")
-            return try Path
-                .AbsolutePath(
-                    validating: path.removingPercentEncoding ?? path
-                )
+            let path = $0.absoluteString.removingPercentEncoding ?? $0.absoluteString
+            return try Path.AbsolutePath(validating: path)
         }
         .eraseToAnyThrowingAsyncSequenceable()
     }
