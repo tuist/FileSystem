@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.9] - 2026-01-12
+### Details
+#### Fix
+- Handle paths with hash characters in glob function by @pepicrft in [#250](https://github.com/tuist/FileSystem/pull/250)
+
 ## [0.14.8] - 2025-12-19
 ### Details
 #### Chore
@@ -916,6 +921,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.14.9]: https://github.com/tuist/FileSystem/compare/0.14.8..0.14.9
 [0.14.8]: https://github.com/tuist/FileSystem/compare/0.14.7..0.14.8
 [0.14.7]: https://github.com/tuist/FileSystem/compare/0.14.6..0.14.7
 [0.14.6]: https://github.com/tuist/FileSystem/compare/0.14.5..0.14.6
