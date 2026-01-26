@@ -418,9 +418,18 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             FileManager.default.createFile(atPath: path.pathString, contents: Data(), attributes: nil)
         #else
-            _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { writer in
-                try await writer.write(contentsOf: "".data(using: .utf8)!, toAbsoluteOffset: 0)
-            }
+            // Use non-transactional creation to ensure the file is immediately visible
+            // to other file system APIs (like Foundation's FileManager/FileHandle).
+            // The default options use transactionalCreation which only materializes
+            // the file when the handle is closed, causing visibility issues.
+            let options = _NIOFileSystem.OpenOptions.Write(
+                existingFile: .open,
+                newFile: .init(transactionalCreation: false)
+            )
+            _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(
+                forWritingAt: .init(path.pathString),
+                options: options
+            ) { _ in }
         #endif
     }
 
