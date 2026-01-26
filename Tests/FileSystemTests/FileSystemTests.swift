@@ -1196,5 +1196,27 @@ private struct TestError: Error, Equatable {}
                 XCTAssertEqual(fileNames.sorted(), ["foo", "nested", "readme.md"])
             }
         }
+
+        func test_touch_createsFileVisibleToFoundation() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let filePath = temporaryDirectory.appending(component: "test.log")
+
+                // When
+                try await subject.touch(filePath)
+
+                // Then: The file should be immediately visible to Foundation APIs
+                XCTAssertTrue(
+                    FileManager.default.fileExists(atPath: filePath.pathString),
+                    "File created by touch should be visible to FileManager.fileExists"
+                )
+
+                // And: Foundation's FileHandle should be able to open it for writing
+                XCTAssertNoThrow(
+                    try FileHandle(forWritingTo: URL(fileURLWithPath: filePath.pathString)),
+                    "File created by touch should be openable by Foundation's FileHandle"
+                )
+            }
+        }
     }
 #endif
