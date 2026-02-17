@@ -48,7 +48,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
-        .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.9.1")),
+        .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.10.1")),
     ] + zipFoundationDependency + swiftNioDependency,
     targets: [
         .target(
