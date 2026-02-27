@@ -266,6 +266,17 @@ public protocol FileSysteming: Sendable {
     /// - Returns: The file metadata.
     func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata?
 
+    /// Sets the last access and modification times of a file or directory.
+    /// - Parameters:
+    ///   - path: The absolute path to the file or directory.
+    ///   - lastAccessDate: The last access date. Pass `nil` to leave unchanged.
+    ///   - lastModificationDate: The last modification date. Pass `nil` to leave unchanged.
+    func setFileTimes(
+        of path: AbsolutePath,
+        lastAccessDate: Date?,
+        lastModificationDate: Date?
+    ) async throws
+
     /// Given a path, it replaces it with the file or directory at the other path.
     /// - Parameters:
     ///   - to: The path to be replaced.
@@ -801,6 +812,40 @@ public struct FileSystem: FileSysteming, Sendable {
             return FileMetadata(size: info.size, lastModificationDate: Date(timeIntervalSince1970: modificationTimeInterval))
         #endif
     }
+
+    public func setFileTimes(
+        of path: AbsolutePath,
+        lastAccessDate: Date?,
+        lastModificationDate: Date?
+    ) async throws {
+        logger?.debug("Setting file times at path \(path.pathString).")
+
+        #if os(Windows)
+            var attributes: [FileAttributeKey: Any] = [:]
+            if let lastModificationDate {
+                attributes[.modificationDate] = lastModificationDate
+            }
+            if !attributes.isEmpty {
+                try FileManager.default.setAttributes(attributes, ofItemAtPath: path.pathString)
+            }
+        #else
+            let lastAccess = lastAccessDate.map { Self.dateToTimespec($0) }
+            let lastModification = lastModificationDate.map { Self.dateToTimespec($0) }
+            try await _NIOFileSystem.FileSystem.shared.withFileHandle(
+                forReadingAt: .init(path.pathString)
+            ) { handle in
+                try await handle.setTimes(lastAccess: lastAccess, lastDataModification: lastModification)
+            }
+        #endif
+    }
+
+    #if !os(Windows)
+        private static func dateToTimespec(_ date: Date) -> _NIOFileSystem.FileInfo.Timespec {
+            let seconds = Int(date.timeIntervalSince1970)
+            let nanoseconds = Int((date.timeIntervalSince1970 - Double(seconds)) * 1_000_000_000)
+            return _NIOFileSystem.FileInfo.Timespec(seconds: seconds, nanoseconds: nanoseconds)
+        }
+    #endif
 
     public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {
         logger?.debug("Locating the relative path \(relativePath.pathString) by traversing up from \(from.pathString).")
