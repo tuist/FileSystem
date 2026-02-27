@@ -303,6 +303,26 @@ private struct TestError: Error, Equatable {}
             }
         }
 
+        func test_setFileTimes_modificationDate() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let path = temporaryDirectory.appending(component: "file")
+                try await subject.touch(path)
+                let pastDate = Date(timeIntervalSince1970: 1_000_000)
+
+                // When
+                try await subject.setFileTimes(of: path, lastAccessDate: nil, lastModificationDate: pastDate)
+
+                // Then
+                let metadata = try await subject.fileMetadata(at: path)
+                XCTAssertEqual(
+                    metadata?.lastModificationDate.timeIntervalSince1970 ?? 0,
+                    pastDate.timeIntervalSince1970,
+                    accuracy: 1.0
+                )
+            }
+        }
+
         func test_replace_replaces_when_replacingPathIsADirectory_and_targetDirectoryIsAbsent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
