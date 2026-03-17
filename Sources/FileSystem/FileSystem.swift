@@ -1487,10 +1487,11 @@ extension FileSystem {
 
         private func windowsDirectoryEntryName(from findData: WIN32_FIND_DATAW) -> String {
             var fileName = findData.cFileName
+            let capacity = MemoryLayout.size(ofValue: fileName) / MemoryLayout<WCHAR>.size
             return withUnsafePointer(to: &fileName) { pointer in
                 pointer.withMemoryRebound(
                     to: WCHAR.self,
-                    capacity: MemoryLayout.size(ofValue: fileName) / MemoryLayout<WCHAR>.size
+                    capacity: capacity
                 ) {
                     String(decodingCString: $0, as: UTF16.self)
                 }
