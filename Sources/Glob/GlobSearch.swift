@@ -94,8 +94,7 @@ public func search(
 
                     let symbolicLinkDestinationPath = decodedPath(symbolicLinkDestination)
 
-                    guard
-                        let resourceValues = try? URL.with(filePath: symbolicLinkDestinationPath)
+                    guard let resourceValues = try? URL.with(filePath: symbolicLinkDestinationPath)
                         .resourceValues(forKeys: [.isDirectoryKey]),
                         resourceValues.isDirectory == true
                     else { continue }
@@ -291,7 +290,7 @@ private func directoryEntries(atPath path: String) throws -> [String] {
             }
             guard entry != ".", entry != ".." else { continue }
             entries.append(entry)
-        } while FindNextFileW(handle, &findData) != 0
+        } while windowsSucceeded(FindNextFileW(handle, &findData))
 
         let lastError = GetLastError()
         if lastError != DWORD(ERROR_NO_MORE_FILES) {
@@ -337,6 +336,16 @@ private func decodedPath(_ url: URL) -> String {
     let path = url.path()
     return path.removingPercentEncoding ?? path
 }
+
+#if os(Windows)
+    private func windowsSucceeded(_ result: Bool) -> Bool {
+        result
+    }
+
+    private func windowsSucceeded(_ result: some BinaryInteger) -> Bool {
+        result != 0
+    }
+#endif
 
 extension URL {
     public static func with(filePath: String) -> URL {

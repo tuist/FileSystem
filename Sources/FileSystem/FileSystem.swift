@@ -371,7 +371,7 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func currentWorkingDirectory() async throws -> AbsolutePath {
-        return try AbsolutePath(validating: try platformCurrentWorkingDirectoryPath())
+        try AbsolutePath(validating: try platformCurrentWorkingDirectoryPath())
     }
 
     public func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath] {
@@ -661,18 +661,16 @@ public struct FileSystem: FileSysteming, Sendable {
             lastAccessDate: Date?,
             lastModificationDate: Date?
         ) throws {
+            var info = stat()
+            let statResult = path.withCString { stat($0, &info) }
+            guard statResult == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+
             var times = [
-                timespec(tv_sec: 0, tv_nsec: Int(UTIME_OMIT)),
-                timespec(tv_sec: 0, tv_nsec: Int(UTIME_OMIT)),
+                dateToTimespec(lastAccessDate ?? date(from: accessTimespec(from: info))),
+                dateToTimespec(lastModificationDate ?? date(from: modificationTimespec(from: info))),
             ]
-
-            if let lastAccessDate {
-                times[0] = dateToTimespec(lastAccessDate)
-            }
-
-            if let lastModificationDate {
-                times[1] = dateToTimespec(lastModificationDate)
-            }
 
             let result = path.withCString { pathPointer in
                 utimensat(AT_FDCWD, pathPointer, &times, 0)
@@ -687,6 +685,28 @@ public struct FileSystem: FileSysteming, Sendable {
             let seconds = Int(date.timeIntervalSince1970)
             let nanoseconds = Int((date.timeIntervalSince1970 - Double(seconds)) * 1_000_000_000)
             return timespec(tv_sec: seconds, tv_nsec: nanoseconds)
+        }
+
+        private static func date(from timespec: timespec) -> Date {
+            let seconds = TimeInterval(timespec.tv_sec)
+            let nanoseconds = TimeInterval(timespec.tv_nsec) / 1_000_000_000
+            return Date(timeIntervalSince1970: seconds + nanoseconds)
+        }
+
+        private static func accessTimespec(from info: stat) -> timespec {
+            #if canImport(Darwin)
+                info.st_atimespec
+            #else
+                info.st_atim
+            #endif
+        }
+
+        private static func modificationTimespec(from info: stat) -> timespec {
+            #if canImport(Darwin)
+                info.st_mtimespec
+            #else
+                info.st_mtim
+            #endif
         }
     #endif
 
@@ -939,7 +959,7 @@ extension FileSystem {
                 let name = windowsDirectoryEntryName(from: &findData)
                 guard name != ".", name != ".." else { continue }
                 entries.append(path.appending(component: name))
-            } while FindNextFileW(handle, &findData) != 0
+            } while windowsSucceeded(FindNextFileW(handle, &findData))
 
             let lastError = GetLastError()
             if lastError != DWORD(ERROR_NO_MORE_FILES) {
@@ -1028,17 +1048,17 @@ extension FileSystem {
                 let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) {
                     RemoveDirectoryW($0)
                 }
-                guard success != 0 else { throw windowsError() }
+                guard windowsSucceeded(success) else { throw windowsError() }
             } else if isDirectory {
                 let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) {
                     RemoveDirectoryW($0)
                 }
-                guard success != 0 else { throw windowsError() }
+                guard windowsSucceeded(success) else { throw windowsError() }
             } else {
                 let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) {
                     DeleteFileW($0)
                 }
-                guard success != 0 else { throw windowsError() }
+                guard windowsSucceeded(success) else { throw windowsError() }
             }
         #else
             guard let info = try platformFileInfo(at: path, followSymlinks: false) else { return }
@@ -1090,7 +1110,8 @@ extension FileSystem {
             let basePath = try AbsolutePath(validating: systemTemporaryDirectory)
             var template = basePath.appending(component: "\(prefix)-XXXXXX").pathString.utf8CString
             let createdPath = template.withUnsafeMutableBufferPointer { pointer -> String? in
-                guard let pathPointer = mkdtemp(pointer.baseAddress) else { return nil }
+                guard let baseAddress = pointer.baseAddress else { return nil }
+                guard let pathPointer = mkdtemp(baseAddress) else { return nil }
                 return String(cString: pathPointer)
             }
             guard let createdPath else { throw posixError() }
@@ -1109,7 +1130,7 @@ extension FileSystem {
                     MoveFileExW(wsrc, wdst, DWORD(MOVEFILE_COPY_ALLOWED))
                 }
             }
-            guard success != 0 else { throw windowsError() }
+            guard windowsSucceeded(success) else { throw windowsError() }
         #else
             let result = from.pathString.withCString { sourcePointer in
                 to.pathString.withCString { destinationPointer in
@@ -1143,7 +1164,7 @@ extension FileSystem {
             let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) { wpath in
                 CreateDirectoryW(wpath, nil)
             }
-            guard success != 0 else {
+            guard windowsSucceeded(success) else {
                 let error = GetLastError()
                 if error == DWORD(ERROR_ALREADY_EXISTS), try platformItemExists(at: path, isDirectory: true) {
                     return
@@ -1197,7 +1218,7 @@ extension FileSystem {
                         CopyFileW(wsrc, wdst, true)
                     }
                 }
-                guard success != 0 else { throw windowsError() }
+                guard windowsSucceeded(success) else { throw windowsError() }
             #else
                 try platformCopyRegularFile(from: from, to: to)
             #endif
@@ -1232,7 +1253,7 @@ extension FileSystem {
             var accessTime = lastAccessDate.map(windowsFileTime(from:))
             var modificationTime = lastModificationDate.map(windowsFileTime(from:))
             let success = SetFileTime(handle, nil, &accessTime, &modificationTime)
-            guard success != 0 else { throw windowsError() }
+            guard windowsSucceeded(success) else { throw windowsError() }
         #else
             try Self.updateFileTimes(
                 path: path.pathString,
@@ -1247,7 +1268,7 @@ extension FileSystem {
             var flags = DWORD(0x2)
             let targetAttributes = windowsAttributes(atPath: toPathString)
             if targetAttributes != INVALID_FILE_ATTRIBUTES,
-                (targetAttributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0
+               (targetAttributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0
             {
                 flags |= DWORD(SYMBOLIC_LINK_FLAG_DIRECTORY)
             }
@@ -1256,7 +1277,7 @@ extension FileSystem {
                     CreateSymbolicLinkW(wlink, wtarget, flags)
                 }
             }
-            guard success != 0 else { throw windowsError() }
+            guard windowsSucceeded(success) else { throw windowsError() }
         #else
             let result = fromPathString.withCString { linkPointer in
                 toPathString.withCString { targetPointer in
@@ -1450,6 +1471,14 @@ extension FileSystem {
             windowsPathString(path).withCString(encodedAs: UTF16.self) {
                 GetFileAttributesW($0)
             }
+        }
+
+        private func windowsSucceeded(_ result: Bool) -> Bool {
+            result
+        }
+
+        private func windowsSucceeded(_ result: some BinaryInteger) -> Bool {
+            result != 0
         }
 
         private func windowsPathString(_ path: String) -> String {
