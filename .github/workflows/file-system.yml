@@ -18,10 +18,9 @@ concurrency:
 jobs:
   build:
     name: "Release build on macOS"
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
-      - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run build-spm
@@ -37,10 +36,9 @@ jobs:
 
   test:
     name: "Test on macOS"
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
-      - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run test-spm
@@ -63,8 +61,8 @@ jobs:
       - uses: compnerd/gha-setup-vsdevenv@main
       - uses: compnerd/gha-setup-swift@main
         with:
-          swift-version: swift-6.0.3-release
-          swift-build: 6.0.3-RELEASE
+          swift-version: swift-6.2-release
+          swift-build: 6.2-RELEASE
           update-sdk-modules: true
       - name: Build
         run: swift build --configuration release
@@ -78,18 +76,17 @@ jobs:
       - uses: compnerd/gha-setup-vsdevenv@main
       - uses: compnerd/gha-setup-swift@main
         with:
-          swift-version: swift-6.0.3-release
-          swift-build: 6.0.3-RELEASE
+          swift-version: swift-6.2-release
+          swift-build: 6.2-RELEASE
           update-sdk-modules: true
       - name: Test
         run: swift test
 
   lint:
     name: Lint
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
-      - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run lint
