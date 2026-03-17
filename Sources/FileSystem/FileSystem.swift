@@ -956,7 +956,7 @@ extension FileSystem {
             defer { FindClose(handle) }
 
             repeat {
-                let name = windowsDirectoryEntryName(from: &findData)
+                let name = windowsDirectoryEntryName(from: findData)
                 guard name != ".", name != ".." else { continue }
                 entries.append(path.appending(component: name))
             } while windowsSucceeded(FindNextFileW(handle, &findData))
@@ -1250,9 +1250,22 @@ extension FileSystem {
             guard let handle, handle != INVALID_HANDLE_VALUE else { throw windowsError() }
             defer { CloseHandle(handle) }
 
-            var accessTime = lastAccessDate.map(windowsFileTime(from:))
-            var modificationTime = lastModificationDate.map(windowsFileTime(from:))
-            let success = SetFileTime(handle, nil, &accessTime, &modificationTime)
+            let accessTime = lastAccessDate.map(windowsFileTime(from:))
+            let modificationTime = lastModificationDate.map(windowsFileTime(from:))
+            let success: Bool
+            if let accessTime, let modificationTime {
+                var accessTime = accessTime
+                var modificationTime = modificationTime
+                success = windowsSucceeded(SetFileTime(handle, nil, &accessTime, &modificationTime))
+            } else if let accessTime {
+                var accessTime = accessTime
+                success = windowsSucceeded(SetFileTime(handle, nil, &accessTime, nil))
+            } else if let modificationTime {
+                var modificationTime = modificationTime
+                success = windowsSucceeded(SetFileTime(handle, nil, nil, &modificationTime))
+            } else {
+                return
+            }
             guard windowsSucceeded(success) else { throw windowsError() }
         #else
             try Self.updateFileTimes(
