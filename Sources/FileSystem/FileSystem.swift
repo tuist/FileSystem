@@ -416,8 +416,7 @@ public struct FileSystem: FileSysteming, Sendable {
     public func remove(_ path: AbsolutePath) async throws {
         logger?.debug("Removing the file or directory at path: \(path.pathString).")
         let fp = try filePath(path)
-        guard await File.System.Stat.exists(at: fp) else { return }
-        try await File.System.Delete.delete(at: fp, options: .init(recursive: true))
+        try removeItem(at: fp)
     }
 
     public func makeTemporaryDirectory(prefix: String) async throws -> AbsolutePath {
@@ -608,7 +607,7 @@ public struct FileSystem: FileSysteming, Sendable {
             try await makeDirectory(at: to.parentDirectory)
         }
         if await File.System.Stat.exists(at: destinationPath) {
-            try await File.System.Delete.delete(at: destinationPath, options: .init(recursive: true))
+            try removeItem(at: destinationPath)
         }
         try await copyItem(from: sourcePath, to: destinationPath)
     }
@@ -867,6 +866,57 @@ extension FileSystem {
 
     fileprivate func absolutePath(_ path: File.Path) throws -> AbsolutePath {
         try AbsolutePath(validating: String(describing: path))
+    }
+}
+
+// MARK: - Remove helper (symlink-safe recursive delete)
+
+extension FileSystem {
+    /// Removes a file, symlink, or directory (recursively) using lstat to avoid
+    /// following symlinks. This works around a bug in swift-file-system's Delete
+    /// which uses stat() and fails on symlinks whose targets don't exist.
+    fileprivate func removeItem(at path: File.Path) throws {
+        let info: File.System.Metadata.Info
+        do {
+            info = try File.System.Stat.lstatInfo(at: path)
+        } catch {
+            return // Path doesn't exist
+        }
+
+        switch info.type {
+        case .directory:
+            let entries = try File.Directory.Contents.list(at: File.Directory(path))
+            for entry in entries {
+                guard let childPath = entry.pathIfValid else { continue }
+                try removeItem(at: childPath)
+            }
+            #if os(Windows)
+                let success = String(describing: path)
+                    .replacingOccurrences(of: "/", with: "\\")
+                    .withCString(encodedAs: UTF16.self) { RemoveDirectoryW($0) }
+                guard success != 0 else {
+                    throw NSError(domain: "WinSDK", code: Int(GetLastError()))
+                }
+            #else
+                guard rmdir(String(describing: path)) == 0 else {
+                    throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+                }
+            #endif
+        default:
+            // Files, symlinks, and everything else: unlink directly
+            #if os(Windows)
+                let success = String(describing: path)
+                    .replacingOccurrences(of: "/", with: "\\")
+                    .withCString(encodedAs: UTF16.self) { DeleteFileW($0) }
+                guard success != 0 else {
+                    throw NSError(domain: "WinSDK", code: Int(GetLastError()))
+                }
+            #else
+                guard unlink(String(describing: path)) == 0 else {
+                    throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+                }
+            #endif
+        }
     }
 }
 
