@@ -18,9 +18,10 @@ concurrency:
 jobs:
   build:
     name: "Release build on macOS"
-    runs-on: macos-26
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
+      - run: sudo xcode-select -s /Applications/Xcode_26.0-beta.app
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run build-spm
@@ -36,9 +37,10 @@ jobs:
 
   test:
     name: "Test on macOS"
-    runs-on: macos-26
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
+      - run: sudo xcode-select -s /Applications/Xcode_26.0-beta.app
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run test-spm
@@ -84,9 +86,10 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: macos-26
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
+      - run: sudo xcode-select -s /Applications/Xcode_26.0-beta.app
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run lint
