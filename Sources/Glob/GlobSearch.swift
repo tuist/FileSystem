@@ -326,8 +326,15 @@ private func normalizedFileURL(_ url: URL) -> URL {
 }
 
 private func decodedPath(_ url: URL) -> String {
-    let path = url.path()
-    return path.removingPercentEncoding ?? path
+    var path = url.path()
+    path = path.removingPercentEncoding ?? path
+    #if os(Windows)
+        // URL.path() on Windows returns "/C:/..." which is invalid for Win32 APIs
+        if path.count >= 3, path.hasPrefix("/"), path[path.index(path.startIndex, offsetBy: 2)] == ":" {
+            path = String(path.dropFirst())
+        }
+    #endif
+    return path
 }
 
 #if os(Windows)
@@ -355,7 +362,7 @@ private func decodedPath(_ url: URL) -> String {
 
 extension URL {
     public static func with(filePath: String) -> URL {
-        #if os(Linux)
+        #if os(Linux) || os(Windows)
             return URL(fileURLWithPath: filePath)
         #else
             return URL(filePath: filePath)
