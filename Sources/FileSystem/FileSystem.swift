@@ -1,16 +1,18 @@
+import File_System
+import File_System_Primitives
 import Foundation
 import Glob
 import Logging
 import Path
 
-#if os(Windows)
-    import WinSDK
-#elseif canImport(Darwin)
+#if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
     import Glibc
 #elseif canImport(Musl)
     import Musl
+#elseif os(Windows)
+    import WinSDK
 #endif
 
 #if !os(Windows)
@@ -74,19 +76,19 @@ public enum MakeDirectoryOptions: String {
 
 /// Options to configure the writing of text files.
 public enum WriteTextOptions {
-    /// When passed, it ovewrites any existing files.
+    /// When passed, it overwrites any existing files.
     case overwrite
 }
 
 /// Options to configure the writing of Plist files.
 public enum WritePlistOptions {
-    /// When passed, it ovewrites any existing files.
+    /// When passed, it overwrites any existing files.
     case overwrite
 }
 
 /// Options to configure the writing of JSON files.
 public enum WriteJSONOptions {
-    /// When passed, it ovewrites any existing files.
+    /// When passed, it overwrites any existing files.
     case overwrite
 }
 
@@ -352,15 +354,10 @@ public protocol FileSysteming: Sendable {
     /// - Returns: An array of `AbsolutePath` objects representing all items in the directory.
     /// - Throws: An error if the directory cannot be read or accessed.
     func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath]
-
-    // TODO:
-    //       func urlSafeBase64MD5(path: AbsolutePath) throws -> String
-    //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
-    //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
-    //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
 }
 
-// swiftlint:disable:next type_body_length
+// MARK: - FileSystem
+
 public struct FileSystem: FileSysteming, Sendable {
     fileprivate let logger: Logger?
     fileprivate let environmentVariables: [String: String]
@@ -371,36 +368,20 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func currentWorkingDirectory() async throws -> AbsolutePath {
-        #if os(Windows)
-            var buffer = [WCHAR](repeating: 0, count: Int(MAX_PATH) + 1)
-            var length = buffer.withUnsafeMutableBufferPointer {
-                GetCurrentDirectoryW(DWORD($0.count), $0.baseAddress)
-            }
-            guard length > 0 else { throw windowsError() }
-            if Int(length) >= buffer.count {
-                buffer = [WCHAR](repeating: 0, count: Int(length) + 1)
-                length = buffer.withUnsafeMutableBufferPointer {
-                    GetCurrentDirectoryW(DWORD($0.count), $0.baseAddress)
-                }
-                guard length > 0, Int(length) < buffer.count else { throw windowsError() }
-            }
-            return try AbsolutePath(validating: buffer.withUnsafeBufferPointer {
-                String(decodingCString: $0.baseAddress!, as: UTF16.self)
-            })
-        #else
-            var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
-            guard getcwd(&buffer, buffer.count) != nil else { throw posixError() }
-            return try AbsolutePath(validating: String(cString: buffer))
-        #endif
+        try AbsolutePath(validating: FileManager.default.currentDirectoryPath)
     }
 
     public func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath] {
-        try contentsOfDirectory(at: path)
+        let directory = File.Directory(try filePath(path))
+        return try await File.Directory.Contents.list(at: directory).compactMap { entry in
+            guard let entryPath = entry.pathIfValid else { return nil }
+            return try absolutePath(entryPath)
+        }
     }
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
         logger?.debug("Checking if a file or directory exists at path \(path.pathString).")
-        return try exists(path, followSymlinks: true)
+        return await File.System.Stat.exists(at: try filePath(path))
     }
 
     public func exists(_ path: AbsolutePath, isDirectory: Bool) async throws -> Bool {
@@ -409,95 +390,52 @@ public struct FileSystem: FileSysteming, Sendable {
         } else {
             logger?.debug("Checking if a file exists at path \(path.pathString).")
         }
-        return try exists(path, as: isDirectory ? .directory : .file)
+        let fp = try filePath(path)
+        if isDirectory {
+            return await File.System.Stat.isDirectory(at: fp)
+        } else {
+            return await File.System.Stat.isFile(at: fp)
+        }
     }
 
     public func touch(_ path: Path.AbsolutePath) async throws {
         logger?.debug("Touching a file at path \(path.pathString).")
-
-        if try exists(path, followSymlinks: true) {
+        if try await exists(path) {
             let now = Date()
             try await setFileTimes(of: path, lastAccessDate: now, lastModificationDate: now)
             return
         }
 
-        guard try exists(path.parentDirectory, as: .directory) else {
+        guard try await exists(path.parentDirectory, isDirectory: true) else {
             throw CocoaError(.fileNoSuchFile)
         }
 
-        #if os(Windows)
-            let handle = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) { wpath in
-                CreateFileW(
-                    wpath,
-                    DWORD(GENERIC_WRITE),
-                    DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
-                    nil,
-                    DWORD(CREATE_NEW),
-                    DWORD(FILE_ATTRIBUTE_NORMAL),
-                    nil
-                )
-            }
-            guard let handle, handle != INVALID_HANDLE_VALUE else { throw windowsError() }
-            CloseHandle(handle)
-        #else
-            let descriptor = path.pathString.withCString { pathPointer in
-                open(pathPointer, O_WRONLY | O_CREAT | O_EXCL, mode_t(0o666))
-            }
-            guard descriptor >= 0 else { throw posixError() }
-            _ = close(descriptor)
-        #endif
+        try await writeFileBytes(Data(), to: path)
     }
 
     public func remove(_ path: AbsolutePath) async throws {
         logger?.debug("Removing the file or directory at path: \(path.pathString).")
-        guard try await exists(path) else { return }
-        try remove(at: path)
+        let fp = try filePath(path)
+        guard await File.System.Stat.exists(at: fp) else { return }
+        try await File.System.Delete.delete(at: fp, options: .init(recursive: true))
     }
 
     public func makeTemporaryDirectory(prefix: String) async throws -> AbsolutePath {
-        let temporaryDirectory: AbsolutePath
-        #if os(Windows)
-            var buffer = [WCHAR](repeating: 0, count: Int(MAX_PATH) + 1)
-            var length = buffer.withUnsafeMutableBufferPointer {
-                GetTempPathW(DWORD($0.count), $0.baseAddress)
-            }
-            guard length > 0 else { throw windowsError() }
-            if Int(length) >= buffer.count {
-                buffer = [WCHAR](repeating: 0, count: Int(length) + 1)
-                length = buffer.withUnsafeMutableBufferPointer {
-                    GetTempPathW(DWORD($0.count), $0.baseAddress)
-                }
-                guard length > 0, Int(length) < buffer.count else { throw windowsError() }
-            }
-            temporaryDirectory = try AbsolutePath(
-                validating: buffer.withUnsafeBufferPointer {
-                    String(decodingCString: $0.baseAddress!, as: UTF16.self)
-                }
-            )
-            let path = temporaryDirectory.appending(component: "\(prefix)-\(UUID().uuidString)")
-            try makeDirectory(at: path, createIntermediates: true)
-            logger?.debug("Creating a temporary directory at path \(path.pathString).")
-            return path
-        #else
-            var systemTemporaryDirectory = NSTemporaryDirectory()
+        var systemTemporaryDirectory = NSTemporaryDirectory()
 
-            #if os(macOS)
-                if systemTemporaryDirectory.starts(with: "/var/") {
-                    systemTemporaryDirectory = "/private\(systemTemporaryDirectory)"
-                }
-            #endif
-
-            let basePath = try AbsolutePath(validating: systemTemporaryDirectory)
-            var template = basePath.appending(component: "\(prefix)-XXXXXX").pathString.utf8CString
-            let createdPath = template.withUnsafeMutableBufferPointer { pointer -> String? in
-                guard let baseAddress = pointer.baseAddress else { return nil }
-                guard let pathPointer = mkdtemp(baseAddress) else { return nil }
-                return String(cString: pathPointer)
+        #if os(macOS)
+            if systemTemporaryDirectory.starts(with: "/var/") {
+                systemTemporaryDirectory = "/private\(systemTemporaryDirectory)"
             }
-            guard let createdPath else { throw posixError() }
-            temporaryDirectory = try AbsolutePath(validating: createdPath)
         #endif
+
+        let temporaryDirectory = try AbsolutePath(validating: systemTemporaryDirectory)
+            .appending(component: "\(prefix)-\(UUID().uuidString)")
         logger?.debug("Creating a temporary directory at path \(temporaryDirectory.pathString).")
+        try await File.System.Create.Directory.create(
+            at: try filePath(temporaryDirectory),
+            options: .init(createIntermediates: true)
+        )
         return temporaryDirectory
     }
 
@@ -519,10 +457,11 @@ public struct FileSystem: FileSysteming, Sendable {
                 try? await makeDirectory(at: to.parentDirectory, options: [.createTargetParentDirectories])
             }
         }
-        guard try await exists(from) else {
+        let sourcePath = try filePath(from)
+        guard await File.System.Stat.exists(at: sourcePath) else {
             throw FileSystemError.moveNotFound(from: from, to: to)
         }
-        try move(from: from, to: to, ensureDestinationIsAbsent: true)
+        try await File.System.Move.move(from: sourcePath, to: try filePath(to))
     }
 
     public func makeDirectory(at: Path.AbsolutePath) async throws {
@@ -531,29 +470,26 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func makeDirectory(at: Path.AbsolutePath, options: [MakeDirectoryOptions]) async throws {
         if options.isEmpty {
+            logger?.debug("Creating directory at path \(at.pathString).")
+        } else {
             logger?
                 .debug(
                     "Creating directory at path \(at.pathString) with options: \(options.map(\.rawValue).joined(separator: ", "))."
                 )
-        } else {
-            logger?.debug("Creating directory at path \(at.pathString).")
         }
         let createIntermediates = options.contains(.createTargetParentDirectories)
         if !createIntermediates, !(try await exists(at.parentDirectory, isDirectory: true)) {
             throw FileSystemError.makeDirectoryAbsentParent(at)
         }
-        try makeDirectory(at: at, createIntermediates: createIntermediates)
+        try await File.System.Create.Directory.create(
+            at: try filePath(at),
+            options: .init(createIntermediates: createIntermediates)
+        )
     }
 
     public func readFile(at path: Path.AbsolutePath) async throws -> Data {
-        try await readFile(at: path, log: true)
-    }
-
-    private func readFile(at path: Path.AbsolutePath, log: Bool = false) async throws -> Data {
-        if log {
-            logger?.debug("Reading file at path \(path.pathString).")
-        }
-        return try Data(contentsOf: URL(fileURLWithPath: path.pathString))
+        logger?.debug("Reading file at path \(path.pathString).")
+        return Data(try await File.System.Read.Full.read(from: try filePath(path)))
     }
 
     public func readTextFile(at: Path.AbsolutePath) async throws -> String {
@@ -591,7 +527,7 @@ public struct FileSystem: FileSysteming, Sendable {
         if options.contains(.overwrite), try await exists(path) {
             try await remove(path)
         }
-        try writeFile(data, to: path)
+        try await writeFileBytes(data, to: path)
     }
 
     public func readPlistFile<T>(at path: Path.AbsolutePath) async throws -> T where T: Decodable {
@@ -625,7 +561,7 @@ public struct FileSystem: FileSysteming, Sendable {
         }
 
         let plistData = try encoder.encode(item)
-        try writeFile(plistData, to: path)
+        try await writeFileBytes(plistData, to: path)
     }
 
     public func readJSONFile<T>(at path: Path.AbsolutePath) async throws -> T where T: Decodable {
@@ -658,32 +594,35 @@ public struct FileSystem: FileSysteming, Sendable {
         if options.contains(.overwrite), try await exists(path) {
             try await remove(path)
         }
-        try writeFile(json, to: path)
+        try await writeFileBytes(json, to: path)
     }
 
     public func replace(_ to: AbsolutePath, with path: AbsolutePath) async throws {
-        logger?.debug("Replacing file or directory at path \(path.pathString) with item at path \(to.pathString).")
-        if !(try await exists(path)) {
+        logger?.debug("Replacing file or directory at path \(to.pathString) with item at path \(path.pathString).")
+        let sourcePath = try filePath(path)
+        let destinationPath = try filePath(to)
+        guard await File.System.Stat.exists(at: sourcePath) else {
             throw FileSystemError.replacingItemAbsent(replacingPath: path, replacedPath: to)
         }
         if !(try await exists(to.parentDirectory)) {
             try await makeDirectory(at: to.parentDirectory)
         }
-        if try exists(to, followSymlinks: false) {
-            try remove(at: to)
+        if await File.System.Stat.exists(at: destinationPath) {
+            try await File.System.Delete.delete(at: destinationPath, options: .init(recursive: true))
         }
-        try copy(from: path, to: to, ensureDestinationIsAbsent: true)
+        try await copyItem(from: sourcePath, to: destinationPath)
     }
 
     public func copy(_ from: AbsolutePath, to: AbsolutePath) async throws {
         logger?.debug("Copying file or directory at path \(from.pathString) to \(to.pathString).")
-        if !(try await exists(from)) {
+        let sourcePath = try filePath(from)
+        guard await File.System.Stat.exists(at: sourcePath) else {
             throw FileSystemError.copiedItemAbsent(copiedPath: from, intoPath: to)
         }
         if !(try await exists(to.parentDirectory)) {
             try await makeDirectory(at: to.parentDirectory)
         }
-        try copy(from: from, to: to, ensureDestinationIsAbsent: true)
+        try await copyItem(from: sourcePath, to: try filePath(to))
     }
 
     public func runInTemporaryDirectory<T>(
@@ -720,7 +659,14 @@ public struct FileSystem: FileSysteming, Sendable {
 
     public func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata? {
         logger?.debug("Getting the metadata of file at path \(path.pathString).")
-        return try metadata(at: path)
+        let fp = try filePath(path)
+        guard await File.System.Stat.exists(at: fp) else { return nil }
+        let info = try await File.System.Stat.info(at: fp)
+        let modificationTime = info.timestamps.modificationTime
+        let seconds = TimeInterval(modificationTime.secondsSinceEpoch)
+        let nanoseconds = TimeInterval(modificationTime.totalNanoseconds) / 1_000_000_000
+        let modificationDate = Date(timeIntervalSince1970: seconds + nanoseconds)
+        return FileMetadata(size: info.size, lastModificationDate: modificationDate)
     }
 
     public func setFileTimes(
@@ -730,37 +676,37 @@ public struct FileSystem: FileSysteming, Sendable {
     ) async throws {
         logger?.debug("Setting file times at path \(path.pathString).")
         #if os(Windows)
-            let handle = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) { wpath in
-                CreateFileW(
-                    wpath,
-                    DWORD(FILE_WRITE_ATTRIBUTES),
-                    DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
-                    nil,
-                    DWORD(OPEN_EXISTING),
-                    DWORD(FILE_ATTRIBUTE_NORMAL),
-                    nil
-                )
+            let handle = path.pathString
+                .replacingOccurrences(of: "/", with: "\\")
+                .withCString(encodedAs: UTF16.self) { wpath in
+                    CreateFileW(
+                        wpath,
+                        DWORD(FILE_WRITE_ATTRIBUTES),
+                        DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
+                        nil,
+                        DWORD(OPEN_EXISTING),
+                        DWORD(FILE_ATTRIBUTE_NORMAL),
+                        nil
+                    )
+                }
+            guard let handle, handle != INVALID_HANDLE_VALUE else {
+                throw NSError(domain: "WinSDK", code: Int(GetLastError()))
             }
-            guard let handle, handle != INVALID_HANDLE_VALUE else { throw windowsError() }
             defer { CloseHandle(handle) }
 
-            let accessTime = lastAccessDate.map(windowsFileTime(from:))
-            let modificationTime = lastModificationDate.map(windowsFileTime(from:))
-            let success: Bool
-            if let accessTime, let modificationTime {
-                var accessTime = accessTime
-                var modificationTime = modificationTime
-                success = windowsSucceeded(SetFileTime(handle, nil, &accessTime, &modificationTime))
-            } else if let accessTime {
-                var accessTime = accessTime
-                success = windowsSucceeded(SetFileTime(handle, nil, &accessTime, nil))
-            } else if let modificationTime {
-                var modificationTime = modificationTime
-                success = windowsSucceeded(SetFileTime(handle, nil, nil, &modificationTime))
+            let accessTime = lastAccessDate.map(Self.windowsFileTime(from:))
+            let modificationTime = lastModificationDate.map(Self.windowsFileTime(from:))
+            var success = true
+            if var accessTime, var modificationTime {
+                success = SetFileTime(handle, nil, &accessTime, &modificationTime) != 0
+            } else if var accessTime {
+                success = SetFileTime(handle, nil, &accessTime, nil) != 0
+            } else if var modificationTime {
+                success = SetFileTime(handle, nil, nil, &modificationTime) != 0
             } else {
                 return
             }
-            guard windowsSucceeded(success) else { throw windowsError() }
+            guard success else { throw NSError(domain: "WinSDK", code: Int(GetLastError())) }
         #else
             try Self.updateFileTimes(
                 path: path.pathString,
@@ -769,61 +715,6 @@ public struct FileSystem: FileSysteming, Sendable {
             )
         #endif
     }
-
-    #if !os(Windows)
-        private static func updateFileTimes(
-            path: String,
-            lastAccessDate: Date?,
-            lastModificationDate: Date?
-        ) throws {
-            var info = stat()
-            let statResult = path.withCString { stat($0, &info) }
-            guard statResult == 0 else {
-                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
-            }
-
-            var times = [
-                dateToTimespec(lastAccessDate ?? date(from: accessTimespec(from: info))),
-                dateToTimespec(lastModificationDate ?? date(from: modificationTimespec(from: info))),
-            ]
-
-            let result = path.withCString { pathPointer in
-                utimensat(AT_FDCWD, pathPointer, &times, 0)
-            }
-
-            guard result == 0 else {
-                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
-            }
-        }
-
-        private static func dateToTimespec(_ date: Date) -> timespec {
-            let seconds = Int(date.timeIntervalSince1970)
-            let nanoseconds = Int((date.timeIntervalSince1970 - Double(seconds)) * 1_000_000_000)
-            return timespec(tv_sec: seconds, tv_nsec: nanoseconds)
-        }
-
-        private static func date(from timespec: timespec) -> Date {
-            let seconds = TimeInterval(timespec.tv_sec)
-            let nanoseconds = TimeInterval(timespec.tv_nsec) / 1_000_000_000
-            return Date(timeIntervalSince1970: seconds + nanoseconds)
-        }
-
-        private static func accessTimespec(from info: stat) -> timespec {
-            #if canImport(Darwin)
-                info.st_atimespec
-            #else
-                info.st_atim
-            #endif
-        }
-
-        private static func modificationTimespec(from info: stat) -> timespec {
-            #if canImport(Darwin)
-                info.st_mtimespec
-            #else
-                info.st_mtim
-            #endif
-        }
-    #endif
 
     public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {
         logger?.debug("Locating the relative path \(relativePath.pathString) by traversing up from \(from.pathString).")
@@ -845,38 +736,37 @@ public struct FileSystem: FileSysteming, Sendable {
 
     private func createSymbolicLink(fromPathString: String, toPathString: String) async throws {
         logger?.debug("Creating symbolic link from \(fromPathString) to \(toPathString).")
-        try makeSymbolicLink(fromPathString: fromPathString, toPathString: toPathString)
+        try await File.System.Link.Symbolic.create(
+            at: try File.Path(fromPathString),
+            pointingTo: try File.Path(toPathString)
+        )
     }
 
     public func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath {
         logger?.debug("Resolving symbolink link at path \(symlinkPath.pathString).")
-        if !(try await exists(symlinkPath)) {
+        let fp = try filePath(symlinkPath)
+        guard await File.System.Stat.exists(at: fp) else {
             throw FileSystemError.absentSymbolicLink(symlinkPath)
         }
-        let destination: String
         do {
-            destination = try readSymbolicLinkDestination(at: symlinkPath)
+            let targetPath = try await File.System.Link.Read.Target.target(of: fp)
+            if targetPath.isAbsolute {
+                return try absolutePath(targetPath)
+            } else {
+                return AbsolutePath(
+                    symlinkPath.parentDirectory,
+                    try RelativePath(validating: String(describing: targetPath))
+                )
+            }
         } catch {
             return symlinkPath
         }
-
-        #if os(Windows)
-            if destination.hasPrefix("/") || destination.contains(":") {
-                return try AbsolutePath(validating: destination)
-            }
-        #else
-            if destination.hasPrefix("/") {
-                return try AbsolutePath(validating: destination)
-            }
-        #endif
-
-        return AbsolutePath(symlinkPath.parentDirectory, try RelativePath(validating: destination))
     }
 
     #if !os(Windows)
         public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
             logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
-            try createArchive(
+            try await createArchive(
                 at: URL(fileURLWithPath: path.pathString),
                 to: URL(fileURLWithPath: to.pathString),
                 shouldKeepParent: false
@@ -938,20 +828,17 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 }
 
+// MARK: - Collect helper
+
 extension AnyThrowingAsyncSequenceable where Element == Path.AbsolutePath {
     public func collect() async throws -> [Path.AbsolutePath] {
         try await reduce(into: [Path.AbsolutePath]()) { $0.append($1) }
     }
 }
 
-extension FileSystem {
-    private func writeFile(_ data: Data, to path: AbsolutePath) throws {
-        try data.write(to: URL(fileURLWithPath: path.pathString))
-    }
+// MARK: - Convenience overloads
 
-    /// Creates and passes a temporary directory to the given action, coupling its lifecycle to the action's.
-    /// - Parameter action: The action to run with the temporary directory.
-    /// - Returns: Any value returned by the action.
+extension FileSystem {
     public func runInTemporaryDirectory<T>(
         _ action: @Sendable (_ temporaryDirectory: AbsolutePath) async throws -> T
     ) async throws -> T {
@@ -969,25 +856,156 @@ extension FileSystem {
     public func writeAsJSON(_ item: some Encodable, at path: Path.AbsolutePath, options: Set<WriteJSONOptions>) async throws {
         try await writeAsJSON(item, at: path, encoder: JSONEncoder(), options: options)
     }
+}
 
-    #if !os(Windows)
-        private func createArchive(at sourceURL: URL, to destinationURL: URL, shouldKeepParent: Bool) throws {
+// MARK: - Path conversion helpers
+
+extension FileSystem {
+    fileprivate func filePath(_ path: AbsolutePath) throws -> File.Path {
+        try File.Path(path.pathString)
+    }
+
+    fileprivate func absolutePath(_ path: File.Path) throws -> AbsolutePath {
+        try AbsolutePath(validating: String(describing: path))
+    }
+}
+
+// MARK: - File I/O helpers
+
+extension FileSystem {
+    fileprivate func writeFileBytes(_ data: Data, to path: AbsolutePath) async throws {
+        try await File.System.Write.Atomic.write(
+            [UInt8](data),
+            to: try filePath(path),
+            options: .init(strategy: .noClobber, createIntermediates: false)
+        )
+    }
+
+    fileprivate func copyItem(from source: File.Path, to destination: File.Path) async throws {
+        guard !(await File.System.Stat.exists(at: destination)) else {
+            throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: String(describing: destination)])
+        }
+
+        let metadata = try File.System.Stat.lstatInfo(at: source)
+        switch metadata.type {
+        case .directory:
+            try await File.System.Create.Directory.create(at: destination, options: .init(createIntermediates: false))
+            let entries = try await File.Directory.Contents.list(at: File.Directory(source))
+            for entry in entries {
+                guard let sourceChild = entry.pathIfValid else { continue }
+                guard let lastComponent = sourceChild.lastComponent else { continue }
+                try await copyItem(from: sourceChild, to: destination / lastComponent)
+            }
+        case .symbolicLink:
+            let target = try await File.System.Link.Read.Target.target(of: source)
+            try await File.System.Link.Symbolic.create(at: destination, pointingTo: target)
+        default:
+            try await File.System.Copy.copy(
+                from: source,
+                to: destination,
+                options: .init(overwrite: false, copyAttributes: true, followSymlinks: false)
+            )
+        }
+    }
+}
+
+// MARK: - File time helpers (raw system calls, since StandardTime.Time is @_spi(Internal))
+
+#if !os(Windows)
+    extension FileSystem {
+        fileprivate static func updateFileTimes(
+            path: String,
+            lastAccessDate: Date?,
+            lastModificationDate: Date?
+        ) throws {
+            var info = stat()
+            let statResult = path.withCString { stat($0, &info) }
+            guard statResult == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+
+            var times = [
+                dateToTimespec(lastAccessDate ?? date(from: accessTimespec(from: info))),
+                dateToTimespec(lastModificationDate ?? date(from: modificationTimespec(from: info))),
+            ]
+
+            let result = path.withCString { pathPointer in
+                utimensat(AT_FDCWD, pathPointer, &times, 0)
+            }
+
+            guard result == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+        }
+
+        fileprivate static func dateToTimespec(_ date: Date) -> timespec {
+            let seconds = Int(date.timeIntervalSince1970)
+            let nanoseconds = Int((date.timeIntervalSince1970 - Double(seconds)) * 1_000_000_000)
+            return timespec(tv_sec: seconds, tv_nsec: nanoseconds)
+        }
+
+        fileprivate static func date(from timespec: timespec) -> Date {
+            let seconds = TimeInterval(timespec.tv_sec)
+            let nanoseconds = TimeInterval(timespec.tv_nsec) / 1_000_000_000
+            return Date(timeIntervalSince1970: seconds + nanoseconds)
+        }
+
+        fileprivate static func accessTimespec(from info: stat) -> timespec {
+            #if canImport(Darwin)
+                info.st_atimespec
+            #else
+                info.st_atim
+            #endif
+        }
+
+        fileprivate static func modificationTimespec(from info: stat) -> timespec {
+            #if canImport(Darwin)
+                info.st_mtimespec
+            #else
+                info.st_mtim
+            #endif
+        }
+    }
+#else
+    extension FileSystem {
+        fileprivate static func windowsFileTime(from date: Date) -> FILETIME {
+            let timeInterval = date.timeIntervalSince1970
+            let wholeSeconds = Int64(timeInterval)
+            let remainder = timeInterval - TimeInterval(wholeSeconds)
+            let intervals = 116_444_736_000_000_000
+                + (wholeSeconds * 10_000_000)
+                + Int64(remainder * 10_000_000)
+            return FILETIME(
+                dwLowDateTime: DWORD(intervals & 0xFFFF_FFFF),
+                dwHighDateTime: DWORD((intervals >> 32) & 0xFFFF_FFFF)
+            )
+        }
+    }
+#endif
+
+// MARK: - Archive helpers
+
+#if !os(Windows)
+    extension FileSystem {
+        fileprivate func createArchive(at sourceURL: URL, to destinationURL: URL, shouldKeepParent: Bool) async throws {
             let sourcePath = try AbsolutePath(validating: sourceURL.path)
             let destinationPath = try AbsolutePath(validating: destinationURL.path)
-            guard try exists(sourcePath, followSymlinks: true) else {
+            let sourceFP = try filePath(sourcePath)
+            let destinationFP = try filePath(destinationPath)
+            guard await File.System.Stat.exists(at: sourceFP) else {
                 throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: sourceURL.path])
             }
-            guard try !exists(destinationPath, followSymlinks: false) else {
+            guard !(await File.System.Stat.exists(at: destinationFP)) else {
                 throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: destinationURL.path])
             }
 
             let archive = try Archive(url: destinationURL, accessMode: .create)
-            if try exists(sourcePath, as: .directory) {
+            if await File.System.Stat.isDirectory(at: sourceFP) {
                 let baseURL = shouldKeepParent
                     ? URL(fileURLWithPath: sourcePath.parentDirectory.pathString)
                     : sourceURL
                 let prefix = shouldKeepParent ? "\(sourcePath.basename)/" : ""
-                for entryPath in try descendantRelativePaths(of: sourcePath) {
+                for entryPath in try await descendantRelativePaths(of: sourcePath) {
                     try archive.addEntry(
                         with: "\(prefix)\(entryPath)",
                         relativeTo: baseURL,
@@ -1003,9 +1021,9 @@ extension FileSystem {
             }
         }
 
-        private func extractArchive(at sourceURL: URL, to destinationURL: URL) throws {
+        fileprivate func extractArchive(at sourceURL: URL, to destinationURL: URL) throws {
             let sourcePath = try AbsolutePath(validating: sourceURL.path)
-            guard try exists(sourcePath, followSymlinks: true) else {
+            guard File.System.Stat.exists(at: try filePath(sourcePath)) else {
                 throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: sourceURL.path])
             }
 
@@ -1018,510 +1036,27 @@ extension FileSystem {
                 }
             }
         }
-    #endif
-}
 
-private enum FileKind {
-    case directory
-    case file
-    case symbolicLink
-    case other
-}
-
-private struct FileInfo {
-    let kind: FileKind
-    let size: Int64
-    let modificationDate: Date
-}
-
-extension FileSystem {
-    private func contentsOfDirectory(at path: AbsolutePath) throws -> [AbsolutePath] {
-        #if os(Windows)
-            guard try exists(path, as: .directory) else {
-                throw windowsError(DWORD(ERROR_PATH_NOT_FOUND))
-            }
-
-            var entries: [AbsolutePath] = []
-            var findData = WIN32_FIND_DATAW()
-            let searchPath = "\(windowsPathString(path.pathString))\\*"
-            let handle = searchPath.withCString(encodedAs: UTF16.self) { wpath in
-                FindFirstFileW(wpath, &findData)
-            }
-            guard handle != INVALID_HANDLE_VALUE else { throw windowsError() }
-            defer { FindClose(handle) }
-
-            repeat {
-                let name = windowsDirectoryEntryName(from: findData)
-                guard name != ".", name != ".." else { continue }
-                entries.append(path.appending(component: name))
-            } while windowsSucceeded(FindNextFileW(handle, &findData))
-
-            let lastError = GetLastError()
-            if lastError != DWORD(ERROR_NO_MORE_FILES) {
-                throw windowsError(lastError)
-            }
-
-            return entries
-        #else
-            guard let directory = opendir(path.pathString) else { throw posixError() }
-            defer { closedir(directory) }
-
-            var entries: [AbsolutePath] = []
-            errno = 0
-            while let entryPointer = readdir(directory) {
-                let entry = entryPointer.pointee
-                var entryName = entry.d_name
-                let capacity = MemoryLayout.size(ofValue: entryName) / MemoryLayout<CChar>.size
-                let name = withUnsafePointer(to: &entryName) { pointer in
-                    pointer.withMemoryRebound(
-                        to: CChar.self,
-                        capacity: capacity
-                    ) {
-                        String(cString: $0)
-                    }
-                }
-                guard name != ".", name != ".." else { continue }
-                entries.append(path.appending(component: name))
-            }
-
-            if errno != 0 {
-                throw posixError()
-            }
-
-            return entries
-        #endif
-    }
-
-    private func exists(_ path: AbsolutePath, as kind: FileKind) throws -> Bool {
-        guard let info = try fileInfo(at: path, followSymlinks: true) else { return false }
-        return info.kind == kind
-    }
-
-    private func exists(_ path: AbsolutePath, followSymlinks: Bool) throws -> Bool {
-        try fileInfo(at: path, followSymlinks: followSymlinks) != nil
-    }
-
-    private func remove(at path: AbsolutePath) throws {
-        #if os(Windows)
-            let attributes = windowsAttributes(atPath: path.pathString)
-            guard attributes != INVALID_FILE_ATTRIBUTES else { return }
-
-            let isDirectory = (attributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0
-            let isReparsePoint = (attributes & DWORD(FILE_ATTRIBUTE_REPARSE_POINT)) != 0
-            if isDirectory, !isReparsePoint {
-                for child in try contentsOfDirectory(at: path) {
-                    try remove(at: child)
-                }
-                let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) {
-                    RemoveDirectoryW($0)
-                }
-                guard windowsSucceeded(success) else { throw windowsError() }
-            } else if isDirectory {
-                let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) {
-                    RemoveDirectoryW($0)
-                }
-                guard windowsSucceeded(success) else { throw windowsError() }
-            } else {
-                let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) {
-                    DeleteFileW($0)
-                }
-                guard windowsSucceeded(success) else { throw windowsError() }
-            }
-        #else
-            guard let info = try fileInfo(at: path, followSymlinks: false) else { return }
-            switch info.kind {
-            case .directory:
-                for child in try contentsOfDirectory(at: path) {
-                    try remove(at: child)
-                }
-                let result = path.pathString.withCString { rmdir($0) }
-                guard result == 0 else { throw posixError() }
-            case .file, .symbolicLink, .other:
-                let result = path.pathString.withCString { unlink($0) }
-                guard result == 0 else { throw posixError() }
-            }
-        #endif
-    }
-
-    private func move(from: AbsolutePath, to: AbsolutePath, ensureDestinationIsAbsent: Bool) throws {
-        if ensureDestinationIsAbsent, try exists(to, followSymlinks: false) {
-            throw fileExistsError(at: to)
+        fileprivate func descendantRelativePaths(of root: AbsolutePath) async throws -> [String] {
+            try await descendantRelativePaths(of: root, prefix: "")
         }
 
-        #if os(Windows)
-            let success = windowsPathString(from.pathString).withCString(encodedAs: UTF16.self) { wsrc in
-                windowsPathString(to.pathString).withCString(encodedAs: UTF16.self) { wdst in
-                    MoveFileExW(wsrc, wdst, DWORD(MOVEFILE_COPY_ALLOWED))
-                }
-            }
-            guard windowsSucceeded(success) else { throw windowsError() }
-        #else
-            let result = from.pathString.withCString { sourcePointer in
-                to.pathString.withCString { destinationPointer in
-                    rename(sourcePointer, destinationPointer)
-                }
-            }
-            guard result == 0 else {
-                let error = errno
-                if error == EXDEV {
-                    try copy(from: from, to: to, ensureDestinationIsAbsent: false)
-                    try remove(at: from)
-                    return
-                }
-                throw posixError(error)
-            }
-        #endif
-    }
+        fileprivate func descendantRelativePaths(of directory: AbsolutePath, prefix: String) async throws -> [String] {
+            var descendants: [String] = []
+            let dirFP = try filePath(directory)
+            let entries = try await File.Directory.Contents.list(at: File.Directory(dirFP))
+            for entry in entries {
+                guard let entryPath = entry.pathIfValid else { continue }
+                let name = String(describing: entryPath.lastComponent ?? File.Path.Component(""))
+                let relativePath = prefix.isEmpty ? name : "\(prefix)/\(name)"
+                descendants.append(relativePath)
 
-    private func makeDirectory(at path: AbsolutePath, createIntermediates: Bool) throws {
-        #if os(Windows)
-            if let existing = try fileInfo(at: path, followSymlinks: false) {
-                guard existing.kind == .directory else { throw windowsError(DWORD(ERROR_ALREADY_EXISTS)) }
-                return
-            }
-            if createIntermediates {
-                let parent = path.parentDirectory
-                if parent != path {
-                    try makeDirectory(at: parent, createIntermediates: true)
+                if entry.type == .directory {
+                    let childAbsPath = directory.appending(component: name)
+                    descendants.append(contentsOf: try await descendantRelativePaths(of: childAbsPath, prefix: relativePath))
                 }
             }
-            let success = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) { wpath in
-                CreateDirectoryW(wpath, nil)
-            }
-            guard windowsSucceeded(success) else {
-                let error = GetLastError()
-                if error == DWORD(ERROR_ALREADY_EXISTS), try exists(path, as: .directory) {
-                    return
-                }
-                throw windowsError(error)
-            }
-        #else
-            if let existing = try fileInfo(at: path, followSymlinks: false) {
-                guard existing.kind == .directory else { throw posixError(EEXIST) }
-                return
-            }
-            if createIntermediates {
-                let parent = path.parentDirectory
-                if parent != path {
-                    try makeDirectory(at: parent, createIntermediates: true)
-                }
-            }
-            let result = path.pathString.withCString { mkdir($0, mode_t(0o755)) }
-            guard result == 0 else {
-                let error = errno
-                if error == EEXIST, try exists(path, as: .directory) {
-                    return
-                }
-                throw posixError(error)
-            }
-        #endif
-    }
-
-    private func copy(from: AbsolutePath, to: AbsolutePath, ensureDestinationIsAbsent: Bool) throws {
-        if ensureDestinationIsAbsent, try exists(to, followSymlinks: false) {
-            throw fileExistsError(at: to)
-        }
-
-        guard let info = try fileInfo(at: from, followSymlinks: false) else {
-            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: from.pathString])
-        }
-
-        switch info.kind {
-        case .directory:
-            try makeDirectory(at: to, createIntermediates: false)
-            for child in try contentsOfDirectory(at: from) {
-                try copy(from: child, to: to.appending(component: child.basename), ensureDestinationIsAbsent: true)
-            }
-        case .symbolicLink:
-            let destination = try readSymbolicLinkDestination(at: from)
-            try makeSymbolicLink(fromPathString: to.pathString, toPathString: destination)
-        case .file, .other:
-            #if os(Windows)
-                let success = windowsPathString(from.pathString).withCString(encodedAs: UTF16.self) { wsrc in
-                    windowsPathString(to.pathString).withCString(encodedAs: UTF16.self) { wdst in
-                        CopyFileW(wsrc, wdst, true)
-                    }
-                }
-                guard windowsSucceeded(success) else { throw windowsError() }
-            #else
-                try copyRegularFile(from: from, to: to)
-            #endif
+            return descendants
         }
     }
-
-    private func metadata(at path: AbsolutePath) throws -> FileMetadata? {
-        guard let info = try fileInfo(at: path, followSymlinks: true) else { return nil }
-        return FileMetadata(size: info.size, lastModificationDate: info.modificationDate)
-    }
-
-    private func makeSymbolicLink(fromPathString: String, toPathString: String) throws {
-        #if os(Windows)
-            var flags = DWORD(0x2)
-            let targetAttributes = windowsAttributes(atPath: toPathString)
-            if targetAttributes != INVALID_FILE_ATTRIBUTES,
-               (targetAttributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0
-            {
-                flags |= DWORD(SYMBOLIC_LINK_FLAG_DIRECTORY)
-            }
-            let success = windowsPathString(fromPathString).withCString(encodedAs: UTF16.self) { wlink in
-                windowsPathString(toPathString).withCString(encodedAs: UTF16.self) { wtarget in
-                    CreateSymbolicLinkW(wlink, wtarget, flags)
-                }
-            }
-            guard windowsSucceeded(success) else { throw windowsError() }
-        #else
-            let result = fromPathString.withCString { linkPointer in
-                toPathString.withCString { targetPointer in
-                    symlink(targetPointer, linkPointer)
-                }
-            }
-            guard result == 0 else { throw posixError() }
-        #endif
-    }
-
-    private func readSymbolicLinkDestination(at path: AbsolutePath) throws -> String {
-        #if os(Windows)
-            let handle = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) { wpath in
-                CreateFileW(
-                    wpath,
-                    0,
-                    DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
-                    nil,
-                    DWORD(OPEN_EXISTING),
-                    DWORD(FILE_FLAG_BACKUP_SEMANTICS),
-                    nil
-                )
-            }
-            guard let handle, handle != INVALID_HANDLE_VALUE else { throw windowsError() }
-            defer { CloseHandle(handle) }
-
-            var buffer = [WCHAR](repeating: 0, count: Int(MAX_PATH) + 1)
-            var length = buffer.withUnsafeMutableBufferPointer {
-                GetFinalPathNameByHandleW(handle, $0.baseAddress, DWORD($0.count), DWORD(FILE_NAME_NORMALIZED))
-            }
-            guard length > 0 else { throw windowsError() }
-            if Int(length) >= buffer.count {
-                buffer = [WCHAR](repeating: 0, count: Int(length) + 1)
-                length = buffer.withUnsafeMutableBufferPointer {
-                    GetFinalPathNameByHandleW(handle, $0.baseAddress, DWORD($0.count), DWORD(FILE_NAME_NORMALIZED))
-                }
-                guard length > 0, Int(length) < buffer.count else { throw windowsError() }
-            }
-
-            var resolvedPath = buffer.withUnsafeBufferPointer {
-                String(decodingCString: $0.baseAddress!, as: UTF16.self)
-            }
-            if resolvedPath.hasPrefix("\\\\?\\UNC\\") {
-                resolvedPath = "\\\(resolvedPath.dropFirst(7))"
-            } else if resolvedPath.hasPrefix("\\\\?\\") {
-                resolvedPath.removeFirst(4)
-            }
-            return resolvedPath
-        #else
-            var buffer = [CChar](repeating: 0, count: Int(PATH_MAX) + 1)
-            let length = path.pathString.withCString { readlink($0, &buffer, buffer.count - 1) }
-            guard length >= 0 else { throw posixError() }
-            buffer[Int(length)] = 0
-            return String(cString: buffer)
-        #endif
-    }
-
-    private func descendantRelativePaths(of root: AbsolutePath) throws -> [String] {
-        try descendantRelativePaths(of: root, prefix: "")
-    }
-
-    private func descendantRelativePaths(of directory: AbsolutePath, prefix: String) throws -> [String] {
-        var descendants: [String] = []
-        for child in try contentsOfDirectory(at: directory) {
-            let relativePath = prefix.isEmpty ? child.basename : "\(prefix)/\(child.basename)"
-            descendants.append(relativePath)
-
-            if try fileInfo(at: child, followSymlinks: false)?.kind == .directory {
-                descendants.append(contentsOf: try descendantRelativePaths(of: child, prefix: relativePath))
-            }
-        }
-        return descendants
-    }
-
-    private func fileInfo(at path: AbsolutePath, followSymlinks: Bool) throws -> FileInfo? {
-        #if os(Windows)
-            var findData = WIN32_FIND_DATAW()
-            let handle = windowsPathString(path.pathString).withCString(encodedAs: UTF16.self) { wpath in
-                FindFirstFileW(wpath, &findData)
-            }
-            guard handle != INVALID_HANDLE_VALUE else {
-                let error = GetLastError()
-                if error == DWORD(ERROR_FILE_NOT_FOUND) || error == DWORD(ERROR_PATH_NOT_FOUND) {
-                    return nil
-                }
-                throw windowsError(error)
-            }
-            defer { FindClose(handle) }
-
-            let attributes = findData.dwFileAttributes
-            let kind: FileKind
-            if (attributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
-                kind = .directory
-            } else if (attributes & DWORD(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
-                kind = .symbolicLink
-            } else {
-                kind = .file
-            }
-            let size = (Int64(findData.nFileSizeHigh) << 32) | Int64(findData.nFileSizeLow)
-            return FileInfo(
-                kind: kind,
-                size: size,
-                modificationDate: windowsDate(from: findData.ftLastWriteTime)
-            )
-        #else
-            var info = stat()
-            let result = path.pathString.withCString { pathPointer in
-                if followSymlinks {
-                    stat(pathPointer, &info)
-                } else {
-                    lstat(pathPointer, &info)
-                }
-            }
-            guard result == 0 else {
-                let error = errno
-                if error == ENOENT || error == ENOTDIR {
-                    return nil
-                }
-                throw posixError(error)
-            }
-
-            return FileInfo(
-                kind: posixFileKind(from: info),
-                size: Int64(info.st_size),
-                modificationDate: posixModificationDate(from: info)
-            )
-        #endif
-    }
-
-    #if !os(Windows)
-        private func copyRegularFile(from: AbsolutePath, to: AbsolutePath) throws {
-            let sourceDescriptor = from.pathString.withCString { open($0, O_RDONLY) }
-            guard sourceDescriptor >= 0 else { throw posixError() }
-            defer { _ = close(sourceDescriptor) }
-
-            let destinationDescriptor = to.pathString.withCString {
-                open($0, O_WRONLY | O_CREAT | O_EXCL | O_TRUNC, mode_t(0o666))
-            }
-            guard destinationDescriptor >= 0 else { throw posixError() }
-            defer { _ = close(destinationDescriptor) }
-
-            var buffer = [UInt8](repeating: 0, count: 64 * 1024)
-            while true {
-                let readCount = buffer.withUnsafeMutableBytes {
-                    read(sourceDescriptor, $0.baseAddress, $0.count)
-                }
-                guard readCount >= 0 else { throw posixError() }
-                guard readCount > 0 else { return }
-
-                var written = 0
-                while written < readCount {
-                    let writeCount = buffer.withUnsafeBytes { rawBuffer -> Int in
-                        let baseAddress = rawBuffer.baseAddress!.advanced(by: written)
-                        return write(destinationDescriptor, baseAddress, readCount - written)
-                    }
-                    guard writeCount >= 0 else { throw posixError() }
-                    written += writeCount
-                }
-            }
-        }
-
-        private func posixFileKind(from info: stat) -> FileKind {
-            switch info.st_mode & S_IFMT {
-            case S_IFDIR:
-                return .directory
-            case S_IFLNK:
-                return .symbolicLink
-            case S_IFREG:
-                return .file
-            default:
-                return .other
-            }
-        }
-
-        private func posixModificationDate(from info: stat) -> Date {
-            #if canImport(Darwin)
-                let seconds = TimeInterval(info.st_mtimespec.tv_sec)
-                let nanoseconds = TimeInterval(info.st_mtimespec.tv_nsec) / 1_000_000_000
-            #else
-                let seconds = TimeInterval(info.st_mtim.tv_sec)
-                let nanoseconds = TimeInterval(info.st_mtim.tv_nsec) / 1_000_000_000
-            #endif
-            return Date(timeIntervalSince1970: seconds + nanoseconds)
-        }
-
-        private func posixError(_ code: Int32 = errno) -> NSError {
-            NSError(domain: NSPOSIXErrorDomain, code: Int(code))
-        }
-    #else
-        private func windowsAttributes(atPath path: String) -> DWORD {
-            windowsPathString(path).withCString(encodedAs: UTF16.self) {
-                GetFileAttributesW($0)
-            }
-        }
-
-        private func windowsSucceeded(_ result: Bool) -> Bool {
-            result
-        }
-
-        private func windowsSucceeded(_ result: some BinaryInteger) -> Bool {
-            result != 0
-        }
-
-        private func windowsPathString(_ path: String) -> String {
-            path.replacingOccurrences(of: "/", with: "\\")
-        }
-
-        private func windowsDirectoryEntryName(from findData: WIN32_FIND_DATAW) -> String {
-            var fileName = findData.cFileName
-            let capacity = MemoryLayout.size(ofValue: fileName) / MemoryLayout<WCHAR>.size
-            return withUnsafePointer(to: &fileName) { pointer in
-                pointer.withMemoryRebound(
-                    to: WCHAR.self,
-                    capacity: capacity
-                ) {
-                    String(decodingCString: $0, as: UTF16.self)
-                }
-            }
-        }
-
-        private func windowsDate(from fileTime: FILETIME) -> Date {
-            let intervals = (Int64(fileTime.dwHighDateTime) << 32) | Int64(fileTime.dwLowDateTime)
-            let unixIntervals = intervals - 116_444_736_000_000_000
-            let seconds = TimeInterval(unixIntervals / 10_000_000)
-            let nanoseconds = TimeInterval(unixIntervals % 10_000_000) / 10_000_000
-            return Date(timeIntervalSince1970: seconds + nanoseconds)
-        }
-
-        private func windowsFileTime(from date: Date) -> FILETIME {
-            let timeInterval = date.timeIntervalSince1970
-            let wholeSeconds = Int64(timeInterval)
-            let remainder = timeInterval - TimeInterval(wholeSeconds)
-            let intervals = 116_444_736_000_000_000
-                + (wholeSeconds * 10_000_000)
-                + Int64(remainder * 10_000_000)
-            return FILETIME(
-                dwLowDateTime: DWORD(intervals & 0xFFFF_FFFF),
-                dwHighDateTime: DWORD((intervals >> 32) & 0xFFFF_FFFF)
-            )
-        }
-
-        private func windowsError(_ code: DWORD = GetLastError()) -> NSError {
-            NSError(domain: "WinSDK", code: Int(code))
-        }
-
-        private func fileExistsError(at path: AbsolutePath) -> CocoaError {
-            CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: path.pathString])
-        }
-    #endif
-
-    #if !os(Windows)
-        private func fileExistsError(at path: AbsolutePath) -> CocoaError {
-            CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: path.pathString])
-        }
-    #endif
-}
+#endif

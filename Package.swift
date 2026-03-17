@@ -18,8 +18,8 @@
 let package = Package(
     name: "FileSystem",
     platforms: [
-        .macOS("13.0"),
-        .iOS("16.0"),
+        .macOS("26.0"),
+        .iOS("26.0"),
     ],
     products: [
         .library(
@@ -39,6 +39,7 @@ let package = Package(
         ),
     ],
     dependencies: [
+        .package(url: "https://github.com/coenttb/swift-file-system", .upToNextMajor(from: "0.6.0")),
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.10.1")),
     ] + zipFoundationDependency,
@@ -47,6 +48,7 @@ let package = Package(
             name: "FileSystem",
             dependencies: [
                 "Glob",
+                .product(name: "File System", package: "swift-file-system"),
                 .product(name: "Path", package: "Path"),
                 .product(name: "Logging", package: "swift-log"),
             ] + zipFoundationTarget,
