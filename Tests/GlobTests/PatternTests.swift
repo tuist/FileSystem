@@ -1,57 +1,66 @@
-import XCTest
+import Testing
 
 @testable import Glob
 
-final class PatternTests: XCTestCase {
+struct PatternTests {
+    @Test
     func test_pathWildcard_matchesSingleNestedFolders() throws {
-        try XCTAssertMatches("Target/AutoMockable.generated.swift", pattern: "**/*.generated.swift")
+        #expect(try Pattern("**/*.generated.swift").match("Target/AutoMockable.generated.swift"))
     }
 
+    @Test
     func test_pathWildcard_with_constant_component() throws {
-        try XCTAssertMatches("file.swift", pattern: "**/file.swift")
+        #expect(try Pattern("**/file.swift").match("file.swift"))
     }
 
+    @Test
     func test_pathWildcard_matchesDirectFile() throws {
-        try XCTAssertMatches("AutoMockable.generated.swift", pattern: "**/*.generated.swift")
+        #expect(try Pattern("**/*.generated.swift").match("AutoMockable.generated.swift"))
     }
 
+    @Test
     func test_pathWildcard_does_not_match() throws {
-        try XCTAssertDoesNotMatch("AutoMockable.non-generated.swift", pattern: "**/*.generated.swift")
+        #expect(!(try Pattern("**/*.generated.swift").match("AutoMockable.non-generated.swift")))
     }
 
+    @Test
     func test_double_pathWildcard_matchesDirectFileInNestedDirectory() throws {
-        try XCTAssertMatches("Target/Pivot/AutoMockable.generated.swift", pattern: "**/Pivot/**/*.generated.swift")
+        #expect(try Pattern("**/Pivot/**/*.generated.swift").match("Target/Pivot/AutoMockable.generated.swift"))
     }
 
+    @Test
     func test_double_pathWildcard_does_not_match_when_pivot_does_not_match() throws {
-        try XCTAssertDoesNotMatch(
-            "Target/NonMatchingPivot/AutoMockable.generated.swift",
-            pattern: "**/Pivot/**/*.generated.swift"
-        )
+        #expect(!(try Pattern("**/Pivot/**/*.generated.swift").match("Target/NonMatchingPivot/AutoMockable.generated.swift")))
     }
 
+    @Test
     func test_double_pathWildcard_with_prefix_constants_matchesDirectFileInNestedDirectory() throws {
-        try XCTAssertMatches("Target/Extra/Pivot/AutoMockable.generated.swift", pattern: "Target/**/Pivot/**/*.generated.swift")
+        #expect(try Pattern("Target/**/Pivot/**/*.generated.swift").match("Target/Extra/Pivot/AutoMockable.generated.swift"))
     }
 
+    @Test
     func test_pathWildcard_matchesMultipleNestedFolders() throws {
-        try XCTAssertMatches("Target/Generated/AutoMockable.generated.swift", pattern: "**/*.generated.swift")
+        #expect(try Pattern("**/*.generated.swift").match("Target/Generated/AutoMockable.generated.swift"))
     }
 
+    @Test
     func test_componentWildcard_matchesNonNestedFiles() throws {
-        try XCTAssertMatches("AutoMockable.generated.swift", pattern: "*.generated.swift")
+        #expect(try Pattern("*.generated.swift").match("AutoMockable.generated.swift"))
     }
 
+    @Test
     func test_componentWildcard_doesNotMatchNestedPaths() throws {
-        try XCTAssertDoesNotMatch("Target/AutoMockable.generated.swift", pattern: "*.generated.swift")
+        #expect(!(try Pattern("*.generated.swift").match("Target/AutoMockable.generated.swift")))
     }
 
+    @Test
     func test_multipleWildcards_matchesWithMultipleConstants() throws {
         // this can be tricky for some implementations because as they are parsing the first wildcard,
         // it will see a match and move on and the remaining pattern and content will not match
-        try XCTAssertMatches("Target/AutoMockable/Sources/AutoMockable.generated.swift", pattern: "**/AutoMockable*.swift")
+        #expect(try Pattern("**/AutoMockable*.swift").match("Target/AutoMockable/Sources/AutoMockable.generated.swift"))
     }
 
+    @Test
     func test_matchingLongStrings_onSecondaryThread_doesNotCrash() async throws {
         // In Debug when using async methods, long strings would cause crashes with recursion for strings approaching ~90
         // characters.
@@ -62,57 +71,64 @@ final class PatternTests: XCTestCase {
     }
 
     func runStressTest() async throws {
-        try XCTAssertMatches(
-            "base/Shared/Tests/Objects/Utilities/PathsMoreAbitraryStringLengthSomeVeryLongTypeNameThat+SomeLongExtensionNameTests.swift",
-            pattern: "base/**/Tests/**/*Tests.swift"
-        )
+        #expect(try Pattern("base/**/Tests/**/*Tests.swift").match(
+            "base/Shared/Tests/Objects/Utilities/PathsMoreAbitraryStringLengthSomeVeryLongTypeNameThat+SomeLongExtensionNameTests.swift"
+        ))
     }
 
+    @Test
     func test_pathWildcard_pathComponentsOnly_doesNotMatchPath() throws {
         var options = Pattern.Options.default
         options.supportsPathLevelWildcards = false
-        try XCTAssertDoesNotMatch("Target/Other/.build", pattern: "**/.build", options: options)
+        #expect(!(try Pattern("**/.build", options: options).match("Target/Other/.build")))
     }
 
+    @Test
     func test_componentWildcard_pathComponentsOnly_doesMatchSingleComponent() throws {
         var options = Pattern.Options.default
         options.supportsPathLevelWildcards = false
-        try XCTAssertMatches("Target/.build", pattern: "*/.build", options: options)
+        #expect(try Pattern("*/.build", options: options).match("Target/.build"))
     }
 
+    @Test
     func test_constant() throws {
-        try XCTAssertMatches("abc", pattern: "abc")
+        #expect(try Pattern("abc").match("abc"))
     }
 
+    @Test
     func test_ranges() throws {
-        try XCTAssertMatches("b", pattern: "[a-c]")
-        try XCTAssertMatches("B", pattern: "[A-C]")
-        try XCTAssertDoesNotMatch("n", pattern: "[a-c]")
+        #expect(try Pattern("[a-c]").match("b"))
+        #expect(try Pattern("[A-C]").match("B"))
+        #expect(!(try Pattern("[a-c]").match("n")))
     }
 
+    @Test
     func test_multipleRanges() throws {
-        try XCTAssertMatches("b", pattern: "[a-cA-C]")
-        try XCTAssertMatches("B", pattern: "[a-cA-C]")
-        try XCTAssertDoesNotMatch("n", pattern: "[a-cA-C]")
-        try XCTAssertDoesNotMatch("N", pattern: "[a-cA-C]")
-        try XCTAssertDoesNotMatch("n", pattern: "[a-cA-Z]")
-        try XCTAssertMatches("N", pattern: "[a-cA-Z]")
+        #expect(try Pattern("[a-cA-C]").match("b"))
+        #expect(try Pattern("[a-cA-C]").match("B"))
+        #expect(!(try Pattern("[a-cA-C]").match("n")))
+        #expect(!(try Pattern("[a-cA-C]").match("N")))
+        #expect(!(try Pattern("[a-cA-Z]").match("n")))
+        #expect(try Pattern("[a-cA-Z]").match("N"))
     }
 
+    @Test
     func test_negateRange() throws {
-        try XCTAssertDoesNotMatch("abc", pattern: "ab[^c]", options: .go)
+        #expect(!(try Pattern("ab[^c]", options: .go).match("abc")))
     }
 
+    @Test
     func test_singleCharacter_doesNotMatchSeparator() throws {
-        try XCTAssertDoesNotMatch("a/b", pattern: "a?b")
+        #expect(!(try Pattern("a?b").match("a/b")))
     }
 
+    @Test
     func test_namedCharacterClasses_alpha() throws {
-        try XCTAssertMatches("b", pattern: "[[:alpha:]]")
-        try XCTAssertMatches("B", pattern: "[[:alpha:]]")
-        try XCTAssertMatches("ē", pattern: "[[:alpha:]]")
-        try XCTAssertMatches("ž", pattern: "[[:alpha:]]")
-        try XCTAssertDoesNotMatch("9", pattern: "[[:alpha:]]")
-        try XCTAssertDoesNotMatch("&", pattern: "[[:alpha:]]")
+        #expect(try Pattern("[[:alpha:]]").match("b"))
+        #expect(try Pattern("[[:alpha:]]").match("B"))
+        #expect(try Pattern("[[:alpha:]]").match("ē"))
+        #expect(try Pattern("[[:alpha:]]").match("ž"))
+        #expect(!(try Pattern("[[:alpha:]]").match("9")))
+        #expect(!(try Pattern("[[:alpha:]]").match("&")))
     }
 }
