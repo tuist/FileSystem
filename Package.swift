@@ -1,7 +1,7 @@
-// swift-tools-version: 5.8.1
+// swift-tools-version: 6.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
-@preconcurrency import PackageDescription
+import PackageDescription
 
 #if os(Windows)
     let zipFoundationDependency: [Package.Dependency] = []
@@ -76,10 +76,7 @@ let package = Package(
             ]
         ),
         .target(
-            name: "Glob",
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency"),
-            ]
+            name: "Glob"
         ),
         .testTarget(
             name: "GlobTests",
