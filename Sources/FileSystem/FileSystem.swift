@@ -697,11 +697,11 @@ public struct FileSystem: FileSysteming, Sendable {
             let modificationTime = lastModificationDate.map(Self.windowsFileTime(from:))
             var success = true
             if var accessTime, var modificationTime {
-                success = SetFileTime(handle, nil, &accessTime, &modificationTime) != 0
+                success = SetFileTime(handle, nil, &accessTime, &modificationTime)
             } else if var accessTime {
-                success = SetFileTime(handle, nil, &accessTime, nil) != 0
+                success = SetFileTime(handle, nil, &accessTime, nil)
             } else if var modificationTime {
-                success = SetFileTime(handle, nil, nil, &modificationTime) != 0
+                success = SetFileTime(handle, nil, nil, &modificationTime)
             } else {
                 return
             }
@@ -891,10 +891,10 @@ extension FileSystem {
                 try removeItem(at: childPath)
             }
             #if os(Windows)
-                let success = String(describing: path)
+                let rmdirSuccess = String(describing: path)
                     .replacingOccurrences(of: "/", with: "\\")
                     .withCString(encodedAs: UTF16.self) { RemoveDirectoryW($0) }
-                guard success != 0 else {
+                guard rmdirSuccess else {
                     throw NSError(domain: "WinSDK", code: Int(GetLastError()))
                 }
             #else
@@ -905,10 +905,10 @@ extension FileSystem {
         default:
             // Files, symlinks, and everything else: unlink directly
             #if os(Windows)
-                let success = String(describing: path)
+                let deleteSuccess = String(describing: path)
                     .replacingOccurrences(of: "/", with: "\\")
                     .withCString(encodedAs: UTF16.self) { DeleteFileW($0) }
-                guard success != 0 else {
+                guard deleteSuccess else {
                     throw NSError(domain: "WinSDK", code: Int(GetLastError()))
                 }
             #else
