@@ -280,14 +280,7 @@ private func directoryEntries(atPath path: String) throws -> [String] {
         defer { FindClose(handle) }
 
         repeat {
-            let entry = withUnsafePointer(to: &findData.cFileName) { pointer in
-                pointer.withMemoryRebound(
-                    to: WCHAR.self,
-                    capacity: MemoryLayout.size(ofValue: findData.cFileName) / MemoryLayout<WCHAR>.size
-                ) {
-                    String(decodingCString: $0, as: UTF16.self)
-                }
-            }
+            let entry = windowsDirectoryEntryName(from: findData)
             guard entry != ".", entry != ".." else { continue }
             entries.append(entry)
         } while windowsSucceeded(FindNextFileW(handle, &findData))
@@ -344,6 +337,18 @@ private func decodedPath(_ url: URL) -> String {
 
     private func windowsSucceeded(_ result: some BinaryInteger) -> Bool {
         result != 0
+    }
+
+    private func windowsDirectoryEntryName(from findData: WIN32_FIND_DATAW) -> String {
+        var fileName = findData.cFileName
+        return withUnsafePointer(to: &fileName) { pointer in
+            pointer.withMemoryRebound(
+                to: WCHAR.self,
+                capacity: MemoryLayout.size(ofValue: fileName) / MemoryLayout<WCHAR>.size
+            ) {
+                String(decodingCString: $0, as: UTF16.self)
+            }
+        }
     }
 #endif
 

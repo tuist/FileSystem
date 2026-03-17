@@ -1485,11 +1485,12 @@ extension FileSystem {
             path.replacingOccurrences(of: "/", with: "\\")
         }
 
-        private func windowsDirectoryEntryName(from findData: inout WIN32_FIND_DATAW) -> String {
-            withUnsafePointer(to: &findData.cFileName) { pointer in
+        private func windowsDirectoryEntryName(from findData: WIN32_FIND_DATAW) -> String {
+            var fileName = findData.cFileName
+            return withUnsafePointer(to: &fileName) { pointer in
                 pointer.withMemoryRebound(
                     to: WCHAR.self,
-                    capacity: MemoryLayout.size(ofValue: findData.cFileName) / MemoryLayout<WCHAR>.size
+                    capacity: MemoryLayout.size(ofValue: fileName) / MemoryLayout<WCHAR>.size
                 ) {
                     String(decodingCString: $0, as: UTF16.self)
                 }
