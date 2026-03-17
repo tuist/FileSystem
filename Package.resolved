@@ -10,111 +10,12 @@
       }
     },
     {
-      "identity" : "swift-async-algorithms-fork",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/coenttb/swift-async-algorithms-fork.git",
-      "state" : {
-        "revision" : "9352a14c5693451c0f76a433d22dbe86a92f61ae",
-        "version" : "1.2.0"
-      }
-    },
-    {
-      "identity" : "swift-collections",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-collections.git",
-      "state" : {
-        "revision" : "8d9834a6189db730f6264db7556a7ffb751e99ee",
-        "version" : "1.4.0"
-      }
-    },
-    {
-      "identity" : "swift-file-system",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/coenttb/swift-file-system",
-      "state" : {
-        "revision" : "4e65b651641a816e64f61664dbb357ad519fe05a",
-        "version" : "0.6.0"
-      }
-    },
-    {
-      "identity" : "swift-incits-4-1986",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swift-standards/swift-incits-4-1986",
-      "state" : {
-        "revision" : "5e0ac8ce2e69663d690bc12993c9cebefffae613",
-        "version" : "0.7.1"
-      }
-    },
-    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log",
       "state" : {
         "revision" : "bbd81b6725ae874c69e9b8c8804d462356b55523",
         "version" : "1.10.1"
-      }
-    },
-    {
-      "identity" : "swift-memory-allocation",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/coenttb/swift-memory-allocation",
-      "state" : {
-        "revision" : "afe7e86f16981007b841470d5ea79f0026868bc3",
-        "version" : "0.2.0"
-      }
-    },
-    {
-      "identity" : "swift-numerics",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-numerics",
-      "state" : {
-        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
-        "version" : "1.1.1"
-      }
-    },
-    {
-      "identity" : "swift-rfc-4648",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swift-standards/swift-rfc-4648",
-      "state" : {
-        "revision" : "029f384ec63890d98da9a09844bb2ef91a176872",
-        "version" : "0.6.0"
-      }
-    },
-    {
-      "identity" : "swift-standards",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swift-standards/swift-standards",
-      "state" : {
-        "revision" : "948b7642f57f9aac26f4b6d1e3a86b5c1861ecbb",
-        "version" : "0.30.1"
-      }
-    },
-    {
-      "identity" : "swift-syntax",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-syntax",
-      "state" : {
-        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
-        "version" : "602.0.0"
-      }
-    },
-    {
-      "identity" : "swift-system",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-system",
-      "state" : {
-        "revision" : "7c6ad0fc39d0763e0b699210e4124afd5041c5df",
-        "version" : "1.6.4"
-      }
-    },
-    {
-      "identity" : "swift-testing-performance",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/coenttb/swift-testing-performance",
-      "state" : {
-        "revision" : "1a1967f7acfcb081e57122db463817c142cc7186",
-        "version" : "0.3.1"
       }
     },
     {
