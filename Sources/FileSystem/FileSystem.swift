@@ -1,15 +1,18 @@
-#if os(Windows)
-    import WinSDK
-#else
-    import _NIOFileSystem
-    import NIOCore
-#endif
 import Foundation
+import File_System
+import File_System_Primitives
 import Glob
 import Logging
 import Path
 
 #if !os(Windows)
+    #if canImport(Darwin)
+        import Darwin
+    #elseif canImport(Glibc)
+        import Glibc
+    #elseif canImport(Musl)
+        import Musl
+    #endif
     import ZIPFoundation
 #endif
 
@@ -367,40 +370,19 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func currentWorkingDirectory() async throws -> AbsolutePath {
-        #if os(Windows)
-            return try AbsolutePath(validating: FileManager.default.currentDirectoryPath)
-        #else
-            return try await _NIOFileSystem.FileSystem.shared.currentWorkingDirectory.path
-        #endif
+        return try AbsolutePath(validating: FileManager.default.currentDirectoryPath)
     }
 
     public func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath] {
-        #if os(Windows)
-            let contents = try FileManager.default.contentsOfDirectory(atPath: path.pathString)
-            return try contents.map { try path.appending(component: $0) }
-        #else
-            return try await _NIOFileSystem.FileSystem.shared.withDirectoryHandle(
-                atPath: .init(path.pathString)
-            ) { directory in
-                try await directory
-                    .listContents()
-                    .reduce(into: []) { $0.append($1) }
-                    .map(\.path)
-            }
-            .map(\.path)
-        #endif
+        let directory = File.Directory(try systemPath(path))
+        return try await File.Directory.Contents.list(at: directory).map { entry in
+            try absolutePath(entry.path())
+        }
     }
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
         logger?.debug("Checking if a file or directory exists at path \(path.pathString).")
-        #if os(Windows)
-            return path.pathString.withCString(encodedAs: UTF16.self) { pointer in
-                GetFileAttributesW(pointer) != INVALID_FILE_ATTRIBUTES
-            }
-        #else
-            let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString))
-            return info != nil
-        #endif
+        return await File.System.Stat.exists(at: try systemPath(path))
     }
 
     public func exists(_ path: AbsolutePath, isDirectory: Bool) async throws -> Bool {
@@ -409,48 +391,33 @@ public struct FileSystem: FileSysteming, Sendable {
         } else {
             logger?.debug("Checking if a file exists at path \(path.pathString).")
         }
-        #if os(Windows)
-            return path.pathString.withCString(encodedAs: UTF16.self) { pointer in
-                let attributes = GetFileAttributesW(pointer)
-                guard attributes != INVALID_FILE_ATTRIBUTES else { return false }
-                let isDir = (attributes & DWORD(FILE_ATTRIBUTE_DIRECTORY)) != 0
-                return isDir == isDirectory
-            }
-        #else
-            guard let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
-                return false
-            }
-            return info.type == (isDirectory ? .directory : .regular)
-        #endif
+        let filePath = try systemPath(path)
+        guard await File.System.Stat.exists(at: filePath) else { return false }
+        let metadata = try await File.System.Stat.info(at: filePath)
+        let pathIsDirectory = metadata.type == .directory
+        return pathIsDirectory == isDirectory
     }
 
     public func touch(_ path: Path.AbsolutePath) async throws {
         logger?.debug("Touching a file at path \(path.pathString).")
-        #if os(Windows)
-            FileManager.default.createFile(atPath: path.pathString, contents: Data(), attributes: nil)
-        #else
-            // Use non-transactional creation to ensure the file is immediately visible
-            // to other file system APIs (like Foundation's FileManager/FileHandle).
-            // The default options use transactionalCreation which only materializes
-            // the file when the handle is closed, causing visibility issues.
-            let options = _NIOFileSystem.OpenOptions.Write(
-                existingFile: .open,
-                newFile: .init(transactionalCreation: false)
-            )
-            _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(
-                forWritingAt: .init(path.pathString),
-                options: options
-            ) { _ in }
-        #endif
+        if try await exists(path) {
+            let now = Date()
+            try await setFileTimes(of: path, lastAccessDate: now, lastModificationDate: now)
+            return
+        }
+
+        guard try await exists(path.parentDirectory, isDirectory: true) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+
+        try await writeFile(Data(), to: path)
     }
 
     public func remove(_ path: AbsolutePath) async throws {
         logger?.debug("Removing the file or directory at path: \(path.pathString).")
-        guard try await exists(path) else { return }
-        try await Task {
-            try FileManager.default.removeItem(atPath: path.pathString)
-        }
-        .value
+        let filePath = try systemPath(path)
+        guard await File.System.Stat.exists(at: filePath) else { return }
+        try await File.System.Delete.delete(at: filePath, options: .init(recursive: true))
     }
 
     public func makeTemporaryDirectory(prefix: String) async throws -> AbsolutePath {
@@ -466,9 +433,9 @@ public struct FileSystem: FileSysteming, Sendable {
         let temporaryDirectory = try AbsolutePath(validating: systemTemporaryDirectory)
             .appending(component: "\(prefix)-\(UUID().uuidString)")
         logger?.debug("Creating a temporary directory at path \(temporaryDirectory.pathString).")
-        try FileManager.default.createDirectory(
-            at: URL(fileURLWithPath: temporaryDirectory.pathString),
-            withIntermediateDirectories: true
+        try await File.System.Create.Directory.create(
+            at: try systemPath(temporaryDirectory),
+            options: .init(createIntermediates: true)
         )
         return temporaryDirectory
     }
@@ -491,26 +458,11 @@ public struct FileSystem: FileSysteming, Sendable {
                 try? await makeDirectory(at: to.parentDirectory, options: [.createTargetParentDirectories])
             }
         }
-        #if os(Windows)
-            do {
-                try FileManager.default.moveItem(atPath: from.pathString, toPath: to.pathString)
-            } catch {
-                if !FileManager.default.fileExists(atPath: from.pathString) {
-                    throw FileSystemError.moveNotFound(from: from, to: to)
-                }
-                throw error
-            }
-        #else
-            do {
-                try await _NIOFileSystem.FileSystem.shared.moveItem(at: .init(from.pathString), to: .init(to.pathString))
-            } catch let error as _NIOFileSystem.FileSystemError {
-                if error.code == .notFound {
-                    throw FileSystemError.moveNotFound(from: from, to: to)
-                } else {
-                    throw error
-                }
-            }
-        #endif
+        let sourcePath = try systemPath(from)
+        guard await File.System.Stat.exists(at: sourcePath) else {
+            throw FileSystemError.moveNotFound(from: from, to: to)
+        }
+        try await File.System.Move.move(from: sourcePath, to: try systemPath(to))
     }
 
     public func makeDirectory(at: Path.AbsolutePath) async throws {
@@ -526,37 +478,14 @@ public struct FileSystem: FileSysteming, Sendable {
         } else {
             logger?.debug("Creating directory at path \(at.pathString).")
         }
-        #if os(Windows)
-            do {
-                try FileManager.default.createDirectory(
-                    atPath: at.pathString,
-                    withIntermediateDirectories: options.contains(.createTargetParentDirectories),
-                    attributes: nil
-                )
-            } catch {
-                if !options.contains(.createTargetParentDirectories) {
-                    let parentExists = FileManager.default.fileExists(atPath: at.parentDirectory.pathString)
-                    if !parentExists {
-                        throw FileSystemError.makeDirectoryAbsentParent(at)
-                    }
-                }
-                throw error
-            }
-        #else
-            do {
-                try await _NIOFileSystem.FileSystem.shared.createDirectory(
-                    at: .init(at.pathString),
-                    withIntermediateDirectories: options
-                        .contains(.createTargetParentDirectories)
-                )
-            } catch let error as _NIOFileSystem.FileSystemError {
-                if error.code == .invalidArgument {
-                    throw FileSystemError.makeDirectoryAbsentParent(at)
-                } else {
-                    throw error
-                }
-            }
-        #endif
+        let createIntermediates = options.contains(.createTargetParentDirectories)
+        if !createIntermediates, !(try await exists(at.parentDirectory, isDirectory: true)) {
+            throw FileSystemError.makeDirectoryAbsentParent(at)
+        }
+        try await File.System.Create.Directory.create(
+            at: try systemPath(at),
+            options: .init(createIntermediates: createIntermediates)
+        )
     }
 
     public func readFile(at path: Path.AbsolutePath) async throws -> Data {
@@ -567,31 +496,7 @@ public struct FileSystem: FileSysteming, Sendable {
         if log {
             logger?.debug("Reading file at path \(path.pathString).")
         }
-        #if os(Windows)
-            return try Data(contentsOf: URL(fileURLWithPath: path.pathString))
-        #else
-            let handle = try await _NIOFileSystem.FileSystem.shared.openFile(
-                forReadingAt: .init(path.pathString),
-                options: .init()
-            )
-
-            let result: Result<Data, Error>
-            do {
-                var bytes: [UInt8] = []
-                for try await var chunk in handle.readChunks() {
-                    let chunkBytes = chunk.readBytes(length: chunk.readableBytes) ?? []
-                    bytes.append(contentsOf: chunkBytes)
-                }
-                result = .success(Data(bytes))
-            } catch {
-                result = .failure(error)
-            }
-            try await handle.close()
-            switch result {
-            case let .success(data): return data
-            case let .failure(error): throw error
-            }
-        #endif
+        return Data(try await File.System.Read.Full.read(from: try systemPath(path)))
     }
 
     public func readTextFile(at: Path.AbsolutePath) async throws -> String {
@@ -629,14 +534,7 @@ public struct FileSystem: FileSysteming, Sendable {
         if options.contains(.overwrite), try await exists(path) {
             try await remove(path)
         }
-
-        #if os(Windows)
-            try data.write(to: URL(fileURLWithPath: path.pathString))
-        #else
-            _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
-                try await handler.write(contentsOf: data, toAbsoluteOffset: 0)
-            }
-        #endif
+        try await writeFile(data, to: path)
     }
 
     public func readPlistFile<T>(at path: Path.AbsolutePath) async throws -> T where T: Decodable {
@@ -670,13 +568,7 @@ public struct FileSystem: FileSysteming, Sendable {
         }
 
         let plistData = try encoder.encode(item)
-        #if os(Windows)
-            try plistData.write(to: URL(fileURLWithPath: path.pathString))
-        #else
-            _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
-                try await handler.write(contentsOf: plistData, toAbsoluteOffset: 0)
-            }
-        #endif
+        try await writeFile(plistData, to: path)
     }
 
     public func readJSONFile<T>(at path: Path.AbsolutePath) async throws -> T where T: Decodable {
@@ -709,47 +601,36 @@ public struct FileSystem: FileSysteming, Sendable {
         if options.contains(.overwrite), try await exists(path) {
             try await remove(path)
         }
-
-        #if os(Windows)
-            try json.write(to: URL(fileURLWithPath: path.pathString))
-        #else
-            _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
-                try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
-            }
-        #endif
+        try await writeFile(json, to: path)
     }
 
     public func replace(_ to: AbsolutePath, with path: AbsolutePath) async throws {
         logger?.debug("Replacing file or directory at path \(path.pathString) with item at path \(to.pathString).")
-        if !(try await exists(path)) {
+        let sourcePath = try systemPath(path)
+        let destinationPath = try systemPath(to)
+        if !(await File.System.Stat.exists(at: sourcePath)) {
             throw FileSystemError.replacingItemAbsent(replacingPath: path, replacedPath: to)
         }
         if !(try await exists(to.parentDirectory)) {
             try await makeDirectory(at: to.parentDirectory)
         }
-        #if os(Windows)
-            if FileManager.default.fileExists(atPath: to.pathString) {
-                try FileManager.default.removeItem(atPath: to.pathString)
-            }
-            try FileManager.default.copyItem(atPath: path.pathString, toPath: to.pathString)
-        #else
-            try await _NIOFileSystem.FileSystem.shared.replaceItem(at: .init(to.pathString), withItemAt: .init(path.pathString))
-        #endif
+        if await File.System.Stat.exists(at: destinationPath) {
+            try await File.System.Delete.delete(at: destinationPath, options: .init(recursive: true))
+        }
+        try await copyItem(from: sourcePath, to: destinationPath)
     }
 
     public func copy(_ from: AbsolutePath, to: AbsolutePath) async throws {
         logger?.debug("Copying file or directory at path \(from.pathString) to \(to.pathString).")
-        if !(try await exists(from)) {
+        let sourcePath = try systemPath(from)
+        let destinationPath = try systemPath(to)
+        if !(await File.System.Stat.exists(at: sourcePath)) {
             throw FileSystemError.copiedItemAbsent(copiedPath: from, intoPath: to)
         }
         if !(try await exists(to.parentDirectory)) {
             try await makeDirectory(at: to.parentDirectory)
         }
-        #if os(Windows)
-            try FileManager.default.copyItem(atPath: from.pathString, toPath: to.pathString)
-        #else
-            try await _NIOFileSystem.FileSystem.shared.copyItem(at: .init(from.pathString), to: .init(to.pathString))
-        #endif
+        try await copyItem(from: sourcePath, to: destinationPath)
     }
 
     public func runInTemporaryDirectory<T>(
@@ -781,36 +662,16 @@ public struct FileSystem: FileSysteming, Sendable {
     )
     public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
         logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
-        #if os(Windows)
-            guard let attrs = try? FileManager.default.attributesOfItem(atPath: path.pathString),
-                  let size = attrs[.size] as? Int64
-            else { return nil }
-            return size
-        #else
-            guard let info = try await _NIOFileSystem.FileSystem.shared.info(
-                forFileAt: .init(path.pathString),
-                infoAboutSymbolicLink: true
-            ) else { return nil }
-            return info.size
-        #endif
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path.pathString) else { return nil }
+        return Self.fileSize(from: attributes)
     }
 
     public func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata? {
         logger?.debug("Getting the metadata of file at path \(path.pathString).")
-        #if os(Windows)
-            guard let attrs = try? FileManager.default.attributesOfItem(atPath: path.pathString) else { return nil }
-            let size = (attrs[.size] as? Int64) ?? 0
-            let modificationDate = (attrs[.modificationDate] as? Date) ?? Date()
-            return FileMetadata(size: size, lastModificationDate: modificationDate)
-        #else
-            guard let info = try await _NIOFileSystem.FileSystem.shared.info(
-                forFileAt: .init(path.pathString),
-                infoAboutSymbolicLink: true
-            ) else { return nil }
-            let lastModified = info.lastDataModificationTime
-            let modificationTimeInterval = Double(lastModified.seconds) + Double(lastModified.nanoseconds) / 1_000_000_000
-            return FileMetadata(size: info.size, lastModificationDate: Date(timeIntervalSince1970: modificationTimeInterval))
-        #endif
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path.pathString) else { return nil }
+        let size = Self.fileSize(from: attributes)
+        let modificationDate = (attributes[.modificationDate] as? Date) ?? Date()
+        return FileMetadata(size: size, lastModificationDate: modificationDate)
     }
 
     public func setFileTimes(
@@ -829,21 +690,46 @@ public struct FileSystem: FileSysteming, Sendable {
                 try FileManager.default.setAttributes(attributes, ofItemAtPath: path.pathString)
             }
         #else
-            let lastAccess = lastAccessDate.map { Self.dateToTimespec($0) }
-            let lastModification = lastModificationDate.map { Self.dateToTimespec($0) }
-            try await _NIOFileSystem.FileSystem.shared.withFileHandle(
-                forReadingAt: .init(path.pathString)
-            ) { handle in
-                try await handle.setTimes(lastAccess: lastAccess, lastDataModification: lastModification)
-            }
+            try Self.updateFileTimes(
+                path: path.pathString,
+                lastAccessDate: lastAccessDate,
+                lastModificationDate: lastModificationDate
+            )
         #endif
     }
 
     #if !os(Windows)
-        private static func dateToTimespec(_ date: Date) -> _NIOFileSystem.FileInfo.Timespec {
+        private static func updateFileTimes(
+            path: String,
+            lastAccessDate: Date?,
+            lastModificationDate: Date?
+        ) throws {
+            var times = [
+                timespec(tv_sec: 0, tv_nsec: Int(UTIME_OMIT)),
+                timespec(tv_sec: 0, tv_nsec: Int(UTIME_OMIT)),
+            ]
+
+            if let lastAccessDate {
+                times[0] = dateToTimespec(lastAccessDate)
+            }
+
+            if let lastModificationDate {
+                times[1] = dateToTimespec(lastModificationDate)
+            }
+
+            let result = path.withCString { pathPointer in
+                utimensat(AT_FDCWD, pathPointer, &times, 0)
+            }
+
+            guard result == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+        }
+
+        private static func dateToTimespec(_ date: Date) -> timespec {
             let seconds = Int(date.timeIntervalSince1970)
             let nanoseconds = Int((date.timeIntervalSince1970 - Double(seconds)) * 1_000_000_000)
-            return _NIOFileSystem.FileInfo.Timespec(seconds: seconds, nanoseconds: nanoseconds)
+            return timespec(tv_sec: seconds, tv_nsec: nanoseconds)
         }
     #endif
 
@@ -867,69 +753,49 @@ public struct FileSystem: FileSysteming, Sendable {
 
     private func createSymbolicLink(fromPathString: String, toPathString: String) async throws {
         logger?.debug("Creating symbolic link from \(fromPathString) to \(toPathString).")
-        #if os(Windows)
-            try FileManager.default.createSymbolicLink(atPath: fromPathString, withDestinationPath: toPathString)
-        #else
-            try await _NIOFileSystem.FileSystem.shared.createSymbolicLink(
-                at: FilePath(fromPathString),
-                withDestination: FilePath(toPathString)
-            )
-        #endif
+        try await File.System.Link.Symbolic.create(
+            at: try File.Path(fromPathString),
+            pointingTo: try File.Path(toPathString)
+        )
     }
 
     public func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath {
         logger?.debug("Resolving symbolink link at path \(symlinkPath.pathString).")
-        if !(try await exists(symlinkPath)) {
+        let filePath = try systemPath(symlinkPath)
+        if !(await File.System.Stat.exists(at: filePath)) {
             throw FileSystemError.absentSymbolicLink(symlinkPath)
         }
-        #if os(Windows)
-            let destination = try FileManager.default.destinationOfSymbolicLink(atPath: symlinkPath.pathString)
-            if destination.hasPrefix("/") || destination.contains(":") {
-                return try AbsolutePath(validating: destination)
+        do {
+            let targetPath = try await File.System.Link.Read.Target.target(of: filePath)
+            if targetPath.isAbsolute {
+                return try absolutePath(targetPath)
             } else {
-                return AbsolutePath(symlinkPath.parentDirectory, try RelativePath(validating: destination))
+                return AbsolutePath(
+                    symlinkPath.parentDirectory,
+                    try RelativePath(validating: String(targetPath))
+                )
             }
-        #else
-            guard let info = try await _NIOFileSystem.FileSystem.shared.info(
-                forFileAt: FilePath(symlinkPath.pathString),
-                infoAboutSymbolicLink: true
-            )
-            else { return symlinkPath }
-            switch info.type {
-            case .symlink:
-                break
-            default:
-                return symlinkPath
-            }
-            let path = try await _NIOFileSystem.FileSystem.shared.destinationOfSymbolicLink(at: FilePath(symlinkPath.pathString))
-            if path.starts(with: "/") {
-                return try AbsolutePath(validating: path.string)
-            } else {
-                return AbsolutePath(symlinkPath.parentDirectory, try RelativePath(validating: path.string))
-            }
-        #endif
+        } catch File.System.Link.Read.Target.Error.notASymlink {
+            return symlinkPath
+        }
     }
 
     #if !os(Windows)
         public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
             logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
-            try await NIOSingletons.posixBlockingThreadPool.runIfActive {
-                try FileManager.default.zipItem(
-                    at: URL(fileURLWithPath: path.pathString),
-                    to: URL(fileURLWithPath: to.pathString),
-                    shouldKeepParent: false
-                )
-            }
+            try FileManager.default.zipItem(
+                at: URL(fileURLWithPath: path.pathString),
+                to: URL(fileURLWithPath: to.pathString),
+                shouldKeepParent: false
+            )
         }
 
         public func unzip(_ zipPath: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
             logger?.debug("Unzipping the file at path \(zipPath.pathString) to \(to.pathString)")
-            try await NIOSingletons.posixBlockingThreadPool.runIfActive {
-                try FileManager.default.unzipItem(
-                    at: URL(fileURLWithPath: zipPath.pathString),
-                    to: URL(fileURLWithPath: to.pathString)
-                )
-            }
+            try FileManager.default.unzipItem(
+                at: URL(fileURLWithPath: zipPath.pathString),
+                to: URL(fileURLWithPath: to.pathString)
+            )
         }
     #endif
 
@@ -981,15 +847,28 @@ extension AnyThrowingAsyncSequenceable where Element == Path.AbsolutePath {
     }
 }
 
-#if !os(Windows)
-    extension FilePath {
-        fileprivate var path: AbsolutePath {
-            try! AbsolutePath(validating: string) // swiftlint:disable:this force_try
-        }
-    }
-#endif
-
 extension FileSystem {
+    private func writeFile(_ data: Data, to path: AbsolutePath) async throws {
+        try await File.System.Write.Atomic.write(
+            [UInt8](data),
+            to: try systemPath(path),
+            options: .init(createIntermediates: false)
+        )
+    }
+
+    private static func fileSize(from attributes: [FileAttributeKey: Any]) -> Int64 {
+        if let number = attributes[.size] as? NSNumber {
+            return number.int64Value
+        }
+        if let size = attributes[.size] as? Int64 {
+            return size
+        }
+        if let size = attributes[.size] as? Int {
+            return Int64(size)
+        }
+        return 0
+    }
+
     /// Creates and passes a temporary directory to the given action, coupling its lifecycle to the action's.
     /// - Parameter action: The action to run with the temporary directory.
     /// - Returns: Any value returned by the action.
@@ -1009,5 +888,36 @@ extension FileSystem {
 
     public func writeAsJSON(_ item: some Encodable, at path: Path.AbsolutePath, options: Set<WriteJSONOptions>) async throws {
         try await writeAsJSON(item, at: path, encoder: JSONEncoder(), options: options)
+    }
+
+    private func systemPath(_ path: AbsolutePath) throws -> File.Path {
+        try File.Path(path.pathString)
+    }
+
+    private func absolutePath(_ path: File.Path) throws -> AbsolutePath {
+        try AbsolutePath(validating: String(path))
+    }
+
+    private func copyItem(from source: File.Path, to destination: File.Path) async throws {
+        guard !(await File.System.Stat.exists(at: destination)) else {
+            throw CocoaError(.fileWriteFileExists)
+        }
+
+        let metadata = try File_System_Primitives.File.System.Stat.lstatInfo(at: source)
+        switch metadata.type {
+        case .directory:
+            try await File.System.Create.Directory.create(at: destination, options: .init(createIntermediates: true))
+            for entry in try await File.Directory.Contents.list(at: File.Directory(source)) {
+                let sourceChild = try entry.path()
+                guard let lastComponent = sourceChild.lastComponent else { continue }
+                try await copyItem(from: sourceChild, to: File.Path(destination, appending: lastComponent))
+            }
+        default:
+            try await File.System.Copy.copy(
+                from: source,
+                to: destination,
+                options: .init(overwrite: false, copyAttributes: true, followSymlinks: false)
+            )
+        }
     }
 }
