@@ -359,8 +359,8 @@ public protocol FileSysteming: Sendable {
 // MARK: - FileSystem
 
 public struct FileSystem: FileSysteming, Sendable {
-    fileprivate let logger: Logger?
-    fileprivate let environmentVariables: [String: String]
+    private let logger: Logger?
+    private let environmentVariables: [String: String]
 
     public init(environmentVariables: [String: String] = ProcessInfo.processInfo.environment, logger: Logger? = nil) {
         self.environmentVariables = environmentVariables
@@ -645,123 +645,6 @@ public struct FileSystem: FileSysteming, Sendable {
         }
     }
 
-    @available(
-        *,
-        deprecated,
-        renamed: "fileMetadata",
-        message: "Read the file size from the metadata, which contains other attributes"
-    )
-    public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
-        logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
-        return try await fileMetadata(at: path)?.size
-    }
-
-    public func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata? {
-        logger?.debug("Getting the metadata of file at path \(path.pathString).")
-        let fp = try filePath(path)
-        guard await File.System.Stat.exists(at: fp) else { return nil }
-        let info = try await File.System.Stat.info(at: fp)
-        let modificationTime = info.timestamps.modificationTime
-        let seconds = TimeInterval(modificationTime.secondsSinceEpoch)
-        let nanoseconds = TimeInterval(modificationTime.totalNanoseconds) / 1_000_000_000
-        let modificationDate = Date(timeIntervalSince1970: seconds + nanoseconds)
-        return FileMetadata(size: info.size, lastModificationDate: modificationDate)
-    }
-
-    public func setFileTimes(
-        of path: AbsolutePath,
-        lastAccessDate: Date?,
-        lastModificationDate: Date?
-    ) async throws {
-        logger?.debug("Setting file times at path \(path.pathString).")
-        #if os(Windows)
-            let handle = path.pathString
-                .replacingOccurrences(of: "/", with: "\\")
-                .withCString(encodedAs: UTF16.self) { wpath in
-                    CreateFileW(
-                        wpath,
-                        DWORD(FILE_WRITE_ATTRIBUTES),
-                        DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
-                        nil,
-                        DWORD(OPEN_EXISTING),
-                        DWORD(FILE_ATTRIBUTE_NORMAL),
-                        nil
-                    )
-                }
-            guard let handle, handle != INVALID_HANDLE_VALUE else {
-                throw NSError(domain: "WinSDK", code: Int(GetLastError()))
-            }
-            defer { CloseHandle(handle) }
-
-            let accessTime = lastAccessDate.map(Self.windowsFileTime(from:))
-            let modificationTime = lastModificationDate.map(Self.windowsFileTime(from:))
-            var success = true
-            if var accessTime, var modificationTime {
-                success = SetFileTime(handle, nil, &accessTime, &modificationTime)
-            } else if var accessTime {
-                success = SetFileTime(handle, nil, &accessTime, nil)
-            } else if var modificationTime {
-                success = SetFileTime(handle, nil, nil, &modificationTime)
-            } else {
-                return
-            }
-            guard success else { throw NSError(domain: "WinSDK", code: Int(GetLastError())) }
-        #else
-            try Self.updateFileTimes(
-                path: path.pathString,
-                lastAccessDate: lastAccessDate,
-                lastModificationDate: lastModificationDate
-            )
-        #endif
-    }
-
-    public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {
-        logger?.debug("Locating the relative path \(relativePath.pathString) by traversing up from \(from.pathString).")
-        let path = from.appending(relativePath)
-        if try await exists(path) {
-            return path
-        }
-        if from == .root { return nil }
-        return try await locateTraversingUp(from: from.parentDirectory, relativePath: relativePath)
-    }
-
-    public func createSymbolicLink(from: AbsolutePath, to: AbsolutePath) async throws {
-        try await createSymbolicLink(fromPathString: from.pathString, toPathString: to.pathString)
-    }
-
-    public func createSymbolicLink(from: AbsolutePath, to: RelativePath) async throws {
-        try await createSymbolicLink(fromPathString: from.pathString, toPathString: to.pathString)
-    }
-
-    private func createSymbolicLink(fromPathString: String, toPathString: String) async throws {
-        logger?.debug("Creating symbolic link from \(fromPathString) to \(toPathString).")
-        try await File.System.Link.Symbolic.create(
-            at: try File.Path(fromPathString),
-            pointingTo: try File.Path(toPathString)
-        )
-    }
-
-    public func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath {
-        logger?.debug("Resolving symbolink link at path \(symlinkPath.pathString).")
-        let fp = try filePath(symlinkPath)
-        guard await File.System.Stat.exists(at: fp) else {
-            throw FileSystemError.absentSymbolicLink(symlinkPath)
-        }
-        do {
-            let targetPath = try await File.System.Link.Read.Target.target(of: fp)
-            if targetPath.isAbsolute {
-                return try absolutePath(targetPath)
-            } else {
-                return AbsolutePath(
-                    symlinkPath.parentDirectory,
-                    try RelativePath(validating: String(describing: targetPath))
-                )
-            }
-        } catch {
-            return symlinkPath
-        }
-    }
-
     #if !os(Windows)
         public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
             logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
@@ -860,11 +743,11 @@ extension FileSystem {
 // MARK: - Path conversion helpers
 
 extension FileSystem {
-    fileprivate func filePath(_ path: AbsolutePath) throws -> File.Path {
+    private func filePath(_ path: AbsolutePath) throws -> File.Path {
         try File.Path(path.pathString)
     }
 
-    fileprivate func absolutePath(_ path: File.Path) throws -> AbsolutePath {
+    private func absolutePath(_ path: File.Path) throws -> AbsolutePath {
         try AbsolutePath(validating: String(describing: path))
     }
 }
@@ -875,7 +758,7 @@ extension FileSystem {
     /// Removes a file, symlink, or directory (recursively) using lstat to avoid
     /// following symlinks. This works around a bug in swift-file-system's Delete
     /// which uses stat() and fails on symlinks whose targets don't exist.
-    fileprivate func removeItem(at path: File.Path) throws {
+    private func removeItem(at path: File.Path) throws {
         let info: File.System.Metadata.Info
         do {
             info = try File.System.Stat.lstatInfo(at: path)
@@ -923,7 +806,7 @@ extension FileSystem {
 // MARK: - File I/O helpers
 
 extension FileSystem {
-    fileprivate func writeFileBytes(_ data: Data, to path: AbsolutePath) async throws {
+    private func writeFileBytes(_ data: Data, to path: AbsolutePath) async throws {
         try await File.System.Write.Atomic.write(
             [UInt8](data),
             to: try filePath(path),
@@ -931,7 +814,7 @@ extension FileSystem {
         )
     }
 
-    fileprivate func copyItem(from source: File.Path, to destination: File.Path) async throws {
+    private func copyItem(from source: File.Path, to destination: File.Path) async throws {
         guard !(await File.System.Stat.exists(at: destination)) else {
             throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: String(describing: destination)])
         }
@@ -956,6 +839,127 @@ extension FileSystem {
                 options: .init(overwrite: false, copyAttributes: true, followSymlinks: false)
             )
         }
+    }
+}
+
+// MARK: - Metadata and symlink helpers
+
+extension FileSystem {
+    @available(
+        *,
+        deprecated,
+        renamed: "fileMetadata",
+        message: "Read the file size from the metadata, which contains other attributes"
+    )
+    public func fileSizeInBytes(at path: AbsolutePath) async throws -> Int64? {
+        logger?.debug("Getting the size in bytes of file at path \(path.pathString).")
+        return try await fileMetadata(at: path)?.size
+    }
+
+    public func fileMetadata(at path: AbsolutePath) async throws -> FileMetadata? {
+        logger?.debug("Getting the metadata of file at path \(path.pathString).")
+        let fp = try filePath(path)
+        guard await File.System.Stat.exists(at: fp) else { return nil }
+        let info = try await File.System.Stat.info(at: fp)
+        let modificationTime = info.timestamps.modificationTime
+        let seconds = TimeInterval(modificationTime.secondsSinceEpoch)
+        let nanoseconds = TimeInterval(modificationTime.totalNanoseconds) / 1_000_000_000
+        let modificationDate = Date(timeIntervalSince1970: seconds + nanoseconds)
+        return FileMetadata(size: info.size, lastModificationDate: modificationDate)
+    }
+
+    public func setFileTimes(
+        of path: AbsolutePath,
+        lastAccessDate: Date?,
+        lastModificationDate: Date?
+    ) async throws {
+        logger?.debug("Setting file times at path \(path.pathString).")
+        #if os(Windows)
+            let handle = path.pathString
+                .replacingOccurrences(of: "/", with: "\\")
+                .withCString(encodedAs: UTF16.self) { wpath in
+                    CreateFileW(
+                        wpath,
+                        DWORD(FILE_WRITE_ATTRIBUTES),
+                        DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
+                        nil,
+                        DWORD(OPEN_EXISTING),
+                        DWORD(FILE_ATTRIBUTE_NORMAL),
+                        nil
+                    )
+                }
+            guard let handle, handle != INVALID_HANDLE_VALUE else {
+                throw NSError(domain: "WinSDK", code: Int(GetLastError()))
+            }
+            defer { CloseHandle(handle) }
+
+            let accessTime = lastAccessDate.map(Self.windowsFileTime(from:))
+            let modificationTime = lastModificationDate.map(Self.windowsFileTime(from:))
+            var success = true
+            if var accessTime, var modificationTime {
+                success = SetFileTime(handle, nil, &accessTime, &modificationTime)
+            } else if var accessTime {
+                success = SetFileTime(handle, nil, &accessTime, nil)
+            } else if var modificationTime {
+                success = SetFileTime(handle, nil, nil, &modificationTime)
+            } else {
+                return
+            }
+            guard success else { throw NSError(domain: "WinSDK", code: Int(GetLastError())) }
+        #else
+            try Self.updateFileTimes(
+                path: path.pathString,
+                lastAccessDate: lastAccessDate,
+                lastModificationDate: lastModificationDate
+            )
+        #endif
+    }
+
+    public func locateTraversingUp(from: AbsolutePath, relativePath: RelativePath) async throws -> AbsolutePath? {
+        logger?.debug("Locating the relative path \(relativePath.pathString) by traversing up from \(from.pathString).")
+        let path = from.appending(relativePath)
+        if try await exists(path) {
+            return path
+        }
+        if from == .root { return nil }
+        return try await locateTraversingUp(from: from.parentDirectory, relativePath: relativePath)
+    }
+
+    public func createSymbolicLink(from: AbsolutePath, to: AbsolutePath) async throws {
+        try await createSymbolicLink(fromPathString: from.pathString, toPathString: to.pathString)
+    }
+
+    public func createSymbolicLink(from: AbsolutePath, to: RelativePath) async throws {
+        try await createSymbolicLink(fromPathString: from.pathString, toPathString: to.pathString)
+    }
+
+    public func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath {
+        logger?.debug("Resolving symbolink link at path \(symlinkPath.pathString).")
+        let fp = try filePath(symlinkPath)
+        guard await File.System.Stat.exists(at: fp) else {
+            throw FileSystemError.absentSymbolicLink(symlinkPath)
+        }
+        do {
+            let targetPath = try await File.System.Link.Read.Target.target(of: fp)
+            if targetPath.isAbsolute {
+                return try absolutePath(targetPath)
+            } else {
+                return AbsolutePath(
+                    symlinkPath.parentDirectory,
+                    try RelativePath(validating: String(describing: targetPath))
+                )
+            }
+        } catch {
+            return symlinkPath
+        }
+    }
+
+    private func createSymbolicLink(fromPathString: String, toPathString: String) async throws {
+        logger?.debug("Creating symbolic link from \(fromPathString) to \(toPathString).")
+        try await File.System.Link.Symbolic.create(
+            at: try File.Path(fromPathString),
+            pointingTo: try File.Path(toPathString)
+        )
     }
 }
 
