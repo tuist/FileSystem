@@ -37,10 +37,9 @@ jobs:
 
   test:
     name: "Test on macOS"
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
-      - run: sudo xcode-select -s /Applications/Xcode_26.0.app
       - uses: jdx/mise-action@v3
       - name: Run
         run: mise run test-spm
