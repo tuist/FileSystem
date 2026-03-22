@@ -1,5 +1,15 @@
 import Foundation
 
+#if os(Windows)
+    import WinSDK
+#elseif canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
+#endif
+
 /// The result of a custom matcher for searching directory components
 public struct MatchResult {
     /// When true, the url will be added to the output
@@ -32,7 +42,7 @@ public struct MatchResult {
 // swiftlint:disable:next function_body_length
 public func search(
     // swiftformat:disable unusedArguments
-    directory baseURL: URL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
+    directory baseURL: URL = URL.with(filePath: ProcessInfo.processInfo.environment["PWD"] ?? "."),
     include: [Pattern] = [],
     exclude: [Pattern] = [],
     includingPropertiesForKeys keys: [URLResourceKey] = [],
@@ -74,27 +84,19 @@ public func search(
                     }
 
                     if include.sections.isEmpty {
-                        if FileManager.default
-                            .fileExists(atPath: baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString)
-                        {
+                        if (try? normalizedFileURL(baseURL).checkResourceIsReachable()) == true {
                             continuation.yield(baseURL)
                         }
                         continue
                     }
 
-                    let path = baseURL.absoluteString.removingPercentEncoding ?? baseURL.absoluteString
-                    let symbolicLinkDestination = URL.with(filePath: path).resolvingSymlinksInPath()
-                    var isDirectory: ObjCBool = false
+                    let symbolicLinkDestination = normalizedFileURL(baseURL).resolvingSymlinksInPath()
 
-                    let symbolicLinkDestinationPath: String = symbolicLinkDestination
-                        .path()
-                        .removingPercentEncoding ?? symbolicLinkDestination.path()
+                    let symbolicLinkDestinationPath = decodedPath(symbolicLinkDestination)
 
-                    guard FileManager.default.fileExists(
-                        atPath: symbolicLinkDestinationPath,
-                        isDirectory: &isDirectory
-                    ),
-                        isDirectory.boolValue
+                    guard let resourceValues = try? URL.with(filePath: symbolicLinkDestinationPath)
+                        .resourceValues(forKeys: [.isDirectoryKey]),
+                        resourceValues.isDirectory == true
                     else { continue }
 
                     try await search(
@@ -164,16 +166,10 @@ private func search(
     relativePath relativeDirectoryPath: String,
     continuation: AsyncThrowingStream<URL, any Error>.Continuation
 ) async throws {
-    var options: FileManager.DirectoryEnumerationOptions = [
-        .producesRelativePathURLs,
-    ]
-    if skipHiddenFiles {
-        options.insert(.skipsHiddenFiles)
-    }
-    let contents = try FileManager.default.contentsOfDirectory(
+    let contents = try directoryContents(
         at: symbolicLinkDestination ?? directory,
-        includingPropertiesForKeys: keys + [.isDirectoryKey],
-        options: options
+        includingPropertiesForKeys: keys + [.isDirectoryKey, .isSymbolicLinkKey],
+        skipHiddenFiles: skipHiddenFiles
     )
 
     try await withThrowingTaskGroup(of: Void.self) { group in
@@ -229,8 +225,8 @@ private func search(
 
 extension URL {
     fileprivate func isAncestorOf(_ maybeChild: URL) -> Bool {
-        let maybeChildFileURL = maybeChild.isFileURL ? maybeChild : .with(filePath: maybeChild.path)
-        let maybeAncestorFileURL = isFileURL ? self : .with(filePath: path)
+        let maybeChildFileURL = maybeChild.isFileURL ? maybeChild : .with(filePath: decodedPath(maybeChild))
+        let maybeAncestorFileURL = isFileURL ? self : .with(filePath: decodedPath(self))
 
         do {
             let maybeChildResourceValues = try maybeChildFileURL.standardizedFileURL.resolvingSymlinksInPath()
@@ -250,9 +246,123 @@ extension URL {
     }
 }
 
+private func directoryContents(
+    at directory: URL,
+    includingPropertiesForKeys keys: [URLResourceKey],
+    skipHiddenFiles: Bool
+) throws -> [URL] {
+    let directoryPath = decodedPath(normalizedFileURL(directory).resolvingSymlinksInPath())
+    let baseURL = URL.with(filePath: directoryPath)
+    let entries = try directoryEntries(atPath: directoryPath)
+    let requestedKeys = Set(keys)
+
+    return try entries.compactMap { entry in
+        guard !skipHiddenFiles || !entry.hasPrefix(".") else { return nil }
+        let url = baseURL.appendingPath(entry)
+        if !requestedKeys.isEmpty {
+            _ = try url.resourceValues(forKeys: requestedKeys)
+        }
+        return url
+    }
+}
+
+private func directoryEntries(atPath path: String) throws -> [String] {
+    #if os(Windows)
+        var entries: [String] = []
+        var findData = WIN32_FIND_DATAW()
+        let searchPath = "\(path.replacingOccurrences(of: "/", with: "\\"))\\*"
+        let handle = searchPath.withCString(encodedAs: UTF16.self) { wpath in
+            FindFirstFileW(wpath, &findData)
+        }
+        guard handle != INVALID_HANDLE_VALUE else {
+            throw NSError(domain: "WinSDK", code: Int(GetLastError()))
+        }
+        defer { FindClose(handle) }
+
+        repeat {
+            let entry = windowsDirectoryEntryName(from: findData)
+            guard entry != ".", entry != ".." else { continue }
+            entries.append(entry)
+        } while windowsSucceeded(FindNextFileW(handle, &findData))
+
+        let lastError = GetLastError()
+        if lastError != DWORD(ERROR_NO_MORE_FILES) {
+            throw NSError(domain: "WinSDK", code: Int(lastError))
+        }
+
+        return entries
+    #else
+        guard let directory = opendir(path) else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        defer { closedir(directory) }
+
+        var entries: [String] = []
+        errno = 0
+        while let entryPointer = readdir(directory) {
+            let entry = entryPointer.pointee
+            var entryName = entry.d_name
+            let capacity = MemoryLayout.size(ofValue: entryName) / MemoryLayout<CChar>.size
+            let name = withUnsafePointer(to: &entryName) { pointer in
+                pointer.withMemoryRebound(to: CChar.self, capacity: capacity) {
+                    String(cString: $0)
+                }
+            }
+            guard name != ".", name != ".." else { continue }
+            entries.append(name)
+        }
+        if errno != 0 {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        return entries
+    #endif
+}
+
+private func normalizedFileURL(_ url: URL) -> URL {
+    if url.isFileURL {
+        return url
+    }
+    return URL.with(filePath: url.absoluteString.removingPercentEncoding ?? url.absoluteString)
+}
+
+private func decodedPath(_ url: URL) -> String {
+    var path = url.path()
+    path = path.removingPercentEncoding ?? path
+    #if os(Windows)
+        // URL.path() on Windows returns "/C:/..." which is invalid for Win32 APIs
+        if path.count >= 3, path.hasPrefix("/"), path[path.index(path.startIndex, offsetBy: 2)] == ":" {
+            path = String(path.dropFirst())
+        }
+    #endif
+    return path
+}
+
+#if os(Windows)
+    private func windowsSucceeded(_ result: Bool) -> Bool {
+        result
+    }
+
+    private func windowsSucceeded(_ result: some BinaryInteger) -> Bool {
+        result != 0
+    }
+
+    private func windowsDirectoryEntryName(from findData: WIN32_FIND_DATAW) -> String {
+        var fileName = findData.cFileName
+        let capacity = MemoryLayout.size(ofValue: fileName) / MemoryLayout<WCHAR>.size
+        return withUnsafePointer(to: &fileName) { pointer in
+            pointer.withMemoryRebound(
+                to: WCHAR.self,
+                capacity: capacity
+            ) {
+                String(decodingCString: $0, as: UTF16.self)
+            }
+        }
+    }
+#endif
+
 extension URL {
     public static func with(filePath: String) -> URL {
-        #if os(Linux)
+        #if os(Linux) || os(Windows)
             return URL(fileURLWithPath: filePath)
         #else
             return URL(filePath: filePath)

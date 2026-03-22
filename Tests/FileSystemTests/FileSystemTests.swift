@@ -1,5 +1,7 @@
+import Foundation
 import Path
-import XCTest
+import Testing
+
 @testable import FileSystem
 
 private struct TestError: Error, Equatable {}
@@ -7,32 +9,24 @@ private struct TestError: Error, Equatable {}
 // FileSystem tests are currently skipped on Windows due to hanging issues with async file operations.
 // The Windows build passes, so the library is usable. Tests can be enabled gradually as issues are resolved.
 #if !os(Windows)
-    final class FileSystemTests: XCTestCase, @unchecked Sendable {
-        var subject: FileSystem!
+    struct FileSystemTests {
+        let subject = FileSystem()
 
-        override func setUp() async throws {
-            try await super.setUp()
-            subject = FileSystem()
-        }
-
-        override func tearDown() async throws {
-            subject = nil
-            try await super.tearDown()
-        }
-
+        @Test
         func test_createTemporaryDirectory_returnsAValidDirectory() async throws {
             // Given
             let temporaryDirectory = try await subject.makeTemporaryDirectory(prefix: "FileSystem")
 
             // When
             let exists = try await subject.exists(temporaryDirectory)
-            XCTAssertTrue(exists)
+            #expect(exists)
             let firstExists = try await subject.exists(temporaryDirectory, isDirectory: true)
-            XCTAssertTrue(firstExists)
+            #expect(firstExists)
             let secondExists = try await subject.exists(temporaryDirectory, isDirectory: false)
-            XCTAssertFalse(secondExists)
+            #expect(!secondExists)
         }
 
+        @Test
         func test_runInTemporaryDirectory_removesTheDirectoryAfterSuccessfulCompletion() async throws {
             // Given/When
             let temporaryDirectory = try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
@@ -42,9 +36,10 @@ private struct TestError: Error, Equatable {}
 
             // Then
             let exists = try await subject.exists(temporaryDirectory)
-            XCTAssertFalse(exists)
+            #expect(!exists)
         }
 
+        @Test
         func test_runInTemporaryDirectory_rethrowsErrors() async throws {
             // Given/When
             var caughtError: Error?
@@ -57,18 +52,20 @@ private struct TestError: Error, Equatable {}
             }
 
             // Then
-            XCTAssertEqual(caughtError as? TestError, TestError())
+            #expect((caughtError as? TestError) == TestError())
         }
 
+        @Test
         func test_currentWorkingDirectory() async throws {
             // When
             let got = try await subject.currentWorkingDirectory()
 
             // Then
             let isDirectory = try await subject.exists(got, isDirectory: true)
-            XCTAssertTrue(isDirectory)
+            #expect(isDirectory)
         }
 
+        @Test
         func test_move_when_fromFileExistsAndToPathsParentDirectoryExists() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -81,10 +78,29 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(toFilePath)
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
+        func test_move_createsTargetParentDirectoriesByDefault() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let fromFilePath = temporaryDirectory.appending(component: "from")
+                let toFilePath = temporaryDirectory.appending(components: ["nested", "to"])
+                try await subject.writeText("content", at: fromFilePath)
+
+                // When
+                try await subject.move(from: fromFilePath, to: toFilePath)
+
+                // Then
+                #expect(!(try await subject.exists(fromFilePath)))
+                #expect(try await subject.exists(toFilePath))
+                #expect(try await subject.readTextFile(at: toFilePath) == "content")
+            }
+        }
+
+        @Test
         func test_move_throwsAMoveNotFoundError_when_fromFileDoesntExist() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -100,10 +116,11 @@ private struct TestError: Error, Equatable {}
                 }
 
                 // Then
-                XCTAssertEqual(_error, FileSystemError.moveNotFound(from: fromFilePath, to: toFilePath))
+                #expect(_error == FileSystemError.moveNotFound(from: fromFilePath, to: toFilePath))
             }
         }
 
+        @Test
         func test_makeDirectory_createsTheDirectory() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -114,10 +131,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(directoryPath)
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
         func test_makeDirectory_createsTheParentDirectories() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -128,10 +146,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(directoryPath)
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
         func test_makeDirectory_throwsAnError_when_parentDirectoryDoesntExist() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -146,10 +165,11 @@ private struct TestError: Error, Equatable {}
                 }
 
                 // Then
-                XCTAssertEqual(_error, FileSystemError.makeDirectoryAbsentParent(directoryPath))
+                #expect(_error == FileSystemError.makeDirectoryAbsentParent(directoryPath))
             }
         }
 
+        @Test
         func test_writeTextFile_and_readTextFile_returnsTheContent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -160,10 +180,11 @@ private struct TestError: Error, Equatable {}
                 let got = try await subject.readTextFile(at: filePath)
 
                 // Then
-                XCTAssertEqual(got, "test")
+                #expect(got == "test")
             }
         }
 
+        @Test
         func test_writeTextFile_and_readTextFile_returnsTheContent_when_whenOverwritingFile() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -175,10 +196,41 @@ private struct TestError: Error, Equatable {}
                 let got = try await subject.readTextFile(at: filePath)
 
                 // Then
-                XCTAssertEqual(got, "test")
+                #expect(got == "test")
             }
         }
 
+        @Test
+        func test_readFile_returnsTheRawContents() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let filePath = temporaryDirectory.appending(component: "file")
+                let expected = Data([0x00, 0xFF, 0x10, 0x42])
+                try expected.write(to: URL(fileURLWithPath: filePath.pathString))
+
+                // When
+                let got = try await subject.readFile(at: filePath)
+
+                // Then
+                #expect(got == expected)
+            }
+        }
+
+        @Test
+        func test_readTextFile_throwsWhenEncodingDoesNotMatchTheFileContent() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let filePath = temporaryDirectory.appending(component: "file")
+                try await subject.writeText("é", at: filePath, encoding: .utf8)
+
+                // When/Then
+                await #expect(throws: FileSystemError.readInvalidEncoding(.ascii, path: filePath)) {
+                    try await subject.readTextFile(at: filePath, encoding: .ascii)
+                }
+            }
+        }
+
+        @Test
         func test_writeAsJSON_and_readJSONFile_returnsTheContent() async throws {
             struct CodableStruct: Codable, Equatable { let name: String }
 
@@ -192,10 +244,11 @@ private struct TestError: Error, Equatable {}
                 let got: CodableStruct = try await subject.readJSONFile(at: filePath)
 
                 // Then
-                XCTAssertEqual(got, item)
+                #expect(got == item)
             }
         }
 
+        @Test
         func test_writeAsJSON_and_readJSONFile_returnsTheContent_when_whenOverwritingFile() async throws {
             struct CodableStruct: Codable, Equatable { let name: String }
 
@@ -210,10 +263,11 @@ private struct TestError: Error, Equatable {}
                 let got: CodableStruct = try await subject.readJSONFile(at: filePath)
 
                 // Then
-                XCTAssertEqual(got, item)
+                #expect(got == item)
             }
         }
 
+        @Test
         func test_writeAsPlist_and_readPlistFile_returnsTheContent() async throws {
             struct CodableStruct: Codable, Equatable { let name: String }
 
@@ -227,10 +281,11 @@ private struct TestError: Error, Equatable {}
                 let got: CodableStruct = try await subject.readPlistFile(at: filePath)
 
                 // Then
-                XCTAssertEqual(got, item)
+                #expect(got == item)
             }
         }
 
+        @Test
         func test_writeAsPlist_and_readPlistFile_returnsTheContent_when_overridingFile() async throws {
             struct CodableStruct: Codable, Equatable { let name: String }
 
@@ -245,10 +300,11 @@ private struct TestError: Error, Equatable {}
                 let got: CodableStruct = try await subject.readPlistFile(at: filePath)
 
                 // Then
-                XCTAssertEqual(got, item)
+                #expect(got == item)
             }
         }
 
+        @Test
         func test_fileSizeInBytes_returnsTheFileSize_when_itExists() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -259,10 +315,11 @@ private struct TestError: Error, Equatable {}
                 let size = try await subject.fileSizeInBytes(at: path)
 
                 // Then
-                XCTAssertEqual(size, 5)
+                #expect(size == 5)
             }
         }
 
+        @Test
         func test_fileSizeInBytes_returnsNil_when_theFileDoesntExist() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -272,10 +329,11 @@ private struct TestError: Error, Equatable {}
                 let size = try await subject.fileSizeInBytes(at: path)
 
                 // Then
-                XCTAssertNil(size)
+                #expect(size == nil)
             }
         }
 
+        @Test
         func test_fileMetadata_when_fileAbsent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -285,10 +343,11 @@ private struct TestError: Error, Equatable {}
                 let modificationDate = try await subject.fileMetadata(at: path)
 
                 // Then
-                XCTAssertNil(modificationDate)
+                #expect(modificationDate == nil)
             }
         }
 
+        @Test
         func test_fileMetadata_when_filePresent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -299,10 +358,11 @@ private struct TestError: Error, Equatable {}
                 let metadata = try await subject.fileMetadata(at: path)
 
                 // Then
-                XCTAssertNotNil(metadata?.lastModificationDate)
+                #expect(metadata?.lastModificationDate != nil)
             }
         }
 
+        @Test
         func test_setFileTimes_modificationDate() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -315,14 +375,47 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let metadata = try await subject.fileMetadata(at: path)
-                XCTAssertEqual(
-                    metadata?.lastModificationDate.timeIntervalSince1970 ?? 0,
-                    pastDate.timeIntervalSince1970,
-                    accuracy: 1.0
-                )
+                #expect(abs((metadata?.lastModificationDate.timeIntervalSince1970 ?? 0) - pastDate.timeIntervalSince1970) <= 1.0)
             }
         }
 
+        @Test
+        func test_setFileTimes_accessDate_preservesModificationDate() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let path = temporaryDirectory.appending(component: "file")
+                try await subject.touch(path)
+                let pastDate = Date(timeIntervalSince1970: 1_000_000)
+                try await subject.setFileTimes(of: path, lastAccessDate: nil, lastModificationDate: pastDate)
+
+                // When
+                try await subject.setFileTimes(of: path, lastAccessDate: Date(), lastModificationDate: nil)
+
+                // Then
+                let metadata = try await subject.fileMetadata(at: path)
+                #expect(abs((metadata?.lastModificationDate.timeIntervalSince1970 ?? 0) - pastDate.timeIntervalSince1970) <= 1.0)
+            }
+        }
+
+        @Test
+        func test_touch_updatesModificationDate_whenFileAlreadyExists() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let path = temporaryDirectory.appending(component: "file")
+                try await subject.touch(path)
+                let pastDate = Date(timeIntervalSince1970: 1_000_000)
+                try await subject.setFileTimes(of: path, lastAccessDate: nil, lastModificationDate: pastDate)
+
+                // When
+                try await subject.touch(path)
+
+                // Then
+                let metadata = try await subject.fileMetadata(at: path)
+                #expect((metadata?.lastModificationDate.timeIntervalSince1970 ?? 0) > pastDate.timeIntervalSince1970 + 10)
+            }
+        }
+
+        @Test
         func test_replace_replaces_when_replacingPathIsADirectory_and_targetDirectoryIsAbsent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -337,10 +430,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(replacedPath.appending(component: "file"))
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
         func test_replace_replaces_when_replacingPathIsADirectory_and_targetDirectoryIsPresent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -356,10 +450,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(replacedPath.appending(component: "file"))
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
         func test_replace_replaces_when_replacingPathDoesntExist() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -379,13 +474,14 @@ private struct TestError: Error, Equatable {}
                 }
 
                 // Then
-                XCTAssertEqual(
-                    _error,
-                    FileSystemError.replacingItemAbsent(replacingPath: replacingFilePath, replacedPath: replacedFilePath)
-                )
+                #expect(_error == FileSystemError.replacingItemAbsent(
+                    replacingPath: replacingFilePath,
+                    replacedPath: replacedFilePath
+                ))
             }
         }
 
+        @Test
         func test_replace_createsTheReplacedPathParentDirectoryIfAbsent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -401,10 +497,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(replacedFilePath)
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
         func test_copy_copiesASourceItemToATargetPath() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -417,10 +514,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(toPath)
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
         func test_copy_createsTargetParentDirectoriesIfNeeded() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -433,10 +531,32 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(toPath)
-                XCTAssertTrue(exists)
+                #expect(exists)
             }
         }
 
+        @Test
+        func test_copy_copiesDirectoriesRecursively() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let sourceDirectory = temporaryDirectory.appending(component: "source")
+                let nestedDirectory = sourceDirectory.appending(component: "nested")
+                let sourceFile = nestedDirectory.appending(component: "file.txt")
+                let destinationDirectory = temporaryDirectory.appending(component: "destination")
+                try await subject.makeDirectory(at: nestedDirectory)
+                try await subject.writeText("content", at: sourceFile)
+
+                // When
+                try await subject.copy(sourceDirectory, to: destinationDirectory)
+
+                // Then
+                let copiedFile = destinationDirectory.appending(components: ["nested", "file.txt"])
+                #expect(try await subject.exists(copiedFile))
+                #expect(try await subject.readTextFile(at: copiedFile) == "content")
+            }
+        }
+
+        @Test
         func test_copy_errorsIfTheSourceItemDoesntExist() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -452,15 +572,16 @@ private struct TestError: Error, Equatable {}
                 }
 
                 // Then
-                XCTAssertEqual(_error, FileSystemError.copiedItemAbsent(copiedPath: fromPath, intoPath: toPath))
+                #expect(_error == FileSystemError.copiedItemAbsent(copiedPath: fromPath, intoPath: toPath))
             }
         }
 
+        @Test
         func test_locateTraversingUp_whenAnItemIsFound() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
                 let fileToLookUp = temporaryDirectory.appending(component: "FileSystem.swift")
-                try await self.subject.touch(fileToLookUp)
+                try await subject.touch(fileToLookUp)
                 let veryNestedDirectory = temporaryDirectory.appending(components: ["first", "second", "third"])
 
                 // When
@@ -470,10 +591,11 @@ private struct TestError: Error, Equatable {}
                 )
 
                 // Then
-                XCTAssertEqual(got, fileToLookUp)
+                #expect(got == fileToLookUp)
             }
         }
 
+        @Test
         func test_locateTraversingUp_whenAnItemIsNotFound() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -486,12 +608,13 @@ private struct TestError: Error, Equatable {}
                 )
 
                 // Then
-                XCTAssertNil(got)
+                #expect(got == nil)
             }
         }
 
         // Symbolic link tests are skipped on Windows because symlinks require elevated permissions
         #if !os(Windows)
+            @Test
             func test_createSymbolicLink() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -504,10 +627,11 @@ private struct TestError: Error, Equatable {}
                     let got = try await subject.resolveSymbolicLink(symbolicLinkPath)
 
                     // Then
-                    XCTAssertEqual(got, filePath)
+                    #expect(got == filePath)
                 }
             }
 
+            @Test
             func test_createSymbolicLink_whenTheSymbolicLinkDoesntExist() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -524,10 +648,11 @@ private struct TestError: Error, Equatable {}
                     }
 
                     // Then
-                    XCTAssertEqual(_error, FileSystemError.absentSymbolicLink(symbolicLinkPath))
+                    #expect(_error == FileSystemError.absentSymbolicLink(symbolicLinkPath))
                 }
             }
 
+            @Test
             func test_resolveSymbolicLink_whenTheDestinationIsRelative() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -540,10 +665,11 @@ private struct TestError: Error, Equatable {}
                     let got = try await subject.resolveSymbolicLink(symbolicPath)
 
                     // Then
-                    XCTAssertEqual(got, destinationPath)
+                    #expect(got == destinationPath)
                 }
             }
 
+            @Test
             func test_resolveSymbolicLink_whenThePathIsNotASymbolicLink() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -554,12 +680,56 @@ private struct TestError: Error, Equatable {}
                     let got = try await subject.resolveSymbolicLink(directoryPath)
 
                     // Then
-                    XCTAssertEqual(got, directoryPath)
+                    #expect(got == directoryPath)
+                }
+            }
+
+            @Test
+            func test_copy_preservesSymbolicLinks() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let destinationPath = temporaryDirectory.appending(component: "destination")
+                    let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+                    let copiedLinkPath = temporaryDirectory.appending(component: "copied")
+                    try await subject.touch(destinationPath)
+                    try await subject.createSymbolicLink(from: symbolicLinkPath, to: destinationPath)
+
+                    // When
+                    try await subject.copy(symbolicLinkPath, to: copiedLinkPath)
+                    let got = try await subject.resolveSymbolicLink(copiedLinkPath)
+
+                    // Then
+                    #expect(got == destinationPath)
+                }
+            }
+
+            @Test
+            func test_remove_directorySymbolicLink_doesNotRemoveDestination() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let destinationDirectory = temporaryDirectory.appending(component: "destination")
+                    let destinationFile = destinationDirectory.appending(component: "file")
+                    let symbolicLinkPath = temporaryDirectory.appending(component: "symbolic")
+                    try await subject.makeDirectory(at: destinationDirectory)
+                    try await subject.touch(destinationFile)
+                    try await subject.createSymbolicLink(from: symbolicLinkPath, to: destinationDirectory)
+
+                    // When
+                    try await subject.remove(symbolicLinkPath)
+
+                    // Then
+                    let symbolicLinkExists = try await subject.exists(symbolicLinkPath)
+                    let destinationDirectoryExists = try await subject.exists(destinationDirectory, isDirectory: true)
+                    let destinationFileExists = try await subject.exists(destinationFile)
+                    #expect(!symbolicLinkExists)
+                    #expect(destinationDirectoryExists)
+                    #expect(destinationFileExists)
                 }
             }
         #endif
 
         #if !os(Windows)
+            @Test
             func test_zipping() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -575,11 +745,35 @@ private struct TestError: Error, Equatable {}
 
                     // Then
                     let exists = try await subject.exists(unzippedPath.appending(component: "file"))
-                    XCTAssertTrue(exists)
+                    #expect(exists)
+                }
+            }
+
+            @Test
+            func test_zippingDirectoryContent_doesNotKeepTheParentDirectory() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let sourceDirectory = temporaryDirectory.appending(component: "source")
+                    let nestedDirectory = sourceDirectory.appending(component: "nested")
+                    let sourceFile = nestedDirectory.appending(component: "file.txt")
+                    let zipPath = temporaryDirectory.appending(component: "directory.zip")
+                    let unzippedPath = temporaryDirectory.appending(component: "unzipped")
+                    try await subject.makeDirectory(at: nestedDirectory)
+                    try await subject.makeDirectory(at: unzippedPath)
+                    try await subject.writeText("content", at: sourceFile)
+
+                    // When
+                    try await subject.zipFileOrDirectoryContent(at: sourceDirectory, to: zipPath)
+                    try await subject.unzip(zipPath, to: unzippedPath)
+
+                    // Then
+                    #expect(try await subject.exists(unzippedPath.appending(components: ["nested", "file.txt"])))
+                    #expect(!(try await subject.exists(unzippedPath.appending(component: "source"))))
                 }
             }
         #endif
 
+        @Test
         func test_glob_component_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -598,10 +792,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstSourceFile])
+                #expect(got == [firstSourceFile])
             }
         }
 
+        @Test
         func test_glob_nested_component_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -618,13 +813,14 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstSourceFile])
+                #expect(got == [firstSourceFile])
             }
         }
 
         // The following behavior works correctly only on Apple environments due to discrepancies in the `Foundation`
         // implementation.
         #if !os(Linux)
+            @Test
             func test_glob_when_recursive_glob_with_file_being_in_the_base_directory() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -645,11 +841,12 @@ private struct TestError: Error, Equatable {}
                     .sorted()
 
                     // Then
-                    XCTAssertEqual(got, [firstSourceFile])
+                    #expect(got == [firstSourceFile])
                 }
             }
         #endif
 
+        @Test
         func test_glob_with_nested_directories() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -673,10 +870,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstSourceFile, secondSourceFile, topFile])
+                #expect(got == [firstSourceFile, secondSourceFile, topFile])
             }
         }
 
+        @Test
         func test_glob_with_file_in_a_nested_directory_with_a_component_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -695,10 +893,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstSourceFile])
+                #expect(got == [firstSourceFile])
             }
         }
 
+        @Test
         func test_glob_with_file_and_only_a_directory_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -714,10 +913,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstSourceFile])
+                #expect(got == [firstSourceFile])
             }
         }
 
+        @Test
         func test_glob_with_file_with_a_space_and_only_a_directory_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -733,10 +933,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_file_with_a_special_character_and_only_a_directory_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -752,10 +953,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_hash_character_in_directory_name() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given: A directory with a # character in its name (common in Azure AD usernames)
@@ -773,10 +975,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_path_wildcard_and_a_constant_file_name() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -795,10 +998,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_file_in_a_directory_with_a_space() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -816,10 +1020,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_file_extension_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -837,10 +1042,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_hidden_file_and_extension_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -858,10 +1064,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_constant_file() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -879,10 +1086,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_path_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -900,10 +1108,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [sourceFile])
+                #expect(got == [sourceFile])
             }
         }
 
+        @Test
         func test_glob_with_nested_files_and_only_a_directory_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -922,10 +1131,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstDirectory, sourceFile, secondDirectory])
+                #expect(got == [firstDirectory, sourceFile, secondDirectory])
             }
         }
 
+        @Test
         func test_glob_with_nested_files_and_only_a_directory_wildcard_when_ds_store_is_present() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -946,10 +1156,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstDirectory, sourceFile, secondDirectory])
+                #expect(got == [firstDirectory, sourceFile, secondDirectory])
             }
         }
 
+        @Test
         func test_glob_with_nested_files_and_only_a_directory_wildcard_when_git_keep_is_present() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -970,12 +1181,13 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [firstDirectory, sourceFile, secondDirectory])
+                #expect(got == [firstDirectory, sourceFile, secondDirectory])
             }
         }
 
         // Glob tests involving symlinks are skipped on Windows because symlinks require elevated permissions
         #if !os(Windows)
+            @Test
             func test_glob_with_symlink_and_only_a_directory_wildcard() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -998,10 +1210,11 @@ private struct TestError: Error, Equatable {}
                     .sorted()
 
                     // Then
-                    XCTAssertEqual(got, [symlinkSourceFilePath])
+                    #expect(got == [symlinkSourceFilePath])
                 }
             }
 
+            @Test
             func test_glob_with_symlink_as_base_url() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -1022,10 +1235,11 @@ private struct TestError: Error, Equatable {}
                     .sorted()
 
                     // Then
-                    XCTAssertEqual(got, [symlinkSourceFilePath])
+                    #expect(got == [symlinkSourceFilePath])
                 }
             }
 
+            @Test
             func test_glob_with_relative_symlink() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -1055,11 +1269,12 @@ private struct TestError: Error, Equatable {}
                     .sorted()
 
                     // Then
-                    XCTAssertEqual(got.count, 1)
-                    XCTAssertEqual(got.map(\.basename), [versionPath.basename])
+                    #expect(got.count == 1)
+                    #expect(got.map(\.basename) == [versionPath.basename])
                 }
             }
 
+            @Test
             func test_glob_with_relative_directory_symlink() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
@@ -1086,12 +1301,13 @@ private struct TestError: Error, Equatable {}
                     .sorted()
 
                     // Then
-                    XCTAssertEqual(got.count, 1)
-                    XCTAssertEqual(got.map(\.basename), [myStructPath.basename])
+                    #expect(got.count == 1)
+                    #expect(got.map(\.basename) == [myStructPath.basename])
                 }
             }
         #endif
 
+        @Test
         func test_glob_with_double_directory_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -1119,10 +1335,11 @@ private struct TestError: Error, Equatable {}
                 .sorted()
 
                 // Then
-                XCTAssertEqual(got, [fourthSourceFile, thirdSourceFile])
+                #expect(got == [fourthSourceFile, thirdSourceFile])
             }
         }
 
+        @Test
         func test_glob_with_extension_group() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -1139,16 +1356,11 @@ private struct TestError: Error, Equatable {}
                     .sorted()
 
                 // Then
-                XCTAssertEqual(
-                    got,
-                    [
-                        cppSourceFile,
-                        swiftSourceFile,
-                    ]
-                )
+                #expect(got == [cppSourceFile, swiftSourceFile])
             }
         }
 
+        @Test
         func test_remove_file() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -1160,10 +1372,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let exists = try await subject.exists(file)
-                XCTAssertFalse(exists)
+                #expect(!exists)
             }
         }
 
+        @Test
         func test_remove_non_existing_file() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -1174,6 +1387,7 @@ private struct TestError: Error, Equatable {}
             }
         }
 
+        @Test
         func test_remove_directory_with_files() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -1190,12 +1404,13 @@ private struct TestError: Error, Equatable {}
                 let directoryExists = try await subject.exists(directory)
                 let nestedDirectoryExists = try await subject.exists(nestedDirectory)
                 let fileExists = try await subject.exists(file)
-                XCTAssertFalse(directoryExists)
-                XCTAssertFalse(nestedDirectoryExists)
-                XCTAssertFalse(fileExists)
+                #expect(!directoryExists)
+                #expect(!nestedDirectoryExists)
+                #expect(!fileExists)
             }
         }
 
+        @Test
         func test_get_contents_of_directory() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -1213,10 +1428,11 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 let fileNames = contents.map(\.basename)
-                XCTAssertEqual(fileNames.sorted(), ["foo", "nested", "readme.md"])
+                #expect(fileNames.sorted() == ["foo", "nested", "readme.md"])
             }
         }
 
+        @Test
         func test_touch_createsFileVisibleToFoundation() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -1226,16 +1442,14 @@ private struct TestError: Error, Equatable {}
                 try await subject.touch(filePath)
 
                 // Then: The file should be immediately visible to Foundation APIs
-                XCTAssertTrue(
+                #expect(
                     FileManager.default.fileExists(atPath: filePath.pathString),
                     "File created by touch should be visible to FileManager.fileExists"
                 )
 
                 // And: Foundation's FileHandle should be able to open it for writing
-                XCTAssertNoThrow(
-                    try FileHandle(forWritingTo: URL(fileURLWithPath: filePath.pathString)),
-                    "File created by touch should be openable by Foundation's FileHandle"
-                )
+                let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: filePath.pathString))
+                try fileHandle.close()
             }
         }
     }
