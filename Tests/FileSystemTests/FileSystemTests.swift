@@ -578,6 +578,64 @@ private struct TestError: Error, Equatable {}
                     XCTAssertTrue(exists)
                 }
             }
+
+            func test_zipping_compressed() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let dirPath = temporaryDirectory.appending(component: "content")
+                    try await subject.makeDirectory(at: dirPath)
+                    try await subject.writeText("hello world", at: dirPath.appending(component: "file.txt"))
+
+                    let zipPath = temporaryDirectory.appending(component: "archive.zip")
+                    let unzippedPath = temporaryDirectory.appending(component: "unzipped")
+                    try await subject.makeDirectory(at: unzippedPath)
+
+                    // When
+                    try await subject.zipFileOrDirectoryContent(
+                        at: dirPath,
+                        to: zipPath,
+                        options: [.compressed]
+                    )
+                    try await subject.unzip(zipPath, to: unzippedPath)
+
+                    // Then
+                    let exists = try await subject.exists(unzippedPath.appending(component: "file.txt"))
+                    XCTAssertTrue(exists)
+                }
+            }
+
+            func test_zipping_compressed_preserves_symlinks() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let dirPath = temporaryDirectory.appending(component: "content")
+                    try await subject.makeDirectory(at: dirPath)
+                    try await subject.writeText("hello", at: dirPath.appending(component: "file.txt"))
+                    try await subject.createSymbolicLink(
+                        from: dirPath.appending(component: "link"),
+                        to: try RelativePath(validating: "file.txt")
+                    )
+
+                    let zipPath = temporaryDirectory.appending(component: "archive.zip")
+                    let unzippedPath = temporaryDirectory.appending(component: "unzipped")
+                    try await subject.makeDirectory(at: unzippedPath)
+
+                    // When
+                    try await subject.zipFileOrDirectoryContent(
+                        at: dirPath,
+                        to: zipPath,
+                        options: [.compressed]
+                    )
+                    try await subject.unzip(zipPath, to: unzippedPath)
+
+                    // Then
+                    let fileExists = try await subject.exists(unzippedPath.appending(component: "file.txt"))
+                    XCTAssertTrue(fileExists)
+                    let linkTarget = try await subject.resolveSymbolicLink(
+                        unzippedPath.appending(component: "link")
+                    )
+                    XCTAssertEqual(linkTarget, unzippedPath.appending(component: "file.txt"))
+                }
+            }
         #endif
 
         func test_glob_component_wildcard() async throws {

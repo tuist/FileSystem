@@ -18,6 +18,19 @@ public enum FileSystemItemType: CaseIterable, Equatable {
     case file
 }
 
+#if !os(Windows)
+    public struct ZipOptions: OptionSet, Sendable {
+        public let rawValue: Int
+
+        public init(rawValue: Int) {
+            self.rawValue = rawValue
+        }
+
+        public static let compressed = ZipOptions(rawValue: 1 << 0)
+        public static let keepParent = ZipOptions(rawValue: 1 << 1)
+    }
+#endif
+
 /// A struct containing information about a particular file.
 public struct FileMetadata {
     /// The size of the file in bytes.
@@ -323,7 +336,8 @@ public protocol FileSysteming: Sendable {
         /// a
         /// directory, the content of the directory is zipped.
         ///   - to: Path to where the zip file will be created.
-        func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws
+        ///   - options: Options controlling compression and archive structure.
+        func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath, options: ZipOptions) async throws
 
         /// Unzips a zip file.
         /// - Parameters:
@@ -355,6 +369,14 @@ public protocol FileSysteming: Sendable {
     //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
     //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
 }
+
+#if !os(Windows)
+    extension FileSysteming {
+        public func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws {
+            try await zipFileOrDirectoryContent(at: path, to: to, options: [])
+        }
+    }
+#endif
 
 // swiftlint:disable:next type_body_length
 public struct FileSystem: FileSysteming, Sendable {
@@ -911,13 +933,18 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     #if !os(Windows)
-        public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
+        public func zipFileOrDirectoryContent(
+            at path: Path.AbsolutePath,
+            to: Path.AbsolutePath,
+            options: ZipOptions = []
+        ) async throws {
             logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
             try await NIOSingletons.posixBlockingThreadPool.runIfActive {
                 try FileManager.default.zipItem(
                     at: URL(fileURLWithPath: path.pathString),
                     to: URL(fileURLWithPath: to.pathString),
-                    shouldKeepParent: false
+                    shouldKeepParent: options.contains(.keepParent),
+                    compressionMethod: options.contains(.compressed) ? .deflate : .none
                 )
             }
         }
