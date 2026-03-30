@@ -18,18 +18,16 @@ public enum FileSystemItemType: CaseIterable, Equatable {
     case file
 }
 
-#if !os(Windows)
-    public struct ZipOptions: OptionSet, Sendable {
-        public let rawValue: Int
+public struct ZipOptions: OptionSet, Sendable {
+    public let rawValue: Int
 
-        public init(rawValue: Int) {
-            self.rawValue = rawValue
-        }
-
-        public static let compressed = ZipOptions(rawValue: 1 << 0)
-        public static let keepParent = ZipOptions(rawValue: 1 << 1)
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
     }
-#endif
+
+    public static let compressed = ZipOptions(rawValue: 1 << 0)
+    public static let keepParent = ZipOptions(rawValue: 1 << 1)
+}
 
 /// A struct containing information about a particular file.
 public struct FileMetadata {
