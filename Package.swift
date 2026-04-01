@@ -10,7 +10,7 @@
     let swiftNioTarget: [Target.Dependency] = []
 #else
     let zipFoundationDependency: [Package.Dependency] = [
-        .package(url: "https://github.com/tuist/ZIPFoundation", .upToNextMajor(from: "0.9.20")),
+        .package(url: "https://github.com/tuist/ZIPFoundation", .upToNextMajor(from: "0.9.21")),
     ]
     let zipFoundationTarget: [Target.Dependency] = [
         .product(name: "ZIPFoundation", package: "ZIPFoundation"),
