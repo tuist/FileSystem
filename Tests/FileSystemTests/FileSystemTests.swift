@@ -154,7 +154,7 @@ private struct TestError: Error, Equatable {}
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
                 // Multiple paths sharing the same intermediate directories
-                let moduleNames = (0..<20).map { "Module\($0)" }
+                let moduleNames = (0 ..< 20).map { "Module\($0)" }
 
                 // When — create directories concurrently, all sharing the same intermediates
                 var errors: [Error] = []
