@@ -550,7 +550,17 @@ public struct FileSystem: FileSysteming, Sendable {
                         .contains(.createTargetParentDirectories)
                 )
             } catch let error as _NIOFileSystem.FileSystemError {
-                if error.code == .invalidArgument {
+                if error.code == .fileAlreadyExists,
+                   options.contains(.createTargetParentDirectories)
+                {
+                    // NIO's createDirectory has a race condition where concurrent calls
+                    // creating the same intermediate directory fail with EEXIST in its
+                    // rebuild loop. Retry — the intermediate now exists.
+                    try await _NIOFileSystem.FileSystem.shared.createDirectory(
+                        at: .init(at.pathString),
+                        withIntermediateDirectories: true
+                    )
+                } else if error.code == .invalidArgument {
                     throw FileSystemError.makeDirectoryAbsentParent(at)
                 } else {
                     throw error

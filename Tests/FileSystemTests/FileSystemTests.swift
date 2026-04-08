@@ -150,6 +150,45 @@ private struct TestError: Error, Equatable {}
             }
         }
 
+        func test_makeDirectory_concurrentCreationOfSharedIntermediateDirectories() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                // Multiple paths sharing the same intermediate directories
+                let moduleNames = (0 ..< 20).map { "Module\($0)" }
+
+                // When — create directories concurrently, all sharing the same intermediates
+                var errors: [Error] = []
+                await withTaskGroup(of: Error?.self) { group in
+                    for moduleName in moduleNames {
+                        group.addTask {
+                            do {
+                                let path = temporaryDirectory.appending(
+                                    components: "parent", "shared", moduleName
+                                )
+                                try await self.subject.makeDirectory(at: path)
+                                return nil
+                            } catch {
+                                return error
+                            }
+                        }
+                    }
+                    for await error in group {
+                        if let error { errors.append(error) }
+                    }
+                }
+
+                // Then — all directories should have been created without errors
+                XCTAssertTrue(errors.isEmpty, "Concurrent makeDirectory failed: \(errors)")
+                for moduleName in moduleNames {
+                    let path = temporaryDirectory.appending(
+                        components: "parent", "shared", moduleName
+                    )
+                    let exists = try await self.subject.exists(path, isDirectory: true)
+                    XCTAssertTrue(exists, "Directory should exist at \(path)")
+                }
+            }
+        }
+
         func test_writeTextFile_and_readTextFile_returnsTheContent() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
