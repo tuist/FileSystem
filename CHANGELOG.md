@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.31] - 2026-04-08
+### Details
+#### Fix
+- Handle concurrent mkdir race in NIO's createDirectory by @pepicrft in [#312](https://github.com/tuist/FileSystem/pull/312)
+
 ## [0.15.30] - 2026-04-07
 ### Details
 #### Chore
@@ -1223,6 +1228,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.15.31]: https://github.com/tuist/FileSystem/compare/0.15.30..0.15.31
 [0.15.30]: https://github.com/tuist/FileSystem/compare/0.15.29..0.15.30
 [0.15.29]: https://github.com/tuist/FileSystem/compare/0.15.28..0.15.29
 [0.15.28]: https://github.com/tuist/FileSystem/compare/0.15.27..0.15.28
