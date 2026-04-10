@@ -1,0 +1,42 @@
+disabled_rules:
+  - line_length
+  - trailing_comma
+  - redundant_discardable_let
+  - identifier_name  # Allow short variable names (i, x, y, etc.)
+  - large_tuple  # Allow tuples with more than 2 members
+  - optional_data_string_conversion  # False positive with String(decoding:as:)
+  - for_where  # False positives when for loops have complex logic, not just filtering
+  - todo  # Allow TODO comments for tracking future work
+  - type_body_length  # Don't enforce maximum type body length
+  - nesting  # Allow nested types for hierarchical APIs
+  - type_name  # Allow flexible test suite naming (lowercase, special chars, etc.)
+  - cyclomatic_complexity  # Allow complex inline logic over helper extraction
+  - implicit_optional_initialization  # Allow explicit = nil initialization
+  - function_body_length  # Allow longer inline functions
+  - file_length  # Allow longer files
+
+opt_in_rules:
+  - explicit_init
+  - closure_spacing
+  - empty_count
+  - empty_string
+  - fatal_error_message
+  - first_where
+  - joined_default_parameter
+  - operator_usage_whitespace
+  - overridden_super_call
+
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+  - Carthage
+  - Pods
+  - fastlane
+
+# Function parameter count (kept as a reasonable limit)
+function_parameter_count:
+  warning: 6
+  error: 8

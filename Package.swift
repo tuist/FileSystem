@@ -8,6 +8,8 @@
     let zipFoundationTarget: [Target.Dependency] = []
     let swiftNioDependency: [Package.Dependency] = []
     let swiftNioTarget: [Target.Dependency] = []
+    let swiftFileSystemDependency: [Package.Dependency] = []
+    let swiftFileSystemTarget: [Target.Dependency] = []
 #else
     let zipFoundationDependency: [Package.Dependency] = [
         .package(url: "https://github.com/tuist/ZIPFoundation", .upToNextMajor(from: "0.9.21")),
@@ -20,6 +22,12 @@
     ]
     let swiftNioTarget: [Target.Dependency] = [
         .product(name: "_NIOFileSystem", package: "swift-nio"),
+    ]
+    let swiftFileSystemDependency: [Package.Dependency] = [
+        .package(path: "Vendor/swift-file-system"),
+    ]
+    let swiftFileSystemTarget: [Target.Dependency] = [
+        .product(name: "File System Primitives", package: "swift-file-system"),
     ]
 #endif
 
@@ -49,7 +57,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
         .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.11.0")),
-    ] + zipFoundationDependency + swiftNioDependency,
+    ] + zipFoundationDependency + swiftNioDependency + swiftFileSystemDependency,
     targets: [
         .target(
             name: "FileSystem",
@@ -57,7 +65,7 @@ let package = Package(
                 "Glob",
                 .product(name: "Path", package: "Path"),
                 .product(name: "Logging", package: "swift-log"),
-            ] + zipFoundationTarget + swiftNioTarget,
+            ] + zipFoundationTarget + swiftNioTarget + swiftFileSystemTarget,
             swiftSettings: [
                 .define("MOCKING", .when(configuration: .debug)),
             ]

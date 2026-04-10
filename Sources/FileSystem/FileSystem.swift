@@ -2,6 +2,12 @@
     import WinSDK
 #else
     import _NIOFileSystem
+    #if canImport(Darwin)
+        import Darwin
+    #else
+        import Glibc
+    #endif
+    import File_System_Primitives
     import NIOCore
 #endif
 import Foundation
@@ -85,6 +91,26 @@ public enum WriteJSONOptions {
     /// When passed, it ovewrites any existing files.
     case overwrite
 }
+
+#if !os(Windows)
+    private enum FileSystemBackend: Equatable {
+        case swiftNIO
+        case swiftFileSystem
+
+        init(environmentVariables: [String: String]) {
+            let value = environmentVariables["TUIST_FILESYSTEM_BACKEND"]?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+
+            switch value {
+            case "swift-file-system", "swift_file_system", "swiftfilesystem":
+                self = .swiftFileSystem
+            default:
+                self = .swiftNIO
+            }
+        }
+    }
+#endif
 
 public protocol FileSysteming: Sendable {
     func runInTemporaryDirectory<T>(
@@ -361,15 +387,126 @@ public struct FileSystem: FileSysteming, Sendable {
     fileprivate let logger: Logger?
     fileprivate let environmentVariables: [String: String]
 
+    /// Creates a filesystem client.
+    ///
+    /// On non-Windows platforms, the backend can be selected through
+    /// `TUIST_FILESYSTEM_BACKEND`. When the variable is set to
+    /// `swift-file-system`, the copied swift-file-system backend is used.
+    /// Otherwise FileSystem falls back to SwiftNIO.
     public init(environmentVariables: [String: String] = ProcessInfo.processInfo.environment, logger: Logger? = nil) {
         self.environmentVariables = environmentVariables
         self.logger = logger
     }
 
+    #if !os(Windows)
+        private var backend: FileSystemBackend {
+            FileSystemBackend(environmentVariables: environmentVariables)
+        }
+
+        private var usesSwiftFileSystemBackend: Bool {
+            backend == .swiftFileSystem
+        }
+
+        private func swiftFileSystemPath(_ path: AbsolutePath) throws -> File.Path {
+            try File.Path(path.pathString)
+        }
+
+        private func swiftFileSystemPath(_ path: RelativePath) throws -> File.Path {
+            try File.Path(path.pathString)
+        }
+
+        private func absolutePath(_ path: File.Path) throws -> AbsolutePath {
+            try AbsolutePath(validating: path.string)
+        }
+
+        private func writeDataUsingSwiftFileSystem(_ data: Data, at path: AbsolutePath) async throws {
+            let swiftPath = try swiftFileSystemPath(path)
+            let bytes = Array(data)
+            try bytes.withUnsafeBufferPointer { buffer in
+                try File.System.Write.Atomic.write(
+                    Span<UInt8>(_unsafeElements: buffer),
+                    to: swiftPath
+                )
+            }
+        }
+
+        private func fileMetadataUsingPOSIX(at path: AbsolutePath) throws -> FileMetadata? {
+            var statBuffer = stat()
+            guard stat(path.pathString, &statBuffer) == 0 else {
+                if errno == ENOENT {
+                    return nil
+                }
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+
+            #if canImport(Darwin)
+                let modificationDate = Date(
+                    timeIntervalSince1970: Double(statBuffer.st_mtimespec.tv_sec)
+                        + Double(statBuffer.st_mtimespec.tv_nsec) / 1_000_000_000
+                )
+            #else
+                let modificationDate = Date(
+                    timeIntervalSince1970: Double(statBuffer.st_mtim.tv_sec)
+                        + Double(statBuffer.st_mtim.tv_nsec) / 1_000_000_000
+                )
+            #endif
+
+            return FileMetadata(
+                size: Int64(statBuffer.st_size),
+                lastModificationDate: modificationDate
+            )
+        }
+
+        private func setFileTimesUsingPOSIX(
+            of path: AbsolutePath,
+            lastAccessDate: Date?,
+            lastModificationDate: Date?
+        ) throws {
+            var statBuffer = stat()
+            guard stat(path.pathString, &statBuffer) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+
+            #if canImport(Darwin)
+                let currentAccessDate = Date(
+                    timeIntervalSince1970: Double(statBuffer.st_atimespec.tv_sec)
+                        + Double(statBuffer.st_atimespec.tv_nsec) / 1_000_000_000
+                )
+                let currentModificationDate = Date(
+                    timeIntervalSince1970: Double(statBuffer.st_mtimespec.tv_sec)
+                        + Double(statBuffer.st_mtimespec.tv_nsec) / 1_000_000_000
+                )
+            #else
+                let currentAccessDate = Date(
+                    timeIntervalSince1970: Double(statBuffer.st_atim.tv_sec)
+                        + Double(statBuffer.st_atim.tv_nsec) / 1_000_000_000
+                )
+                let currentModificationDate = Date(
+                    timeIntervalSince1970: Double(statBuffer.st_mtim.tv_sec)
+                        + Double(statBuffer.st_mtim.tv_nsec) / 1_000_000_000
+                )
+            #endif
+
+            var times = [timespec](
+                repeating: timespec(tv_sec: 0, tv_nsec: 0),
+                count: 2
+            )
+            times[0] = Self.dateToPOSIXTimeSpec(lastAccessDate ?? currentAccessDate)
+            times[1] = Self.dateToPOSIXTimeSpec(lastModificationDate ?? currentModificationDate)
+
+            guard utimensat(AT_FDCWD, path.pathString, &times, 0) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+        }
+    #endif
+
     public func currentWorkingDirectory() async throws -> AbsolutePath {
         #if os(Windows)
             return try AbsolutePath(validating: FileManager.default.currentDirectoryPath)
         #else
+            if usesSwiftFileSystemBackend {
+                return try AbsolutePath(validating: FileManager.default.currentDirectoryPath)
+            }
             return try await _NIOFileSystem.FileSystem.shared.currentWorkingDirectory.path
         #endif
     }
@@ -379,6 +516,14 @@ public struct FileSystem: FileSysteming, Sendable {
             let contents = try FileManager.default.contentsOfDirectory(atPath: path.pathString)
             return try contents.map { try path.appending(component: $0) }
         #else
+            if usesSwiftFileSystemBackend {
+                let entries = try File.Directory.Contents.list(
+                    at: try swiftFileSystemPath(path)
+                )
+                return try entries.map { entry in
+                    try absolutePath(entry.path)
+                }
+            }
             return try await _NIOFileSystem.FileSystem.shared.withDirectoryHandle(
                 atPath: .init(path.pathString)
             ) { directory in
@@ -398,6 +543,9 @@ public struct FileSystem: FileSysteming, Sendable {
                 GetFileAttributesW(pointer) != INVALID_FILE_ATTRIBUTES
             }
         #else
+            if usesSwiftFileSystemBackend {
+                return File.System.Stat.exists(at: try swiftFileSystemPath(path))
+            }
             let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString))
             return info != nil
         #endif
@@ -417,6 +565,19 @@ public struct FileSystem: FileSysteming, Sendable {
                 return isDir == isDirectory
             }
         #else
+            if usesSwiftFileSystemBackend {
+                do {
+                    let info = try File.System.Stat.info(at: try swiftFileSystemPath(path))
+                    return info.type == (isDirectory ? .directory : .regular)
+                } catch let error as File.System.Stat.Error {
+                    switch error {
+                    case .pathNotFound:
+                        return false
+                    default:
+                        throw error
+                    }
+                }
+            }
             guard let info = try await _NIOFileSystem.FileSystem.shared.info(forFileAt: .init(path.pathString)) else {
                 return false
             }
@@ -429,6 +590,14 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             FileManager.default.createFile(atPath: path.pathString, contents: Data(), attributes: nil)
         #else
+            if usesSwiftFileSystemBackend {
+                if try await exists(path) {
+                    try setFileTimesUsingPOSIX(of: path, lastAccessDate: Date(), lastModificationDate: Date())
+                } else {
+                    try await writeDataUsingSwiftFileSystem(Data(), at: path)
+                }
+                return
+            }
             // Use non-transactional creation to ensure the file is immediately visible
             // to other file system APIs (like Foundation's FileManager/FileHandle).
             // The default options use transactionalCreation which only materializes
@@ -447,6 +616,15 @@ public struct FileSystem: FileSysteming, Sendable {
     public func remove(_ path: AbsolutePath) async throws {
         logger?.debug("Removing the file or directory at path: \(path.pathString).")
         guard try await exists(path) else { return }
+        #if !os(Windows)
+            if usesSwiftFileSystemBackend {
+                try File.System.Delete.delete(
+                    at: try swiftFileSystemPath(path),
+                    options: .init(recursive: true)
+                )
+                return
+            }
+        #endif
         try await Task {
             try FileManager.default.removeItem(atPath: path.pathString)
         }
@@ -501,6 +679,22 @@ public struct FileSystem: FileSysteming, Sendable {
                 throw error
             }
         #else
+            if usesSwiftFileSystemBackend {
+                do {
+                    try File.System.Move.move(
+                        from: try swiftFileSystemPath(from),
+                        to: try swiftFileSystemPath(to)
+                    )
+                } catch let error as File.System.Move.Error {
+                    switch error {
+                    case .sourceNotFound:
+                        throw FileSystemError.moveNotFound(from: from, to: to)
+                    default:
+                        throw error
+                    }
+                }
+                return
+            }
             do {
                 try await _NIOFileSystem.FileSystem.shared.moveItem(at: .init(from.pathString), to: .init(to.pathString))
             } catch let error as _NIOFileSystem.FileSystemError {
@@ -543,6 +737,22 @@ public struct FileSystem: FileSysteming, Sendable {
                 throw error
             }
         #else
+            if usesSwiftFileSystemBackend {
+                do {
+                    try File.System.Create.Directory.create(
+                        at: try swiftFileSystemPath(at),
+                        options: .init(createIntermediates: options.contains(.createTargetParentDirectories))
+                    )
+                } catch let error as File.System.Create.Directory.Error {
+                    switch error {
+                    case .parentDirectoryNotFound:
+                        throw FileSystemError.makeDirectoryAbsentParent(at)
+                    default:
+                        throw error
+                    }
+                }
+                return
+            }
             do {
                 try await _NIOFileSystem.FileSystem.shared.createDirectory(
                     at: .init(at.pathString),
@@ -580,6 +790,10 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             return try Data(contentsOf: URL(fileURLWithPath: path.pathString))
         #else
+            if usesSwiftFileSystemBackend {
+                let bytes = try File.System.Read.Full.read(from: try swiftFileSystemPath(path))
+                return Data(bytes)
+            }
             let handle = try await _NIOFileSystem.FileSystem.shared.openFile(
                 forReadingAt: .init(path.pathString),
                 options: .init()
@@ -643,6 +857,10 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             try data.write(to: URL(fileURLWithPath: path.pathString))
         #else
+            if usesSwiftFileSystemBackend {
+                try await writeDataUsingSwiftFileSystem(data, at: path)
+                return
+            }
             _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
                 try await handler.write(contentsOf: data, toAbsoluteOffset: 0)
             }
@@ -683,6 +901,10 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             try plistData.write(to: URL(fileURLWithPath: path.pathString))
         #else
+            if usesSwiftFileSystemBackend {
+                try await writeDataUsingSwiftFileSystem(plistData, at: path)
+                return
+            }
             _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
                 try await handler.write(contentsOf: plistData, toAbsoluteOffset: 0)
             }
@@ -723,6 +945,10 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             try json.write(to: URL(fileURLWithPath: path.pathString))
         #else
+            if usesSwiftFileSystemBackend {
+                try await writeDataUsingSwiftFileSystem(json, at: path)
+                return
+            }
             _ = try await _NIOFileSystem.FileSystem.shared.withFileHandle(forWritingAt: .init(path.pathString)) { handler in
                 try await handler.write(contentsOf: json, toAbsoluteOffset: 0)
             }
@@ -743,6 +969,14 @@ public struct FileSystem: FileSysteming, Sendable {
             }
             try FileManager.default.copyItem(atPath: path.pathString, toPath: to.pathString)
         #else
+            if usesSwiftFileSystemBackend {
+                try File.System.Move.move(
+                    from: try swiftFileSystemPath(path),
+                    to: try swiftFileSystemPath(to),
+                    options: .init(overwrite: true)
+                )
+                return
+            }
             try await _NIOFileSystem.FileSystem.shared.replaceItem(at: .init(to.pathString), withItemAt: .init(path.pathString))
         #endif
     }
@@ -758,6 +992,17 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             try FileManager.default.copyItem(atPath: from.pathString, toPath: to.pathString)
         #else
+            if usesSwiftFileSystemBackend {
+                if try await exists(from, isDirectory: true) {
+                    try FileManager.default.copyItem(atPath: from.pathString, toPath: to.pathString)
+                } else {
+                    try File.System.Copy.copy(
+                        from: try swiftFileSystemPath(from),
+                        to: try swiftFileSystemPath(to)
+                    )
+                }
+                return
+            }
             try await _NIOFileSystem.FileSystem.shared.copyItem(at: .init(from.pathString), to: .init(to.pathString))
         #endif
     }
@@ -797,6 +1042,9 @@ public struct FileSystem: FileSysteming, Sendable {
             else { return nil }
             return size
         #else
+            if usesSwiftFileSystemBackend {
+                return try fileMetadataUsingPOSIX(at: path)?.size
+            }
             guard let info = try await _NIOFileSystem.FileSystem.shared.info(
                 forFileAt: .init(path.pathString),
                 infoAboutSymbolicLink: true
@@ -813,6 +1061,9 @@ public struct FileSystem: FileSysteming, Sendable {
             let modificationDate = (attrs[.modificationDate] as? Date) ?? Date()
             return FileMetadata(size: size, lastModificationDate: modificationDate)
         #else
+            if usesSwiftFileSystemBackend {
+                return try fileMetadataUsingPOSIX(at: path)
+            }
             guard let info = try await _NIOFileSystem.FileSystem.shared.info(
                 forFileAt: .init(path.pathString),
                 infoAboutSymbolicLink: true
@@ -839,8 +1090,16 @@ public struct FileSystem: FileSysteming, Sendable {
                 try FileManager.default.setAttributes(attributes, ofItemAtPath: path.pathString)
             }
         #else
-            let lastAccess = lastAccessDate.map { Self.dateToTimespec($0) }
-            let lastModification = lastModificationDate.map { Self.dateToTimespec($0) }
+            if usesSwiftFileSystemBackend {
+                try setFileTimesUsingPOSIX(
+                    of: path,
+                    lastAccessDate: lastAccessDate,
+                    lastModificationDate: lastModificationDate
+                )
+                return
+            }
+            let lastAccess = lastAccessDate.map { Self.dateToNIOTimeSpec($0) }
+            let lastModification = lastModificationDate.map { Self.dateToNIOTimeSpec($0) }
             try await _NIOFileSystem.FileSystem.shared.withFileHandle(
                 forReadingAt: .init(path.pathString)
             ) { handle in
@@ -850,10 +1109,16 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     #if !os(Windows)
-        private static func dateToTimespec(_ date: Date) -> _NIOFileSystem.FileInfo.Timespec {
+        private static func dateToNIOTimeSpec(_ date: Date) -> _NIOFileSystem.FileInfo.Timespec {
             let seconds = Int(date.timeIntervalSince1970)
             let nanoseconds = Int((date.timeIntervalSince1970 - Double(seconds)) * 1_000_000_000)
             return _NIOFileSystem.FileInfo.Timespec(seconds: seconds, nanoseconds: nanoseconds)
+        }
+
+        private static func dateToPOSIXTimeSpec(_ date: Date) -> timespec {
+            let seconds = Int(date.timeIntervalSince1970)
+            let nanoseconds = Int((date.timeIntervalSince1970 - Double(seconds)) * 1_000_000_000)
+            return timespec(tv_sec: seconds, tv_nsec: nanoseconds)
         }
     #endif
 
@@ -880,6 +1145,13 @@ public struct FileSystem: FileSysteming, Sendable {
         #if os(Windows)
             try FileManager.default.createSymbolicLink(atPath: fromPathString, withDestinationPath: toPathString)
         #else
+            if usesSwiftFileSystemBackend {
+                try File.System.Link.Symbolic.create(
+                    at: try File.Path(fromPathString),
+                    pointingTo: try File.Path(toPathString)
+                )
+                return
+            }
             try await _NIOFileSystem.FileSystem.shared.createSymbolicLink(
                 at: FilePath(fromPathString),
                 withDestination: FilePath(toPathString)
@@ -900,6 +1172,18 @@ public struct FileSystem: FileSysteming, Sendable {
                 return AbsolutePath(symlinkPath.parentDirectory, try RelativePath(validating: destination))
             }
         #else
+            if usesSwiftFileSystemBackend {
+                let swiftFileSystemPath = try swiftFileSystemPath(symlinkPath)
+                let info = try File.System.Stat.lstatInfo(at: swiftFileSystemPath)
+                guard info.type == .symbolicLink else { return symlinkPath }
+                let path = try File.System.Link.ReadTarget.target(of: swiftFileSystemPath)
+                let destination = path.string
+                if destination.hasPrefix("/") {
+                    return try AbsolutePath(validating: destination)
+                } else {
+                    return AbsolutePath(symlinkPath.parentDirectory, try RelativePath(validating: destination))
+                }
+            }
             guard let info = try await _NIOFileSystem.FileSystem.shared.info(
                 forFileAt: FilePath(symlinkPath.pathString),
                 infoAboutSymbolicLink: true

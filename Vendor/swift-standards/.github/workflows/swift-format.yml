@@ -1,0 +1,41 @@
+name: Swift Format
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  swift_format:
+    name: swift-format
+    runs-on: ubuntu-latest
+    container: swift:6.2
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache swift-format
+        id: cache-swift-format
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/swift-format
+          key: ${{ runner.os }}-swift-format-${{ hashFiles('.github/workflows/swift-format.yml') }}
+
+      - name: Install swift-format
+        if: steps.cache-swift-format.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch $(git ls-remote --tags https://github.com/apple/swift-format.git | grep -o 'refs/tags/[0-9]*\.[0-9]*\.[0-9]*$' | sort -V | tail -1 | sed 's/refs\/tags\///') https://github.com/apple/swift-format.git
+          cd swift-format
+          swift build -c release
+          cp .build/release/swift-format /usr/local/bin/
+          cd ..
+          rm -rf swift-format
+
+      - name: Format
+        run: swift-format format --recursive --in-place --ignore-unparsable-files Sources Tests
+
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: Run swift-format
+          branch: 'main'

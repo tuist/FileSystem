@@ -1,0 +1,7 @@
+# SwiftLint configuration for swift-incits-4-1986
+# Inherits from the shared parent configuration in swift-standards
+
+parent_config: https://raw.githubusercontent.com/swift-standards/swift-standards/main/.swiftlint.yml
+
+# Package-specific overrides (if needed)
+# Add any swift-incits-4-1986 specific rules here
