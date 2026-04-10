@@ -19,7 +19,7 @@
     enum POSIXAtomic {
 
         static func writeSpan(
-            _ bytes: borrowing Swift.Span<UInt8>,
+            _ bytes: UnsafeBufferPointer<UInt8>,
             to path: borrowing String,
             options: borrowing File.System.Write.Atomic.Options
         ) throws(File.System.Write.Atomic.Error) {
@@ -243,56 +243,53 @@
 
         /// Writes all bytes to the file descriptor, handling partial writes and interrupts.
         private static func writeAll(
-            _ bytes: borrowing Swift.Span<UInt8>,
+            _ bytes: UnsafeBufferPointer<UInt8>,
             to fd: Int32
         ) throws(File.System.Write.Atomic.Error) {
             let total = bytes.count
             if total == 0 { return }
 
             var written = 0
+            guard let base = bytes.baseAddress else {
+                throw .writeFailed(
+                    bytesWritten: 0,
+                    bytesExpected: total,
+                    errno: 0,
+                    message: "nil buffer"
+                )
+            }
 
-            try bytes.withUnsafeBufferPointer { buffer throws(File.System.Write.Atomic.Error) in
-                guard let base = buffer.baseAddress else {
-                    throw .writeFailed(
-                        bytesWritten: 0,
-                        bytesExpected: total,
-                        errno: 0,
-                        message: "nil buffer"
-                    )
+            while written < total {
+                let remaining = total - written
+                let rc = write(fd, base.advanced(by: written), remaining)
+
+                if rc > 0 {
+                    written += rc
+                    continue
                 }
 
-                while written < total {
-                    let remaining = total - written
-                    let rc = write(fd, base.advanced(by: written), remaining)
-
-                    if rc > 0 {
-                        written += rc
-                        continue
-                    }
-
-                    if rc == 0 {
-                        // Shouldn't happen with regular files, but handle it
-                        throw .writeFailed(
-                            bytesWritten: written,
-                            bytesExpected: total,
-                            errno: 0,
-                            message: "write returned 0"
-                        )
-                    }
-
-                    let e = errno
-                    // Retry on interrupt or would-block
-                    if e == EINTR || e == EAGAIN {
-                        continue
-                    }
-
+                if rc == 0 {
+                    // Shouldn't happen with regular files, but handle it
                     throw .writeFailed(
                         bytesWritten: written,
                         bytesExpected: total,
-                        errno: e,
-                        message: File.System.Write.Atomic.errorMessage(for: e)
+                        errno: 0,
+                        message: "write returned 0"
                     )
                 }
+
+                let e = errno
+                // Retry on interrupt or would-block
+                if e == EINTR || e == EAGAIN {
+                    continue
+                }
+
+                throw .writeFailed(
+                    bytesWritten: written,
+                    bytesExpected: total,
+                    errno: e,
+                    message: File.System.Write.Atomic.errorMessage(for: e)
+                )
             }
         }
 

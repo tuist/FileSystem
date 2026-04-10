@@ -134,7 +134,7 @@ extension File.System.Write {
         ///   - options: Write options
         /// - Throws: `File.System.Write.Atomic.Error` on failure
         public static func write(
-            _ bytes: borrowing Span<UInt8>,
+            _ bytes: UnsafeBufferPointer<UInt8>,
             to path: File.Path,
             options: borrowing Options = Options()
         ) throws(Error) {
@@ -165,7 +165,7 @@ extension File.System.Write.Atomic {
         to path: File.Path,
         options: Options = Options()
     ) throws(Error) {
-        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(Error) in
+        try S.withSerializedBytes(value) { (span: UnsafeBufferPointer<UInt8>) throws(Error) in
             try write(span, to: path, options: options)
         }
     }

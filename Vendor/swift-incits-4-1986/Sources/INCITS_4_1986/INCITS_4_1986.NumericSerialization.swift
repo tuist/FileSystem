@@ -46,7 +46,7 @@ extension INCITS_4_1986.NumericSerialization {
     @inlinable
     public static func digit(_ value: UInt8) -> UInt8? {
         guard value <= 9 else { return nil }
-        return INCITS_4_1986.GraphicCharacters.`0` + value
+        return INCITS_4_1986.GraphicCharacters.digit0 + value
     }
 
     /// Converts a hex digit value (0-15) to its uppercase ASCII byte
@@ -57,7 +57,7 @@ extension INCITS_4_1986.NumericSerialization {
     public static func hexDigitUppercase(_ value: UInt8) -> UInt8? {
         switch value {
         case 0...9:
-            return INCITS_4_1986.GraphicCharacters.`0` + value
+            return INCITS_4_1986.GraphicCharacters.digit0 + value
         case 10...15:
             return INCITS_4_1986.GraphicCharacters.A + value - 10
         default:
@@ -73,7 +73,7 @@ extension INCITS_4_1986.NumericSerialization {
     public static func hexDigitLowercase(_ value: UInt8) -> UInt8? {
         switch value {
         case 0...9:
-            return INCITS_4_1986.GraphicCharacters.`0` + value
+            return INCITS_4_1986.GraphicCharacters.digit0 + value
         case 10...15:
             return INCITS_4_1986.GraphicCharacters.a + value - 10
         default:
@@ -107,7 +107,7 @@ extension INCITS_4_1986.NumericSerialization {
         into buffer: inout Buffer
     ) where Buffer.Element == UInt8 {
         if value == 0 {
-            buffer.append(INCITS_4_1986.GraphicCharacters.`0`)
+            buffer.append(INCITS_4_1986.GraphicCharacters.digit0)
             return
         }
 
@@ -116,7 +116,7 @@ extension INCITS_4_1986.NumericSerialization {
         var digits: [UInt8] = []
         while n > 0 {
             let digit = UInt8(n % 10)
-            digits.append(INCITS_4_1986.GraphicCharacters.`0` + digit)
+            digits.append(INCITS_4_1986.GraphicCharacters.digit0 + digit)
             n /= 10
         }
         buffer.append(contentsOf: digits.reversed())
@@ -144,7 +144,7 @@ extension INCITS_4_1986.NumericSerialization {
         into buffer: inout Buffer
     ) where Buffer.Element == UInt8 {
         if value == 0 {
-            buffer.append(INCITS_4_1986.GraphicCharacters.`0`)
+            buffer.append(INCITS_4_1986.GraphicCharacters.digit0)
             return
         }
 
@@ -158,7 +158,7 @@ extension INCITS_4_1986.NumericSerialization {
         var digits: [UInt8] = []
         while n > 0 {
             let digit = UInt8(n % 10)
-            digits.append(INCITS_4_1986.GraphicCharacters.`0` + digit)
+            digits.append(INCITS_4_1986.GraphicCharacters.digit0 + digit)
             n /= 10
         }
         buffer.append(contentsOf: digits.reversed())

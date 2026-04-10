@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.1
 import PackageDescription
 
 // RFC 4648: The Base16, Base32, and Base64 Data Encodings

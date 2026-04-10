@@ -11,7 +11,7 @@
     enum WindowsAtomic {
 
         static func writeSpan(
-            _ bytes: borrowing Swift.Span<UInt8>,
+            _ bytes: UnsafeBufferPointer<UInt8>,
             to path: borrowing String,
             options: borrowing File.System.Write.Atomic.Options
         ) throws(File.System.Write.Atomic.Error) {
@@ -222,57 +222,54 @@
 
         /// Writes all bytes to handle.
         private static func writeAll(
-            _ bytes: borrowing Swift.Span<UInt8>,
+            _ bytes: UnsafeBufferPointer<UInt8>,
             to handle: HANDLE
         ) throws(File.System.Write.Atomic.Error) {
             let total = bytes.count
             if total == 0 { return }
 
             var written = 0
+            guard let base = bytes.baseAddress else {
+                throw .writeFailed(
+                    bytesWritten: 0,
+                    bytesExpected: total,
+                    errno: 0,
+                    message: "nil buffer"
+                )
+            }
 
-            bytes.withUnsafeBufferPointer { buffer throws(File.System.Write.Atomic.Error) in
-                guard let base = buffer.baseAddress else {
+            while written < total {
+                let remaining = total - written
+                var bytesWritten: DWORD = 0
+
+                let success = WriteFile(
+                    handle,
+                    UnsafeRawPointer(base.advanced(by: written)),
+                    DWORD(remaining),
+                    &bytesWritten,
+                    nil
+                )
+
+                if !success {
+                    let err = GetLastError()
                     throw .writeFailed(
-                        bytesWritten: 0,
+                        bytesWritten: written,
+                        bytesExpected: total,
+                        errno: Int32(err),
+                        message: "WriteFile failed with error \(err)"
+                    )
+                }
+
+                if bytesWritten == 0 {
+                    throw .writeFailed(
+                        bytesWritten: written,
                         bytesExpected: total,
                         errno: 0,
-                        message: "nil buffer"
+                        message: "WriteFile wrote 0 bytes"
                     )
                 }
 
-                while written < total {
-                    let remaining = total - written
-                    var bytesWritten: DWORD = 0
-
-                    let success = WriteFile(
-                        handle,
-                        UnsafeRawPointer(base.advanced(by: written)),
-                        DWORD(remaining),
-                        &bytesWritten,
-                        nil
-                    )
-
-                    if !success {
-                        let err = GetLastError()
-                        throw .writeFailed(
-                            bytesWritten: written,
-                            bytesExpected: total,
-                            errno: Int32(err),
-                            message: "WriteFile failed with error \(err)"
-                        )
-                    }
-
-                    if bytesWritten == 0 {
-                        throw .writeFailed(
-                            bytesWritten: written,
-                            bytesExpected: total,
-                            errno: 0,
-                            message: "WriteFile wrote 0 bytes"
-                        )
-                    }
-
-                    written += Int(bytesWritten)
-                }
+                written += Int(bytesWritten)
             }
         }
 

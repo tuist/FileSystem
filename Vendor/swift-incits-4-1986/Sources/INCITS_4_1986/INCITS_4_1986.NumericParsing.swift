@@ -54,7 +54,7 @@ extension INCITS_4_1986.NumericParsing {
     @inlinable
     public static func digit(_ byte: UInt8) -> UInt8? {
         guard INCITS_4_1986.CharacterClassification.isDigit(byte) else { return nil }
-        return byte - INCITS_4_1986.GraphicCharacters.`0`
+        return byte - INCITS_4_1986.GraphicCharacters.digit0
     }
 
     // MARK: - Hexadecimal Digit Parsing
@@ -93,8 +93,8 @@ extension INCITS_4_1986.NumericParsing {
     @inlinable
     public static func hexDigit(_ byte: UInt8) -> UInt8? {
         switch byte {
-        case INCITS_4_1986.GraphicCharacters.`0`...INCITS_4_1986.GraphicCharacters.`9`:
-            return byte - INCITS_4_1986.GraphicCharacters.`0`
+        case INCITS_4_1986.GraphicCharacters.digit0...INCITS_4_1986.GraphicCharacters.digit9:
+            return byte - INCITS_4_1986.GraphicCharacters.digit0
         case INCITS_4_1986.GraphicCharacters.A...INCITS_4_1986.GraphicCharacters.F:
             return byte - INCITS_4_1986.GraphicCharacters.A + 10
         case INCITS_4_1986.GraphicCharacters.a...INCITS_4_1986.GraphicCharacters.f:

@@ -44,7 +44,7 @@ extension File.System.Write.Append {
     ///   - path: The file path.
     /// - Throws: `File.System.Write.Append.Error` on failure.
     public static func append(
-        _ bytes: borrowing Span<UInt8>,
+        _ bytes: UnsafeBufferPointer<UInt8>,
         to path: File.Path
     ) throws(Error) {
         #if os(Windows)
@@ -69,7 +69,7 @@ extension File.System.Write.Append {
         _ value: S,
         to path: File.Path
     ) throws(Error) {
-        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(Error) in
+        try S.withSerializedBytes(value) { (span: UnsafeBufferPointer<UInt8>) throws(Error) in
             try append(span, to: path)
         }
     }
@@ -81,7 +81,7 @@ extension File.System.Write.Append {
 #if !os(Windows)
     extension File.System.Write.Append {
         internal static func _appendPOSIX(
-            _ bytes: borrowing Span<UInt8>,
+            _ bytes: UnsafeBufferPointer<UInt8>,
             to path: File.Path
         ) throws(Error) {
             let fd = open(path.string, O_WRONLY | O_CREAT | O_APPEND, 0o644)
@@ -93,24 +93,22 @@ extension File.System.Write.Append {
             let count = bytes.count
             if count == 0 { return }
 
-            try bytes.withUnsafeBufferPointer { buffer throws(Error) in
-                guard let base = buffer.baseAddress else { return }
+            guard let base = bytes.baseAddress else { return }
 
-                var written = 0
-                while written < count {
-                    let remaining = count - written
-                    #if canImport(Darwin)
-                        let w = Darwin.write(fd, base.advanced(by: written), remaining)
-                    #elseif canImport(Glibc)
-                        let w = Glibc.write(fd, base.advanced(by: written), remaining)
-                    #endif
+            var written = 0
+            while written < count {
+                let remaining = count - written
+                #if canImport(Darwin)
+                    let w = Darwin.write(fd, base.advanced(by: written), remaining)
+                #elseif canImport(Glibc)
+                    let w = Glibc.write(fd, base.advanced(by: written), remaining)
+                #endif
 
-                    if w > 0 {
-                        written += w
-                    } else if w < 0 {
-                        if errno == EINTR { continue }
-                        throw _mapErrno(errno, path: path)
-                    }
+                if w > 0 {
+                    written += w
+                } else if w < 0 {
+                    if errno == EINTR { continue }
+                    throw _mapErrno(errno, path: path)
                 }
             }
         }
@@ -141,7 +139,7 @@ extension File.System.Write.Append {
 #if os(Windows)
     extension File.System.Write.Append {
         internal static func _appendWindows(
-            _ bytes: borrowing Span<UInt8>,
+            _ bytes: UnsafeBufferPointer<UInt8>,
             to path: File.Path
         ) throws(Error) {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
@@ -164,21 +162,19 @@ extension File.System.Write.Append {
             let count = bytes.count
             if count == 0 { return }
 
-            try bytes.withUnsafeBufferPointer { buffer throws(Error) in
-                guard let base = buffer.baseAddress else { return }
+            guard let base = bytes.baseAddress else { return }
 
-                var written: DWORD = 0
-                let success = WriteFile(
-                    handle,
-                    base,
-                    DWORD(count),
-                    &written,
-                    nil
-                )
+            var written: DWORD = 0
+            let success = WriteFile(
+                handle,
+                base,
+                DWORD(count),
+                &written,
+                nil
+            )
 
-                guard success && written == count else {
-                    throw _mapWindowsError(GetLastError(), path: path)
-                }
+            guard success && written == count else {
+                throw _mapWindowsError(GetLastError(), path: path)
             }
         }
 

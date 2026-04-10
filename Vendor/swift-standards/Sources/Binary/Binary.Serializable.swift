@@ -127,18 +127,18 @@ extension Binary.Serializable {
         return buffer
     }
 
-    /// Exposes serialized bytes as a `Span` for callers that can consume borrowed storage.
+    /// Exposes serialized bytes through an unsafe buffer pointer without extra copying.
     @inlinable
     public static func withSerializedBytes<Result, Failure: Error>(
         _ serializable: Self,
-        _ body: (borrowing Span<UInt8>) throws(Failure) -> Result
+        _ body: (UnsafeBufferPointer<UInt8>) throws(Failure) -> Result
     ) throws(Failure) -> Result {
         let bytes = serializable.bytes
         var result: Result?
         var failure: Failure?
         bytes.withUnsafeBufferPointer { buffer in
             do {
-                result = try body(Span<UInt8>(_unsafeElements: buffer))
+                result = try body(buffer)
             } catch let error as Failure {
                 failure = error
             } catch {

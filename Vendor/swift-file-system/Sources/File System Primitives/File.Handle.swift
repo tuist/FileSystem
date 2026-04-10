@@ -252,7 +252,7 @@ extension File.Handle {
     ///
     /// - Parameter bytes: The bytes to write.
     /// - Throws: `File.Handle.Error` on failure.
-    public mutating func write(_ bytes: borrowing Span<UInt8>) throws(Error) {
+    public mutating func write(_ bytes: UnsafeBufferPointer<UInt8>) throws(Error) {
         guard _descriptor.isValid else {
             throw .invalidHandle
         }
@@ -260,65 +260,63 @@ extension File.Handle {
         let count = bytes.count
         if count == 0 { return }
 
-        try bytes.withUnsafeBufferPointer { buffer throws(Error) in
-            guard let base = buffer.baseAddress else { return }
+        guard let base = bytes.baseAddress else { return }
 
-            #if os(Windows)
-                // Loop for partial writes - WriteFile may return fewer bytes than requested
-                var totalWritten: Int = 0
-                while totalWritten < count {
-                    var written: DWORD = 0
-                    let remaining = count - totalWritten
-                    let ptr = base.advanced(by: totalWritten)
-                    let success = WriteFile(
-                        _descriptor.rawHandle!,
-                        ptr,
-                        DWORD(remaining),
-                        &written,
-                        nil
+        #if os(Windows)
+            // Loop for partial writes - WriteFile may return fewer bytes than requested
+            var totalWritten: Int = 0
+            while totalWritten < count {
+                var written: DWORD = 0
+                let remaining = count - totalWritten
+                let ptr = base.advanced(by: totalWritten)
+                let success = WriteFile(
+                    _descriptor.rawHandle!,
+                    ptr,
+                    DWORD(remaining),
+                    &written,
+                    nil
+                )
+                guard success else {
+                    throw .writeFailed(
+                        errno: Int32(GetLastError()),
+                        message: "WriteFile failed"
                     )
-                    guard success else {
-                        throw .writeFailed(
-                            errno: Int32(GetLastError()),
-                            message: "WriteFile failed"
-                        )
-                    }
-                    totalWritten += Int(written)
                 }
-            #elseif canImport(Darwin)
-                var totalWritten = 0
-                while totalWritten < count {
-                    let remaining = count - totalWritten
-                    let w = Darwin.write(
-                        _descriptor.rawValue,
-                        base.advanced(by: totalWritten),
-                        remaining
-                    )
-                    if w > 0 {
-                        totalWritten += w
-                    } else if w < 0 {
-                        if errno == EINTR { continue }
-                        throw .writeFailed(errno: errno, message: String(cString: strerror(errno)))
-                    }
+                totalWritten += Int(written)
+            }
+        #elseif canImport(Darwin)
+            var totalWritten = 0
+            while totalWritten < count {
+                let remaining = count - totalWritten
+                let w = Darwin.write(
+                    _descriptor.rawValue,
+                    base.advanced(by: totalWritten),
+                    remaining
+                )
+                if w > 0 {
+                    totalWritten += w
+                } else if w < 0 {
+                    if errno == EINTR { continue }
+                    throw .writeFailed(errno: errno, message: String(cString: strerror(errno)))
                 }
-            #elseif canImport(Glibc)
-                var totalWritten = 0
-                while totalWritten < count {
-                    let remaining = count - totalWritten
-                    let w = Glibc.write(
-                        _descriptor.rawValue,
-                        base.advanced(by: totalWritten),
-                        remaining
-                    )
-                    if w > 0 {
-                        totalWritten += w
-                    } else if w < 0 {
-                        if errno == EINTR { continue }
-                        throw .writeFailed(errno: errno, message: String(cString: strerror(errno)))
-                    }
+            }
+        #elseif canImport(Glibc)
+            var totalWritten = 0
+            while totalWritten < count {
+                let remaining = count - totalWritten
+                let w = Glibc.write(
+                    _descriptor.rawValue,
+                    base.advanced(by: totalWritten),
+                    remaining
+                )
+                if w > 0 {
+                    totalWritten += w
+                } else if w < 0 {
+                    if errno == EINTR { continue }
+                    throw .writeFailed(errno: errno, message: String(cString: strerror(errno)))
                 }
-            #endif
-        }
+            }
+        #endif
     }
 
     /// Seeks to a position in the file.

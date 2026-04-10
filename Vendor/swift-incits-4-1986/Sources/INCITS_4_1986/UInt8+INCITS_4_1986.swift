@@ -613,34 +613,34 @@ extension Binary.ASCII {
     // MARK: - Graphic Characters - Digits (direct access)
 
     /// DIGIT ZERO (0x30) - 0
-    public static var `0`: UInt8 { INCITS_4_1986.GraphicCharacters.`0` }
+    public static var digit0: UInt8 { INCITS_4_1986.GraphicCharacters.digit0 }
 
     /// DIGIT ONE (0x31) - 1
-    public static var `1`: UInt8 { INCITS_4_1986.GraphicCharacters.`1` }
+    public static var digit1: UInt8 { INCITS_4_1986.GraphicCharacters.digit1 }
 
     /// DIGIT TWO (0x32) - 2
-    public static var `2`: UInt8 { INCITS_4_1986.GraphicCharacters.`2` }
+    public static var digit2: UInt8 { INCITS_4_1986.GraphicCharacters.digit2 }
 
     /// DIGIT THREE (0x33) - 3
-    public static var `3`: UInt8 { INCITS_4_1986.GraphicCharacters.`3` }
+    public static var digit3: UInt8 { INCITS_4_1986.GraphicCharacters.digit3 }
 
     /// DIGIT FOUR (0x34) - 4
-    public static var `4`: UInt8 { INCITS_4_1986.GraphicCharacters.`4` }
+    public static var digit4: UInt8 { INCITS_4_1986.GraphicCharacters.digit4 }
 
     /// DIGIT FIVE (0x35) - 5
-    public static var `5`: UInt8 { INCITS_4_1986.GraphicCharacters.`5` }
+    public static var digit5: UInt8 { INCITS_4_1986.GraphicCharacters.digit5 }
 
     /// DIGIT SIX (0x36) - 6
-    public static var `6`: UInt8 { INCITS_4_1986.GraphicCharacters.`6` }
+    public static var digit6: UInt8 { INCITS_4_1986.GraphicCharacters.digit6 }
 
     /// DIGIT SEVEN (0x37) - 7
-    public static var `7`: UInt8 { INCITS_4_1986.GraphicCharacters.`7` }
+    public static var digit7: UInt8 { INCITS_4_1986.GraphicCharacters.digit7 }
 
     /// DIGIT EIGHT (0x38) - 8
-    public static var `8`: UInt8 { INCITS_4_1986.GraphicCharacters.`8` }
+    public static var digit8: UInt8 { INCITS_4_1986.GraphicCharacters.digit8 }
 
     /// DIGIT NINE (0x39) - 9
-    public static var `9`: UInt8 { INCITS_4_1986.GraphicCharacters.`9` }
+    public static var digit9: UInt8 { INCITS_4_1986.GraphicCharacters.digit9 }
 
     // MARK: - Graphic Characters - More Punctuation (direct access)
 

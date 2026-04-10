@@ -54,7 +54,7 @@ extension INCITS_4_1986 {
     /// ```swift
     /// // Access individual characters
     /// let letterA = INCITS_4_1986.GraphicCharacters.A      // 0x41
-    /// let digit0 = INCITS_4_1986.GraphicCharacters.`0`     // 0x30
+    /// let digit0 = INCITS_4_1986.GraphicCharacters.digit0  // 0x30
     /// let exclaim = INCITS_4_1986.GraphicCharacters.exclamationPoint  // 0x21
     ///
     /// // Check if byte is a graphic character
@@ -126,34 +126,34 @@ extension INCITS_4_1986.GraphicCharacters {
 
 extension INCITS_4_1986.GraphicCharacters {
     /// DIGIT ZERO (0x30) - 0
-    public static let `0`: UInt8 = 0x30
+    public static let digit0: UInt8 = 0x30
 
     /// DIGIT ONE (0x31) - 1
-    public static let `1`: UInt8 = 0x31
+    public static let digit1: UInt8 = 0x31
 
     /// DIGIT TWO (0x32) - 2
-    public static let `2`: UInt8 = 0x32
+    public static let digit2: UInt8 = 0x32
 
     /// DIGIT THREE (0x33) - 3
-    public static let `3`: UInt8 = 0x33
+    public static let digit3: UInt8 = 0x33
 
     /// DIGIT FOUR (0x34) - 4
-    public static let `4`: UInt8 = 0x34
+    public static let digit4: UInt8 = 0x34
 
     /// DIGIT FIVE (0x35) - 5
-    public static let `5`: UInt8 = 0x35
+    public static let digit5: UInt8 = 0x35
 
     /// DIGIT SIX (0x36) - 6
-    public static let `6`: UInt8 = 0x36
+    public static let digit6: UInt8 = 0x36
 
     /// DIGIT SEVEN (0x37) - 7
-    public static let `7`: UInt8 = 0x37
+    public static let digit7: UInt8 = 0x37
 
     /// DIGIT EIGHT (0x38) - 8
-    public static let `8`: UInt8 = 0x38
+    public static let digit8: UInt8 = 0x38
 
     /// DIGIT NINE (0x39) - 9
-    public static let `9`: UInt8 = 0x39
+    public static let digit9: UInt8 = 0x39
 }
 
 extension INCITS_4_1986.GraphicCharacters {

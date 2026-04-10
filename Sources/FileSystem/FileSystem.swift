@@ -424,7 +424,7 @@ public struct FileSystem: FileSysteming, Sendable {
             let bytes = Array(data)
             try bytes.withUnsafeBufferPointer { buffer in
                 try File.System.Write.Atomic.write(
-                    Span<UInt8>(_unsafeElements: buffer),
+                    buffer,
                     to: swiftPath
                 )
             }

@@ -38,14 +38,6 @@ extension Bit {
     }
 }
 
-extension Bit.Order {
-    @inlinable
-    public static var `most significant bit first`: Self { .msb }
-
-    @inlinable
-    public static var `least significant bit first`: Self { .msb }
-}
-
 // MARK: - Opposite
 
 extension Bit.Order {
