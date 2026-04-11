@@ -229,75 +229,83 @@ let vendoredSwiftSettings: [SwiftSetting] = [
     ]
 #endif
 
+let packageProducts: [Product] = [
+    .library(
+        name: "FileSystem",
+        type: .static,
+        targets: ["FileSystem"]
+    ),
+    .library(
+        name: "FileSystemTesting",
+        type: .static,
+        targets: ["FileSystemTesting"]
+    ),
+    .library(
+        name: "Glob",
+        type: .static,
+        targets: ["Glob"]
+    ),
+]
+
+let packageDependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
+    .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.11.0")),
+] + zipFoundationDependency + swiftNioDependency
+
+let fileSystemTargetDependencies: [Target.Dependency] = [
+    "Glob",
+    .product(name: "Path", package: "Path"),
+    .product(name: "Logging", package: "swift-log"),
+] + zipFoundationTarget + swiftNioTarget + swiftFileSystemTarget
+
+let packageTargets: [Target] = [
+    .target(
+        name: "FileSystem",
+        dependencies: fileSystemTargetDependencies,
+        swiftSettings: [
+            .define("MOCKING", .when(configuration: .debug)),
+        ]
+    ),
+    .testTarget(
+        name: "FileSystemTests",
+        dependencies: [
+            "FileSystem",
+        ]
+    ),
+    .target(
+        name: "FileSystemTesting",
+        dependencies: [
+            "FileSystem",
+        ]
+    ),
+    .testTarget(
+        name: "FileSystemTestingTests",
+        dependencies: [
+            "FileSystem",
+            "FileSystemTesting",
+        ]
+    ),
+    .target(
+        name: "Glob",
+        swiftSettings: [
+            .enableExperimentalFeature("StrictConcurrency"),
+        ]
+    ),
+    .testTarget(
+        name: "GlobTests",
+        dependencies: [
+            "Glob",
+        ]
+    ),
+] + swiftFileSystemTargets
+
 let package = Package(
     name: "FileSystem",
     platforms: [
         .macOS("13.0"),
         .iOS("16.0"),
     ],
-    products: [
-        .library(
-            name: "FileSystem",
-            type: .static,
-            targets: ["FileSystem"]
-        ),
-        .library(
-            name: "FileSystemTesting",
-            type: .static,
-            targets: ["FileSystemTesting"]
-        ),
-        .library(
-            name: "Glob",
-            type: .static,
-            targets: ["Glob"]
-        ),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
-        .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.11.0")),
-    ] + zipFoundationDependency + swiftNioDependency,
-    targets: [
-        .target(
-            name: "FileSystem",
-            dependencies: [
-                "Glob",
-                .product(name: "Path", package: "Path"),
-                .product(name: "Logging", package: "swift-log"),
-            ] + zipFoundationTarget + swiftNioTarget + swiftFileSystemTarget,
-            swiftSettings: [
-                .define("MOCKING", .when(configuration: .debug)),
-            ]
-        ),
-        .testTarget(
-            name: "FileSystemTests",
-            dependencies: [
-                "FileSystem",
-            ]
-        ),
-        .target(
-            name: "FileSystemTesting",
-            dependencies: [
-                "FileSystem",
-            ]
-        ),
-        .testTarget(
-            name: "FileSystemTestingTests",
-            dependencies: [
-                "FileSystem",
-                "FileSystemTesting",
-            ]
-        ),
-        .target(
-            name: "Glob",
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency"),
-            ]
-        ),
-        .testTarget(
-            name: "GlobTests",
-            dependencies: [
-                "Glob",
-            ]
-        ),
-    ] + swiftFileSystemTargets
+    products: packageProducts,
+    dependencies: packageDependencies,
+    targets: packageTargets
 )
