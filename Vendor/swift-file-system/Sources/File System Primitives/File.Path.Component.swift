@@ -5,7 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
-import SystemPackage
+import VendoredSystemPackage
 
 extension File.Path {
     /// A single component of a file path.

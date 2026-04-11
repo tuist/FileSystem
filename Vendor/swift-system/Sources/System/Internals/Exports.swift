@@ -10,23 +10,23 @@
 // Internal wrappers and typedefs which help reduce #if littering in System's
 // code base.
 
-// TODO: Should CSystem just include all the header files we need?
+// TODO: Should VendoredCSystem just include all the header files we need?
 
 #if SYSTEM_PACKAGE_DARWIN
 import Darwin
 #elseif os(Windows)
-import CSystem
+import VendoredCSystem
 import ucrt
 #elseif canImport(Glibc)
-@_implementationOnly import CSystem
+@_implementationOnly import VendoredCSystem
 import Glibc
 #elseif canImport(Musl)
-@_implementationOnly import CSystem
+@_implementationOnly import VendoredCSystem
 import Musl
 #elseif canImport(WASILibc)
 import WASILibc
 #elseif canImport(Android)
-@_implementationOnly import CSystem
+@_implementationOnly import VendoredCSystem
 import Android
 #else
 #error("Unsupported Platform")

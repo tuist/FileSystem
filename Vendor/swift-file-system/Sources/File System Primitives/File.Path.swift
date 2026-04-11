@@ -6,7 +6,7 @@
 //
 
 public import INCITS_4_1986
-import SystemPackage
+import VendoredSystemPackage
 
 extension File {
     /// A file system path.

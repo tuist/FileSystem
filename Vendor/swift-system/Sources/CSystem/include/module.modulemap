@@ -1,4 +1,4 @@
-module CSystem {
+module VendoredCSystem {
   header "CSystemLinux.h"
   header "CSystemWASI.h"
   header "CSystemWindows.h"
