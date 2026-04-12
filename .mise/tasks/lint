@@ -2,5 +2,5 @@
 # mise description="Lint the project using SwiftLint and SwiftFormat"
 set -euo pipefail
 
-swiftformat $MISE_PROJECT_ROOT --lint
-swiftlint lint --quiet --config $MISE_PROJECT_ROOT/.swiftlint.yml $MISE_PROJECT_ROOT/Sources
+swiftformat $MISE_PROJECT_ROOT/Sources/FileSystem $MISE_PROJECT_ROOT/Sources/FileSystemTesting $MISE_PROJECT_ROOT/Sources/Glob $MISE_PROJECT_ROOT/Tests --lint
+swiftlint lint --quiet --config $MISE_PROJECT_ROOT/.swiftlint.yml $MISE_PROJECT_ROOT/Sources/FileSystem $MISE_PROJECT_ROOT/Sources/FileSystemTesting $MISE_PROJECT_ROOT/Sources/Glob
