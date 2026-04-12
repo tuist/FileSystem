@@ -3,62 +3,20 @@
 
 @preconcurrency import PackageDescription
 
-struct SystemAvailability {
-    var name: String
-    var version: String
-    var osAvailability: String
-    var sourceAvailability: String
-
-    init(
-        _ version: String,
-        _ osAvailability: String
-    ) {
-        name = "System"
-        self.version = version
-        self.osAvailability = osAvailability
-        sourceAvailability = "macOS 10.10, iOS 8.0, watchOS 2.0, tvOS 9.0"
-    }
-
-    var swiftSetting: SwiftSetting {
-        #if SYSTEM_ABI_STABLE
-            let availability = osAvailability
-        #else
-            let availability = sourceAvailability
-        #endif
-        return .enableExperimentalFeature(
-            "AvailabilityMacro=\(name) \(version):\(availability)"
-        )
-    }
+// swift-system source files use `@available(System X.Y.Z, *)` via the
+// `AvailabilityMacro` experimental feature. Because we vendor the sources
+// (not the ABI-stable OS version of `System`), every macro resolves to the
+// original source-level availability, matching what swift-system itself does
+// in non-ABI-stable builds.
+let swiftSystemAvailability: [SwiftSetting] = [
+    "0.0.1", "0.0.2", "1.1.0", "1.2.0", "1.4.0",
+].map { version in
+    .enableExperimentalFeature(
+        "AvailabilityMacro=System \(version):macOS 10.10, iOS 8.0, watchOS 2.0, tvOS 9.0"
+    )
 }
 
-let swiftSystemAvailability: [SwiftSetting] = [
-    SystemAvailability("0.0.1", "macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0").swiftSetting,
-    SystemAvailability("0.0.2", "macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0").swiftSetting,
-    SystemAvailability("0.0.3", "macOS 12.3, iOS 15.4, watchOS 8.5, tvOS 15.4").swiftSetting,
-    SystemAvailability("1.1.0", "macOS 12.3, iOS 15.4, watchOS 8.5, tvOS 15.4").swiftSetting,
-    SystemAvailability("1.1.1", "macOS 14.4, iOS 17.4, watchOS 10.4, tvOS 17.4").swiftSetting,
-    SystemAvailability("1.2.0", "macOS 14.4, iOS 17.4, watchOS 10.4, tvOS 17.4").swiftSetting,
-    SystemAvailability("1.2.1", "macOS 14.4, iOS 17.4, watchOS 10.4, tvOS 17.4").swiftSetting,
-    SystemAvailability("1.3.0", "macOS 14.4, iOS 17.4, watchOS 10.4, tvOS 17.4").swiftSetting,
-    SystemAvailability("1.3.1", "macOS 14.4, iOS 17.4, watchOS 10.4, tvOS 17.4").swiftSetting,
-    SystemAvailability("1.3.2", "macOS 14.4, iOS 17.4, watchOS 10.4, tvOS 17.4").swiftSetting,
-    SystemAvailability("1.4.0", "macOS 14.4, iOS 17.4, watchOS 10.4, tvOS 17.4").swiftSetting,
-    SystemAvailability("1.4.1", "macOS 9999, iOS 9999, watchOS 9999, tvOS 9999").swiftSetting,
-    SystemAvailability("1.4.2", "macOS 9999, iOS 9999, watchOS 9999, tvOS 9999").swiftSetting,
-    SystemAvailability("1.5.0", "macOS 9999, iOS 9999, watchOS 9999, tvOS 9999").swiftSetting,
-    SystemAvailability("1.6.0", "macOS 9999, iOS 9999, watchOS 9999, tvOS 9999").swiftSetting,
-    SystemAvailability("1.6.1", "macOS 9999, iOS 9999, watchOS 9999, tvOS 9999").swiftSetting,
-]
-
-#if SYSTEM_CI
-    let swiftSystemCI: [SwiftSetting] = [
-        .unsafeFlags(["-require-explicit-availability=error"]),
-    ]
-#else
-    let swiftSystemCI: [SwiftSetting] = []
-#endif
-
-let swiftSystemSwiftSettings = swiftSystemAvailability + swiftSystemCI + [
+let swiftSystemSwiftSettings: [SwiftSetting] = swiftSystemAvailability + [
     .define(
         "SYSTEM_PACKAGE_DARWIN",
         .when(platforms: [.macOS, .macCatalyst, .iOS, .watchOS, .tvOS])
@@ -111,44 +69,44 @@ let vendoredSwiftSettings: [SwiftSetting] = [
         .target(
             name: "VendoredCSystem",
             dependencies: [],
-            path: "Vendor/swift-system/Sources/CSystem",
+            path: "Sources/CSystem",
             exclude: ["CMakeLists.txt"],
             cSettings: swiftSystemCSettings
         ),
         .target(
             name: "VendoredSystemPackage",
             dependencies: ["VendoredCSystem"],
-            path: "Vendor/swift-system/Sources/System",
+            path: "Sources/System",
             exclude: swiftSystemExcludedFiles,
             cSettings: swiftSystemCSettings,
             swiftSettings: swiftSystemSwiftSettings
         ),
         .target(
             name: "StandardLibraryExtensions",
-            path: "Vendor/swift-standards/Sources/StandardLibraryExtensions",
+            path: "Sources/StandardLibraryExtensions",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
             name: "Formatting",
             dependencies: ["StandardLibraryExtensions"],
-            path: "Vendor/swift-standards/Sources/Formatting",
+            path: "Sources/Formatting",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
             name: "StandardTime",
             dependencies: ["StandardLibraryExtensions"],
-            path: "Vendor/swift-standards/Sources/StandardTime",
+            path: "Sources/StandardTime",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
             name: "Locale",
             dependencies: ["StandardLibraryExtensions"],
-            path: "Vendor/swift-standards/Sources/Locale",
+            path: "Sources/Locale",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
             name: "Algebra",
-            path: "Vendor/swift-standards/Sources/Algebra",
+            path: "Sources/Algebra",
             exclude: [
                 "Bool+XOR.swift",
                 "Bound.swift",
@@ -176,7 +134,7 @@ let vendoredSwiftSettings: [SwiftSetting] = [
         .target(
             name: "Binary",
             dependencies: ["Algebra"],
-            path: "Vendor/swift-standards/Sources/Binary",
+            path: "Sources/Binary",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
@@ -189,13 +147,13 @@ let vendoredSwiftSettings: [SwiftSetting] = [
                 "Algebra",
                 "Binary",
             ],
-            path: "Vendor/swift-standards/Sources/Standards",
+            path: "Sources/Standards",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
             name: "INCITS 4 1986",
             dependencies: ["Standards"],
-            path: "Vendor/swift-incits-4-1986/Sources/INCITS_4_1986",
+            path: "Sources/INCITS_4_1986",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
@@ -204,12 +162,12 @@ let vendoredSwiftSettings: [SwiftSetting] = [
                 "Standards",
                 "INCITS 4 1986",
             ],
-            path: "Vendor/swift-rfc-4648/Sources/RFC 4648",
+            path: "Sources/RFC 4648",
             swiftSettings: vendoredSwiftSettings
         ),
         .target(
             name: "CFileSystemShims",
-            path: "Vendor/swift-file-system/Sources/CFileSystemShims",
+            path: "Sources/CFileSystemShims",
             publicHeadersPath: "include"
         ),
         .target(
@@ -222,7 +180,7 @@ let vendoredSwiftSettings: [SwiftSetting] = [
                 "INCITS 4 1986",
                 "RFC 4648",
             ],
-            path: "Vendor/swift-file-system/Sources/File System Primitives",
+            path: "Sources/File System Primitives",
             swiftSettings: vendoredSwiftSettings
         ),
     ]

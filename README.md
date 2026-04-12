@@ -13,17 +13,6 @@ Why build a Swift Package for interacting with the file system if there's alread
 > [!NOTE]
 > FileSystem powers [Tuist](https://tuist.io), a toolchain to build better apps faster.
 
-## Backend Selection
-
-On non-Windows platforms, `FileSystem` supports two internal implementations:
-
-- `SwiftNIO` is the default backend.
-- `swift-file-system` is available as an opt-in backend using the copied packages under `Vendor/`.
-
-To opt into the copied `swift-file-system` backend at runtime, set `TUIST_FILESYSTEM_BACKEND=swift-file-system` in the process environment before creating a `FileSystem` instance.
-
-This keeps the public API unchanged and lets Tuist switch implementations through feature flags without threading configuration through every filesystem call.
-
 ## Add it to your project
 
 ### Swift Package Manager
