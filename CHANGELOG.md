@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.38] - 2026-04-12
+### Details
+#### Chore
+- Update dependency tuist to v4.180.0 by @renovate[bot] in [#321](https://github.com/tuist/FileSystem/pull/321)
+
 ## [0.15.37] - 2026-04-11
 ### Details
 #### Chore
@@ -1258,6 +1263,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fix
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
+[0.15.38]: https://github.com/tuist/FileSystem/compare/0.15.37..0.15.38
 [0.15.37]: https://github.com/tuist/FileSystem/compare/0.15.36..0.15.37
 [0.15.36]: https://github.com/tuist/FileSystem/compare/0.15.35..0.15.36
 [0.15.35]: https://github.com/tuist/FileSystem/compare/0.15.34..0.15.35
