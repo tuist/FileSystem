@@ -23,7 +23,7 @@ extension File {
     /// let child = path / "swift"
     /// print(child.string)  // "/usr/local/bin/swift"
     /// ```
-    public struct Path: Hashable, Sendable {
+    public struct Path: Sendable {
         @usableFromInline
         var _path: FilePath
 
@@ -185,6 +185,24 @@ extension File.Path: CustomStringConvertible {
 extension File.Path: CustomDebugStringConvertible {
     public var debugDescription: String {
         "File.Path(\(string.debugDescription))"
+    }
+}
+
+// MARK: - Equatable
+
+extension File.Path: Equatable {
+    @inlinable
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.string == rhs.string
+    }
+}
+
+// MARK: - Hashable
+
+extension File.Path: Hashable {
+    @inlinable
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(string)
     }
 }
 

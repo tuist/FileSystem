@@ -12,7 +12,7 @@ extension File.Path {
     ///
     /// A component represents a single directory or file name within a path.
     /// For example, in `/usr/local/bin`, the components are `usr`, `local`, and `bin`.
-    public struct Component: Hashable, Sendable {
+    public struct Component: Sendable {
         @usableFromInline
         var _component: FilePath.Component
 
@@ -98,6 +98,24 @@ extension File.Path.Component: CustomStringConvertible {
 extension File.Path.Component: CustomDebugStringConvertible {
     public var debugDescription: String {
         "File.Path.Component(\(string.debugDescription))"
+    }
+}
+
+// MARK: - Equatable
+
+extension File.Path.Component: Equatable {
+    @inlinable
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.string == rhs.string
+    }
+}
+
+// MARK: - Hashable
+
+extension File.Path.Component: Hashable {
+    @inlinable
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(string)
     }
 }
 
