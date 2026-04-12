@@ -76,7 +76,6 @@ let vendoredSwiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("ExistentialAny"),
     .enableUpcomingFeature("InternalImportsByDefault"),
     .enableUpcomingFeature("MemberImportVisibility"),
-    .unsafeFlags(["-package-name", "swift_file_system_vendor"]),
 ]
 
 #if os(Linux)
