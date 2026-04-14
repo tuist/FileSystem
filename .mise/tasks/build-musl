@@ -1,0 +1,46 @@
+#!/bin/bash
+# mise description="Builds the project with the Swift Static Linux SDK (Musl) for the host architecture"
+set -euo pipefail
+
+CONTAINER_RUNTIME=$(command -v podman || command -v docker || true)
+
+if [ -z "$CONTAINER_RUNTIME" ]; then
+  echo "Neither podman nor docker is available. Please install one to proceed."
+  exit 1
+fi
+
+# If we're not inside a Linux container, re-invoke this script inside one so the
+# Static Linux SDK (which targets Linux hosts) works consistently across macOS
+# and Linux developer machines.
+if [ "${INSIDE_MUSL_CONTAINER:-}" != "1" ]; then
+  exec $CONTAINER_RUNTIME run --rm \
+      --volume "$MISE_PROJECT_ROOT:/package" \
+      --workdir "/package" \
+      --env INSIDE_MUSL_CONTAINER=1 \
+      swift:6.2 \
+      /package/.mise/tasks/build-musl
+fi
+
+SDK_URL="https://download.swift.org/swift-6.2.3-release/static-sdk/swift-6.2.3-RELEASE/swift-6.2.3-RELEASE_static-linux-0.0.1.artifactbundle.tar.gz"
+SDK_CHECKSUM="f30ec724d824ef43b5546e02ca06a8682dafab4b26a99fbb0e858c347e507a2c"
+
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)  SDK_TARGET="x86_64-swift-linux-musl" ;;
+  aarch64) SDK_TARGET="aarch64-swift-linux-musl" ;;
+  *)
+    echo "ERROR: Unsupported architecture: $ARCH" >&2
+    exit 1
+    ;;
+esac
+
+echo "==> Installing Swift Static Linux SDK (if not already installed)"
+if ! swift sdk list | grep -q "swift-6.2.3-RELEASE_static-linux"; then
+  swift sdk install "$SDK_URL" --checksum "$SDK_CHECKSUM"
+fi
+
+echo "==> Building with $SDK_TARGET"
+swift build \
+  --configuration release \
+  --build-path ./.build/musl \
+  --swift-sdk "$SDK_TARGET"
