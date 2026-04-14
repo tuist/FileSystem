@@ -32,8 +32,8 @@ extension File.Directory {
             private var _hasMore: Bool
         #elseif canImport(Darwin)
             private var _dir: UnsafeMutablePointer<DIR>?
-        #elseif canImport(Glibc)
-            // Use OpaquePointer on Linux (DIR type not exported in Swift's Glibc overlay)
+        #elseif canImport(Glibc) || canImport(Musl)
+            // Use OpaquePointer on Linux (DIR type not exported in Swift's Glibc/Musl overlay)
             private var _dir: OpaquePointer?
         #endif
         private let _basePath: File.Path
@@ -50,6 +50,10 @@ extension File.Directory {
             #elseif canImport(Glibc)
                 if let dir = _dir {
                     Glibc.closedir(dir)
+                }
+            #elseif canImport(Musl)
+                if let dir = _dir {
+                    Musl.closedir(dir)
                 }
             #endif
         }
@@ -111,6 +115,11 @@ extension File.Directory.Iterator {
         #elseif canImport(Glibc)
             if let dir = _dir {
                 Glibc.closedir(dir)
+                _dir = nil
+            }
+        #elseif canImport(Musl)
+            if let dir = _dir {
+                Musl.closedir(dir)
                 _dir = nil
             }
         #endif
@@ -197,7 +206,7 @@ extension File.Directory.Iterator {
             }
         }
     }
-#elseif canImport(Glibc)
+#elseif canImport(Glibc) || canImport(Musl)
     extension File.Directory.Iterator {
         private static func _openPOSIX(at path: File.Path) throws(Error) -> File.Directory.Iterator
         {
@@ -211,7 +220,7 @@ extension File.Directory.Iterator {
                 throw .notADirectory(path)
             }
 
-            guard let dir = Glibc.opendir(path.string) else {
+            guard let dir = opendir(path.string) else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -226,7 +235,7 @@ extension File.Directory.Iterator {
                 return nil
             }
 
-            while let entry = Glibc.readdir(dir) {
+            while let entry = readdir(dir) {
                 let name = String(posixDirectoryEntryName: entry.pointee.d_name)
 
                 // Skip . and ..
@@ -237,10 +246,10 @@ extension File.Directory.Iterator {
                 // Build full path using proper path composition
                 let entryPath = _basePath.appending(name)
 
-                // Determine type via lstat (Glibc doesn't reliably expose d_type)
+                // Determine type via lstat (Glibc/Musl don't reliably expose d_type)
                 let entryType: File.Directory.EntryType
                 var entryStat = stat()
-                if Glibc.lstat(entryPath.string, &entryStat) == 0 {
+                if lstat(entryPath.string, &entryStat) == 0 {
                     switch entryStat.st_mode & S_IFMT {
                     case S_IFREG:
                         entryType = .file

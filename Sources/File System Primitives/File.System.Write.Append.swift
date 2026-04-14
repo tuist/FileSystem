@@ -102,6 +102,8 @@ extension File.System.Write.Append {
                     let w = Darwin.write(fd, base.advanced(by: written), remaining)
                 #elseif canImport(Glibc)
                     let w = Glibc.write(fd, base.advanced(by: written), remaining)
+                #elseif canImport(Musl)
+                    let w = Musl.write(fd, base.advanced(by: written), remaining)
                 #endif
 
                 if w > 0 {

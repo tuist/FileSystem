@@ -9,6 +9,7 @@
         import CFileSystemShims
         import Glibc
     #elseif canImport(Musl)
+        import CFileSystemShims
         import Musl
     #endif
 
