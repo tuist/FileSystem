@@ -4,8 +4,10 @@
     import _NIOFileSystem
     #if canImport(Darwin)
         import Darwin
-    #else
+    #elseif canImport(Glibc)
         import Glibc
+    #elseif canImport(Musl)
+        import Musl
     #endif
     import File_System_Primitives
     import NIOCore

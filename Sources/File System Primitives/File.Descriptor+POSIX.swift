@@ -70,6 +70,8 @@
                 let fd = Darwin.open(path.string, flags, defaultMode)
             #elseif canImport(Glibc)
                 let fd = Glibc.open(path.string, flags, defaultMode)
+            #elseif canImport(Musl)
+                let fd = Musl.open(path.string, flags, defaultMode)
             #endif
 
             guard fd >= 0 else {
