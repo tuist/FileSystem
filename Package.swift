@@ -86,6 +86,12 @@ let vendoredSwiftSettings: [SwiftSetting] = [
             path: "Sources/StandardLibraryExtensions",
             swiftSettings: vendoredSwiftSettings
         ),
+        .testTarget(
+            name: "StandardLibraryExtensionsTests",
+            dependencies: ["StandardLibraryExtensions"],
+            path: "Tests/StandardLibraryExtensionsTests",
+            swiftSettings: vendoredSwiftSettings
+        ),
         .target(
             name: "Formatting",
             dependencies: ["StandardLibraryExtensions"],
