@@ -46,7 +46,7 @@ extension Set<Character>.ASCII {
             INCITS_4_1986.whitespaces.map {
                 Character(UnicodeScalar($0))
             })
-        set.insert(Character(.init([UInt8].ascii.crlf)))
+        set.insert(Character(String(decoding: [UInt8].ascii.crlf, as: UTF8.self)))
         return set
     }()
 

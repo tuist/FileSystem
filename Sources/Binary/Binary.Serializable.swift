@@ -192,30 +192,6 @@ extension StringProtocol {
     }
 }
 
-// MARK: - Direct Byte Array Conversions
-
-extension String {
-    /// Creates a string by decoding UTF-8 bytes.
-    ///
-    /// - Parameter bytes: The UTF-8 encoded bytes to decode
-    ///
-    /// Example:
-    /// ```swift
-    /// let bytes: [UInt8] = [72, 101, 108, 108, 111]
-    /// let string = String(bytes)  // "Hello"
-    /// ```
-    @inlinable
-    public init(_ bytes: [UInt8]) {
-        self = String(decoding: bytes, as: UTF8.self)
-    }
-
-    /// Creates a string by decoding UTF-8 bytes from an array slice.
-    @inlinable
-    public init(_ bytes: ArraySlice<UInt8>) {
-        self = String(decoding: bytes, as: UTF8.self)
-    }
-}
-
 // MARK: - RawRepresentable Default Implementations
 
 extension Binary.Serializable where Self: RawRepresentable, Self.RawValue: StringProtocol {
