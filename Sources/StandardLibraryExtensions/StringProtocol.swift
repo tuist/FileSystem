@@ -1,8 +1,3 @@
-// StringProtocol.swift
-// swift-standards
-//
-// Pure Swift StringProtocol utilities
-
 // MARK: - Case Formatting
 
 extension StringProtocol {
@@ -42,35 +37,43 @@ extension StringProtocol {
     /// sub.range(of: "World")            // Range in Substring
     /// ```
     public func range(of string: some StringProtocol) -> Range<Index>? {
-        guard !string.isEmpty else { return startIndex..<startIndex }
-        guard string.count <= count else { return nil }
+        guard !string.isEmpty else { return startIndex ..< startIndex }
 
-        let searchChars = Array(string)
+        // Search on the UTF-8 byte view. UTF-8 is self-synchronizing, so any
+        // byte-level match is also Unicode-scalar-aligned, and `String.Index`
+        // values from `utf8` are interchangeable with the receiver's own
+        // indices. This avoids per-Character grapheme-cluster comparisons
+        // and the O(n) `distance(from:to:)` calls the previous naive scan
+        // performed once per outer iteration.
+        let haystack = utf8
+        let needle = string.utf8
+        let nCount = needle.count
+        let hCount = haystack.count
+        guard nCount <= hCount else { return nil }
 
-        var searchIndex = startIndex
-        while searchIndex < endIndex {
-            let remainingDistance = distance(from: searchIndex, to: endIndex)
-            guard remainingDistance >= string.count else { break }
+        let needleStart = needle.startIndex
+        let needleEnd = needle.endIndex
+        let firstByte = needle[needleStart]
+        let secondNeedle = needle.index(after: needleStart)
 
-            var matchIndex = searchIndex
-            var patternIndex = searchChars.startIndex
+        let hEnd = haystack.endIndex
+        let lastPossibleStart = haystack.index(hEnd, offsetBy: -nCount)
 
-            // Try to match the pattern starting at searchIndex
-            while patternIndex < searchChars.endIndex {
-                if self[matchIndex] != searchChars[patternIndex] {
-                    break
+        var i = haystack.startIndex
+        while i <= lastPossibleStart {
+            if haystack[i] == firstByte {
+                var h = haystack.index(after: i)
+                var n = secondNeedle
+                while n < needleEnd, haystack[h] == needle[n] {
+                    h = haystack.index(after: h)
+                    n = needle.index(after: n)
                 }
-                matchIndex = index(after: matchIndex)
-                patternIndex = searchChars.index(after: patternIndex)
+                if n == needleEnd {
+                    let end = haystack.index(i, offsetBy: nCount)
+                    return i ..< end
+                }
             }
-
-            // If we matched the entire pattern, return the range
-            if patternIndex == searchChars.endIndex {
-                let endIndex = index(searchIndex, offsetBy: string.count)
-                return searchIndex..<endIndex
-            }
-
-            searchIndex = index(after: searchIndex)
+            i = haystack.index(after: i)
         }
 
         return nil
@@ -112,7 +115,7 @@ extension StringProtocol {
             end = string.index(before: end)
         }
 
-        return string[start..<end]
+        return string[start ..< end]
     }
 
     /// Trims characters from both ends of a string
