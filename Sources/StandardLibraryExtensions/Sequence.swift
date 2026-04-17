@@ -3,25 +3,6 @@
 //
 // Extensions for Swift standard library Sequence
 
-extension Sequence {
-    /// Counts elements satisfying predicate
-    ///
-    /// Measures cardinality of preimage under characteristic function.
-    /// Computes |f⁻¹(true)| where f: A → Bool is the predicate.
-    ///
-    /// Category theory: Composition of characteristic function with cardinality:
-    /// count: (A → Bool) → Seq(A) → ℕ where count(p, s) = |{x ∈ s : p(x)}|
-    ///
-    /// Example:
-    /// ```swift
-    /// [1, 2, 3, 4, 5].count(where: { $0.isMultiple(of: 2) })  // 2
-    /// ```
-    public func count(where predicate: (Element) throws -> Bool) rethrows -> Int {
-        try reduce(0) { try predicate($1) ? $0 + 1 : $0 }
-    }
-
-}
-
 extension Sequence where Element: Hashable {
     /// Computes frequency distribution of elements
     ///
@@ -99,61 +80,4 @@ extension Sequence where Element: Comparable {
         return true
     }
 
-    /// Returns N largest elements
-    ///
-    /// Partial order selection via top-N filter.
-    /// Selects maximal elements up to specified count.
-    ///
-    /// Category theory: Order-preserving projection to prefix:
-    /// max: ℕ → Seq(A) → Seq(A) where result is ordered maximum subset
-    ///
-    /// Example:
-    /// ```swift
-    /// [3, 1, 4, 1, 5, 9, 2].max(count: 3)  // [9, 5, 4]
-    /// ```
-    public func max(count: Int) -> [Element] {
-        guard count > 0 else { return [] }
-        var result: [Element] = []
-
-        for element in self {
-            if result.count < count {
-                result.append(element)
-                result.sort(by: >)
-            } else if let last = result.last, element > last {
-                result[count - 1] = element
-                result.sort(by: >)
-            }
-        }
-
-        return result
-    }
-
-    /// Returns N smallest elements
-    ///
-    /// Dual to max(count:), selects minimal elements.
-    /// Partial order selection via bottom-N filter.
-    ///
-    /// Category theory: Order-reversing variant of max:
-    /// min: ℕ → Seq(A) → Seq(A) where min ≡ max ∘ reverse_order
-    ///
-    /// Example:
-    /// ```swift
-    /// [3, 1, 4, 1, 5, 9, 2].min(count: 3)  // [1, 1, 2]
-    /// ```
-    public func min(count: Int) -> [Element] {
-        guard count > 0 else { return [] }
-        var result: [Element] = []
-
-        for element in self {
-            if result.count < count {
-                result.append(element)
-                result.sort()
-            } else if let last = result.last, element < last {
-                result[count - 1] = element
-                result.sort()
-            }
-        }
-
-        return result
-    }
 }
