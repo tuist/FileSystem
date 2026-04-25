@@ -45,8 +45,6 @@ let vendoredSwiftSettings: [SwiftSetting] = [
 #if os(Windows)
     let zipFoundationDependency: [Package.Dependency] = []
     let zipFoundationTarget: [Target.Dependency] = []
-    let swiftNioDependency: [Package.Dependency] = []
-    let swiftNioTarget: [Target.Dependency] = []
     let swiftFileSystemTarget: [Target.Dependency] = []
     let swiftFileSystemTargets: [Target] = []
 #else
@@ -55,12 +53,6 @@ let vendoredSwiftSettings: [SwiftSetting] = [
     ]
     let zipFoundationTarget: [Target.Dependency] = [
         .product(name: "ZIPFoundation", package: "ZIPFoundation"),
-    ]
-    let swiftNioDependency: [Package.Dependency] = [
-        .package(url: "https://github.com/apple/swift-nio", .upToNextMajor(from: "2.92.0")),
-    ]
-    let swiftNioTarget: [Target.Dependency] = [
-        .product(name: "_NIOFileSystem", package: "swift-nio"),
     ]
     let swiftFileSystemTarget: [Target.Dependency] = [
         "File System Primitives",
@@ -213,13 +205,13 @@ let packageProducts: [Product] = [
 let packageDependencies: [Package.Dependency] = [
     .package(url: "https://github.com/tuist/Path", .upToNextMajor(from: "0.3.8")),
     .package(url: "https://github.com/apple/swift-log", .upToNextMajor(from: "1.11.0")),
-] + zipFoundationDependency + swiftNioDependency
+] + zipFoundationDependency
 
 let fileSystemTargetDependencies: [Target.Dependency] = [
     "Glob",
     .product(name: "Path", package: "Path"),
     .product(name: "Logging", package: "swift-log"),
-] + zipFoundationTarget + swiftNioTarget + swiftFileSystemTarget
+] + zipFoundationTarget + swiftFileSystemTarget
 
 let packageTargets: [Target] = [
     .target(
