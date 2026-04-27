@@ -399,6 +399,27 @@ private struct TestError: Error, Equatable {}
             }
         }
 
+        func test_replace_replaces_when_replacedDirectoryIsNonEmpty() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let replacedPath = temporaryDirectory.appending(component: "replaced")
+                let replacingPath = temporaryDirectory.appending(component: "replacing")
+                try await subject.makeDirectory(at: replacedPath)
+                try await subject.touch(replacedPath.appending(component: "stale"))
+                try await subject.makeDirectory(at: replacingPath)
+                try await subject.touch(replacingPath.appending(component: "fresh"))
+
+                // When
+                try await subject.replace(replacedPath, with: replacingPath)
+
+                // Then
+                let freshExists = try await subject.exists(replacedPath.appending(component: "fresh"))
+                let staleExists = try await subject.exists(replacedPath.appending(component: "stale"))
+                XCTAssertTrue(freshExists)
+                XCTAssertFalse(staleExists)
+            }
+        }
+
         func test_replace_replaces_when_replacingPathDoesntExist() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given

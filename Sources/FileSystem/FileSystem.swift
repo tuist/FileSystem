@@ -613,6 +613,18 @@ public struct FileSystem: FileSysteming, Sendable {
                 switch error {
                 case .sourceNotFound:
                     throw FileSystemError.moveNotFound(from: from, to: to)
+                case .moveFailed:
+                    // The swift-system POSIX move falls back to a file-only copy on EXDEV,
+                    // which fails for directories across filesystems. Defer to FileManager,
+                    // which performs a recursive copy+delete in that case.
+                    do {
+                        try FileManager.default.moveItem(atPath: from.pathString, toPath: to.pathString)
+                    } catch {
+                        if !FileManager.default.fileExists(atPath: from.pathString) {
+                            throw FileSystemError.moveNotFound(from: from, to: to)
+                        }
+                        throw error
+                    }
                 default:
                     throw error
                 }
@@ -815,6 +827,12 @@ public struct FileSystem: FileSysteming, Sendable {
             }
             try FileManager.default.copyItem(atPath: path.pathString, toPath: to.pathString)
         #else
+            // The swift-system POSIX move uses rename(2) for the overwrite path, which fails
+            // with ENOTEMPTY/EEXIST when the destination is a non-empty directory. Mirror the
+            // Windows branch by removing the destination first so directory replacements work.
+            if FileManager.default.fileExists(atPath: to.pathString) {
+                try FileManager.default.removeItem(atPath: to.pathString)
+            }
             try File.System.Move.move(
                 from: try swiftFileSystemPath(path),
                 to: try swiftFileSystemPath(to),
