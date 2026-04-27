@@ -3,14 +3,12 @@ import XCTest
 @testable import FileSystem
 
 #if !os(Windows)
-    final class SwiftFileSystemBackendTests: XCTestCase, @unchecked Sendable {
+    final class DefaultFileSystemTests: XCTestCase, @unchecked Sendable {
         private var subject: FileSystem!
 
         override func setUp() async throws {
             try await super.setUp()
-            subject = FileSystem(
-                environmentVariables: ["TUIST_FILESYSTEM_BACKEND": "swift-file-system"]
-            )
+            subject = FileSystem()
         }
 
         override func tearDown() async throws {
@@ -19,7 +17,7 @@ import XCTest
         }
 
         func test_roundTripsTextAndMetadata() async throws {
-            try await subject.runInTemporaryDirectory(prefix: "SwiftFileSystemBackend") { temporaryDirectory in
+            try await subject.runInTemporaryDirectory(prefix: "DefaultFileSystem") { temporaryDirectory in
                 let filePath = temporaryDirectory.appending(component: "file.txt")
 
                 try await subject.writeText("hello", at: filePath)
@@ -33,7 +31,7 @@ import XCTest
         }
 
         func test_listsCopiesMovesAndRemovesFiles() async throws {
-            try await subject.runInTemporaryDirectory(prefix: "SwiftFileSystemBackend") { temporaryDirectory in
+            try await subject.runInTemporaryDirectory(prefix: "DefaultFileSystem") { temporaryDirectory in
                 let sourceDirectory = temporaryDirectory.appending(component: "source")
                 let copiedDirectory = temporaryDirectory.appending(component: "copied")
                 let movedFile = temporaryDirectory.appending(component: "moved.txt")
@@ -61,7 +59,7 @@ import XCTest
         }
 
         func test_createsAndResolvesRelativeSymbolicLinks() async throws {
-            try await subject.runInTemporaryDirectory(prefix: "SwiftFileSystemBackend") { temporaryDirectory in
+            try await subject.runInTemporaryDirectory(prefix: "DefaultFileSystem") { temporaryDirectory in
                 let targetDirectory = temporaryDirectory.appending(component: "target")
                 let targetFile = targetDirectory.appending(component: "file.txt")
                 let symbolicLink = temporaryDirectory.appending(component: "link")
