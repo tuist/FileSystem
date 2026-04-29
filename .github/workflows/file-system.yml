@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Cache Static Linux SDK
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.swiftpm/swift-sdks
           key: static-linux-sdk-swift-6.2.3-${{ matrix.arch }}
