@@ -5,1556 +5,301 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.17.2] - 2026-04-28
+## [0.17.3] - 2026-05-07
 ### Details
-#### Chore
-- Update dependency tuist to v4.190.0 by @renovate[bot] in [#335](https://github.com/tuist/FileSystem/pull/335)
-
-## [0.17.1] - 2026-04-27
-### Details
-#### Chore
-- Update dependency tuist to v4.188.3 by @renovate[bot] in [#334](https://github.com/tuist/FileSystem/pull/334)
+#### <!-- 1 -->🐛 Bug Fixes
+- Make concurrent file writes race-safe by @pepicrft in [#342](https://github.com/tuist/FileSystem/pull/342)
 
 ## [0.17.0] - 2026-04-27
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Remove SwiftNIO backend from FileSystem by @pepicrft in [#333](https://github.com/tuist/FileSystem/pull/333)
-
-## [0.16.9] - 2026-04-24
-### Details
-#### Chore
-- Update dependency tuist to v4.186.2 by @renovate[bot] in [#332](https://github.com/tuist/FileSystem/pull/332)
-
-## [0.16.8] - 2026-04-24
-### Details
-#### Chore
-- Update dependency tuist to v4.185.1 by @renovate[bot] in [#331](https://github.com/tuist/FileSystem/pull/331)
-
-## [0.16.7] - 2026-04-23
-### Details
-#### Chore
-- Update dependency tuist to v4.184.1 by @renovate[bot] in [#330](https://github.com/tuist/FileSystem/pull/330)
-
-## [0.16.6] - 2026-04-21
-### Details
-#### Chore
-- Update dependency tuist to v4.183.0 by @renovate[bot] in [#329](https://github.com/tuist/FileSystem/pull/329)
-
-## [0.16.5] - 2026-04-17
-### Details
-#### Chore
-- Update dependency tuist to v4.182.0 by @renovate[bot] in [#328](https://github.com/tuist/FileSystem/pull/328)
 
 ## [0.16.4] - 2026-04-17
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Remove public extensions that silently shadow Foundation/stdlib by @pepicrft in [#327](https://github.com/tuist/FileSystem/pull/327)
-
-## [0.16.3] - 2026-04-16
-### Details
-#### Chore
-- Update dependency tuist to v4.181.0 by @renovate[bot] in [#326](https://github.com/tuist/FileSystem/pull/326)
 
 ## [0.16.2] - 2026-04-16
 ### Details
-#### Perf
+#### <!-- 4 -->⚡ Performance
 - Make StringProtocol.range(of:) scan UTF-8 bytes by @pepicrft in [#325](https://github.com/tuist/FileSystem/pull/325)
 
 ## [0.16.1] - 2026-04-14
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Add Musl support to File System Primitives by @fortmarek in [#322](https://github.com/tuist/FileSystem/pull/322)
 
 ## [0.16.0] - 2026-04-12
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Add opt-in swift-file-system backend by @pepicrft in [#315](https://github.com/tuist/FileSystem/pull/315)
-
-## [0.15.38] - 2026-04-12
-### Details
-#### Chore
-- Update dependency tuist to v4.180.0 by @renovate[bot] in [#321](https://github.com/tuist/FileSystem/pull/321)
-
-## [0.15.37] - 2026-04-11
-### Details
-#### Chore
-- Update dependency tuist to v4.179.3 by @renovate[bot] in [#319](https://github.com/tuist/FileSystem/pull/319)
-
-## [0.15.36] - 2026-04-11
-### Details
-#### Chore
-- Update dependency tuist to v4.179.1 by @renovate[bot] in [#318](https://github.com/tuist/FileSystem/pull/318)
-
-## [0.15.35] - 2026-04-10
-### Details
-#### Chore
-- Update dependency tuist to v4.179.0 by @renovate[bot] in [#317](https://github.com/tuist/FileSystem/pull/317)
-
-## [0.15.34] - 2026-04-10
-### Details
-#### Chore
-- Update dependency tuist to v4.178.1 by @renovate[bot] in [#316](https://github.com/tuist/FileSystem/pull/316)
-
-## [0.15.33] - 2026-04-09
-### Details
-#### Chore
-- Update dependency tuist to v4.178.0 by @renovate[bot] in [#314](https://github.com/tuist/FileSystem/pull/314)
-
-## [0.15.32] - 2026-04-09
-### Details
-#### Chore
-- Update dependency tuist to v4.176.2 by @renovate[bot] in [#313](https://github.com/tuist/FileSystem/pull/313)
 
 ## [0.15.31] - 2026-04-08
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Handle concurrent mkdir race in NIO's createDirectory by @pepicrft in [#312](https://github.com/tuist/FileSystem/pull/312)
-
-## [0.15.30] - 2026-04-07
-### Details
-#### Chore
-- Update dependency tuist to v4.175.0 by @renovate[bot] in [#311](https://github.com/tuist/FileSystem/pull/311)
-
-## [0.15.29] - 2026-04-02
-### Details
-#### Chore
-- Update dependency tuist to v4.174.2 by @renovate[bot] in [#310](https://github.com/tuist/FileSystem/pull/310)
-
-## [0.15.28] - 2026-04-02
-### Details
-#### Chore
-- Update dependency tuist to v4.174.1 by @renovate[bot] in [#309](https://github.com/tuist/FileSystem/pull/309)
-
-## [0.15.27] - 2026-04-02
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.11.0" by @renovate[bot] in [#306](https://github.com/tuist/FileSystem/pull/306)
 
 ## [0.15.26] - 2026-04-01
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Bump minimum ZIPFoundation version to 0.9.21 by @asevko in [#308](https://github.com/tuist/FileSystem/pull/308)
 
 ## New Contributors
 * @asevko made their first contribution in [#308](https://github.com/tuist/FileSystem/pull/308)
-## [0.15.25] - 2026-04-01
-### Details
-#### Chore
-- Update dependency tuist to v4.172.1 by @renovate[bot] in [#307](https://github.com/tuist/FileSystem/pull/307)
-
-## [0.15.24] - 2026-04-01
-### Details
-#### Chore
-- Update dependency tuist to v4.172.0 by @renovate[bot] in [#305](https://github.com/tuist/FileSystem/pull/305)
-
-## [0.15.23] - 2026-03-30
-### Details
-#### Chore
-- Update dependency tuist to v4.171.2 by @renovate[bot] in [#304](https://github.com/tuist/FileSystem/pull/304)
-
-## [0.15.22] - 2026-03-30
-### Details
-#### Chore
-- Update dependency tuist to v4.170.0 by @renovate[bot] in [#302](https://github.com/tuist/FileSystem/pull/302)
-
-## [0.15.21] - 2026-03-28
-### Details
-#### Chore
-- Update dependency tuist to v4.169.2 by @renovate[bot] in [#301](https://github.com/tuist/FileSystem/pull/301)
-
-## [0.15.20] - 2026-03-27
-### Details
-#### Chore
-- Update dependency tuist to v4.169.1 by @renovate[bot] in [#300](https://github.com/tuist/FileSystem/pull/300)
-
-## [0.15.19] - 2026-03-26
-### Details
-#### Chore
-- Update dependency tuist to v4.168.0 by @renovate[bot] in [#299](https://github.com/tuist/FileSystem/pull/299)
-
-## [0.15.18] - 2026-03-25
-### Details
-#### Chore
-- Update dependency tuist to v4.167.0 by @renovate[bot] in [#298](https://github.com/tuist/FileSystem/pull/298)
-
-## [0.15.17] - 2026-03-24
-### Details
-#### Chore
-- Update dependency tuist to v4.166.0 by @renovate[bot] in [#297](https://github.com/tuist/FileSystem/pull/297)
-
-## [0.15.16] - 2026-03-24
-### Details
-#### Chore
-- Update dependency tuist to v4.163.1 by @renovate[bot] in [#296](https://github.com/tuist/FileSystem/pull/296)
-
-## [0.15.15] - 2026-03-21
-### Details
-#### Chore
-- Update dependency tuist to v4.162.1 by @renovate[bot] in [#295](https://github.com/tuist/FileSystem/pull/295)
-
-## [0.15.14] - 2026-03-20
-### Details
-#### Chore
-- Update dependency tuist to v4.162.0 by @renovate[bot] in [#294](https://github.com/tuist/FileSystem/pull/294)
-
-## [0.15.13] - 2026-03-19
-### Details
-#### Chore
-- Update dependency tuist to v4.161.0 by @renovate[bot] in [#293](https://github.com/tuist/FileSystem/pull/293)
-
-## [0.15.12] - 2026-03-18
-### Details
-#### Chore
-- Update dependency tuist to v4.160.0 by @renovate[bot] in [#292](https://github.com/tuist/FileSystem/pull/292)
-
-## [0.15.11] - 2026-03-14
-### Details
-#### Chore
-- Update dependency tuist to v4.158.2 by @renovate[bot] in [#289](https://github.com/tuist/FileSystem/pull/289)
-
-## [0.15.10] - 2026-03-12
-### Details
-#### Chore
-- Update dependency tuist to v4.157.3 by @renovate[bot] in [#288](https://github.com/tuist/FileSystem/pull/288)
-
-## [0.15.9] - 2026-03-11
-### Details
-#### Chore
-- Update dependency tuist to v4.156.0 by @renovate[bot] in [#287](https://github.com/tuist/FileSystem/pull/287)
-
-## [0.15.8] - 2026-03-09
-### Details
-#### Chore
-- Update dependency tuist to v4.155.4 by @renovate[bot] in [#286](https://github.com/tuist/FileSystem/pull/286)
-
-## [0.15.7] - 2026-03-07
-### Details
-#### Chore
-- Update dependency tuist to v4.155.3 by @renovate[bot] in [#285](https://github.com/tuist/FileSystem/pull/285)
-
-## [0.15.6] - 2026-03-06
-### Details
-#### Chore
-- Update dependency tuist to v4.155.1 by @renovate[bot] in [#284](https://github.com/tuist/FileSystem/pull/284)
-
-## [0.15.5] - 2026-03-05
-### Details
-#### Chore
-- Update dependency tuist to v4.155.0 by @renovate[bot] in [#283](https://github.com/tuist/FileSystem/pull/283)
-
-## [0.15.4] - 2026-03-04
-### Details
-#### Chore
-- Update dependency tuist to v4.154.5 by @renovate[bot] in [#282](https://github.com/tuist/FileSystem/pull/282)
-
-## [0.15.3] - 2026-03-03
-### Details
-#### Chore
-- Update dependency tuist to v4.154.2 by @renovate[bot] in [#281](https://github.com/tuist/FileSystem/pull/281)
-
-## [0.15.2] - 2026-03-03
-### Details
-#### Chore
-- Update dependency tuist to v4.153.1 by @renovate[bot] in [#280](https://github.com/tuist/FileSystem/pull/280)
-
-## [0.15.1] - 2026-03-01
-### Details
-#### Chore
-- Update dependency tuist to v4.153.0 by @renovate[bot] in [#279](https://github.com/tuist/FileSystem/pull/279)
-
 ## [0.15.0] - 2026-02-27
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Add setAttributes API to FileSysteming protocol by @pepicrft in [#278](https://github.com/tuist/FileSystem/pull/278)
-
-## [0.14.38] - 2026-02-24
-### Details
-#### Chore
-- Update dependency tuist to v4.152.0 by @renovate[bot] in [#277](https://github.com/tuist/FileSystem/pull/277)
-
-## [0.14.37] - 2026-02-24
-### Details
-#### Chore
-- Update dependency tuist to v4.151.1 by @renovate[bot] in [#276](https://github.com/tuist/FileSystem/pull/276)
-
-## [0.14.36] - 2026-02-23
-### Details
-#### Chore
-- Update dependency tuist to v4.151.0 by @renovate[bot] in [#275](https://github.com/tuist/FileSystem/pull/275)
-
-## [0.14.35] - 2026-02-20
-### Details
-#### Chore
-- Update dependency tuist to v4.150.0 by @renovate[bot] in [#274](https://github.com/tuist/FileSystem/pull/274)
-
-## [0.14.34] - 2026-02-20
-### Details
-#### Chore
-- Update dependency tuist to v4.149.1 by @renovate[bot] in [#273](https://github.com/tuist/FileSystem/pull/273)
-
-## [0.14.33] - 2026-02-19
-### Details
-#### Chore
-- Update dependency tuist to v4.148.4 by @renovate[bot] in [#272](https://github.com/tuist/FileSystem/pull/272)
-
-## [0.14.32] - 2026-02-19
-### Details
-#### Chore
-- Update dependency tuist to v4.148.2 by @renovate[bot] in [#271](https://github.com/tuist/FileSystem/pull/271)
-
-## [0.14.31] - 2026-02-18
-### Details
-#### Chore
-- Update dependency tuist to v4.148.1 by @renovate[bot] in [#270](https://github.com/tuist/FileSystem/pull/270)
-
-## [0.14.30] - 2026-02-17
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.10.1" by @renovate[bot] in [#269](https://github.com/tuist/FileSystem/pull/269)
-
-## [0.14.29] - 2026-02-16
-### Details
-#### Chore
-- Update dependency tuist to v4.146.2 by @renovate[bot] in [#268](https://github.com/tuist/FileSystem/pull/268)
-
-## [0.14.28] - 2026-02-14
-### Details
-#### Chore
-- Update dependency tuist to v4.146.0 by @renovate[bot] in [#267](https://github.com/tuist/FileSystem/pull/267)
-
-## [0.14.27] - 2026-02-12
-### Details
-#### Chore
-- Update dependency tuist to v4.145.0 by @renovate[bot] in [#266](https://github.com/tuist/FileSystem/pull/266)
-
-## [0.14.26] - 2026-02-11
-### Details
-#### Chore
-- Update dependency tuist to v4.143.0 by @renovate[bot] in [#265](https://github.com/tuist/FileSystem/pull/265)
-
-## [0.14.25] - 2026-02-10
-### Details
-#### Chore
-- Update dependency tuist to v4.142.1 by @renovate[bot] in [#264](https://github.com/tuist/FileSystem/pull/264)
-
-## [0.14.24] - 2026-02-10
-### Details
-#### Chore
-- Update dependency tuist to v4.142.0 by @renovate[bot] in [#263](https://github.com/tuist/FileSystem/pull/263)
-
-## [0.14.23] - 2026-02-07
-### Details
-#### Chore
-- Update dependency tuist to v4.141.0 by @renovate[bot] in [#262](https://github.com/tuist/FileSystem/pull/262)
-
-## [0.14.22] - 2026-02-07
-### Details
-#### Chore
-- Update dependency tuist to v4.140.2 by @renovate[bot] in [#261](https://github.com/tuist/FileSystem/pull/261)
-
-## [0.14.21] - 2026-02-06
-### Details
-#### Chore
-- Update dependency tuist to v4.140.1 by @renovate[bot] in [#260](https://github.com/tuist/FileSystem/pull/260)
-
-## [0.14.20] - 2026-02-06
-### Details
-#### Chore
-- Update dependency tuist to v4.140.0 by @renovate[bot] in [#259](https://github.com/tuist/FileSystem/pull/259)
-
-## [0.14.19] - 2026-02-05
-### Details
-#### Chore
-- Update dependency tuist to v4.139.1 by @renovate[bot] in [#258](https://github.com/tuist/FileSystem/pull/258)
-
-## [0.14.18] - 2026-02-04
-### Details
-#### Chore
-- Update dependency tuist to v4.138.0 by @renovate[bot] in [#257](https://github.com/tuist/FileSystem/pull/257)
-
-## [0.14.17] - 2026-02-04
-### Details
-#### Chore
-- Update dependency tuist to v4.137.0 by @renovate[bot] in [#256](https://github.com/tuist/FileSystem/pull/256)
-
-## [0.14.16] - 2026-02-03
-### Details
-#### Chore
-- Update actions/checkout digest to de0fac2 by @renovate[bot] in [#255](https://github.com/tuist/FileSystem/pull/255)
-
-## [0.14.15] - 2026-02-03
-### Details
-#### Chore
-- Update dependency tuist to v4.136.0 by @renovate[bot] in [#254](https://github.com/tuist/FileSystem/pull/254)
-
-## [0.14.14] - 2026-01-31
-### Details
-#### Chore
-- Update dependency swiftlint to v0.63.2 by @renovate[bot] in [#249](https://github.com/tuist/FileSystem/pull/249)
-
-## [0.14.13] - 2026-01-31
-### Details
-#### Chore
-- Update dependency tuist to v4.134.0 by @renovate[bot] in [#245](https://github.com/tuist/FileSystem/pull/245)
-
-## [0.14.12] - 2026-01-26
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.9.1" by @renovate[bot] in [#252](https://github.com/tuist/FileSystem/pull/252)
 
 ## [0.14.11] - 2026-01-26
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Ensure touch creates files immediately visible to Foundation APIs by @fortmarek in [#253](https://github.com/tuist/FileSystem/pull/253)
-
-## [0.14.10] - 2026-01-14
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.9.0" by @renovate[bot] in [#251](https://github.com/tuist/FileSystem/pull/251)
 
 ## [0.14.9] - 2026-01-12
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Handle paths with hash characters in glob function by @pepicrft in [#250](https://github.com/tuist/FileSystem/pull/250)
-
-## [0.14.8] - 2025-12-19
-### Details
-#### Chore
-- Update actions/checkout action to v6 by @renovate[bot] in [#217](https://github.com/tuist/FileSystem/pull/217)
-- Update stefanzweifel/git-auto-commit-action action to v7 by @renovate[bot] in [#187](https://github.com/tuist/FileSystem/pull/187)
-
-## [0.14.7] - 2025-12-19
-### Details
-#### Chore
-- Update jdx/mise-action action to v3 by @renovate[bot] in [#161](https://github.com/tuist/FileSystem/pull/161)
-
-## [0.14.6] - 2025-12-18
-### Details
-#### Chore
-- Update dependency tuist to v4.117.0 by @renovate[bot] in [#244](https://github.com/tuist/FileSystem/pull/244)
-
-## [0.14.5] - 2025-12-18
-### Details
-#### Chore
-- Update dependency tuist to v4.116.2 by @renovate[bot] in [#243](https://github.com/tuist/FileSystem/pull/243)
-
-## [0.14.4] - 2025-12-17
-### Details
-#### Chore
-- Update dependency tuist to v4.116.1 by @renovate[bot] in [#241](https://github.com/tuist/FileSystem/pull/241)
-
-## [0.14.3] - 2025-12-16
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.92.0" by @renovate[bot] in [#242](https://github.com/tuist/FileSystem/pull/242)
-
-## [0.14.2] - 2025-12-12
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.8.0" by @renovate[bot] in [#239](https://github.com/tuist/FileSystem/pull/239)
-
-## [0.14.1] - 2025-12-12
-### Details
-#### Chore
-- Update dependency tuist to v4.115.1 by @renovate[bot] in [#238](https://github.com/tuist/FileSystem/pull/238)
 
 ## [0.14.0] - 2025-12-12
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Add Sendable conformance to FileSysteming protocol by @Ryu0118 in [#237](https://github.com/tuist/FileSystem/pull/237)
 
 ## New Contributors
 * @Ryu0118 made their first contribution in [#237](https://github.com/tuist/FileSystem/pull/237)
-## [0.13.53] - 2025-12-12
-### Details
-#### Chore
-- Update dependency tuist to v4.115.0 by @renovate[bot] in [#236](https://github.com/tuist/FileSystem/pull/236)
-
-## [0.13.52] - 2025-12-11
-### Details
-#### Chore
-- Update dependency tuist to v4.113.1 by @renovate[bot] in [#235](https://github.com/tuist/FileSystem/pull/235)
-
-## [0.13.51] - 2025-12-10
-### Details
-#### Chore
-- Update dependency tuist to v4.113.0 by @renovate[bot] in [#234](https://github.com/tuist/FileSystem/pull/234)
-
-## [0.13.50] - 2025-12-09
-### Details
-#### Chore
-- Update dependency tuist to v4.112.0 by @renovate[bot] in [#233](https://github.com/tuist/FileSystem/pull/233)
-
-## [0.13.49] - 2025-12-05
-### Details
-#### Chore
-- Update dependency tuist to v4.111.1 by @renovate[bot] in [#232](https://github.com/tuist/FileSystem/pull/232)
-
-## [0.13.48] - 2025-12-04
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.7.1" by @renovate[bot] in [#231](https://github.com/tuist/FileSystem/pull/231)
-
-## [0.13.47] - 2025-12-03
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.7.0" by @renovate[bot] in [#230](https://github.com/tuist/FileSystem/pull/230)
-
-## [0.13.46] - 2025-12-03
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.91.0" by @renovate[bot] in [#229](https://github.com/tuist/FileSystem/pull/229)
-
-## [0.13.45] - 2025-12-02
-### Details
-#### Chore
-- Update dependency tuist to v4.110.3 by @renovate[bot] in [#228](https://github.com/tuist/FileSystem/pull/228)
-
-## [0.13.44] - 2025-12-01
-### Details
-#### Chore
-- Update dependency tuist to v4.110.1 by @renovate[bot] in [#227](https://github.com/tuist/FileSystem/pull/227)
-
-## [0.13.43] - 2025-12-01
-### Details
-#### Chore
-- Update dependency tuist to v4.110.0 by @renovate[bot] in [#226](https://github.com/tuist/FileSystem/pull/226)
-
-## [0.13.42] - 2025-11-30
-### Details
-#### Chore
-- Update dependency tuist to v4.109.2 by @renovate[bot] in [#225](https://github.com/tuist/FileSystem/pull/225)
-
-## [0.13.41] - 2025-11-27
-### Details
-#### Chore
-- Update dependency tuist to v4.109.1 by @renovate[bot] in [#224](https://github.com/tuist/FileSystem/pull/224)
-
-## [0.13.40] - 2025-11-27
-### Details
-#### Chore
-- Update dependency tuist to v4.109.0 by @renovate[bot] in [#223](https://github.com/tuist/FileSystem/pull/223)
-
-## [0.13.39] - 2025-11-27
-### Details
-#### Chore
-- Update dependency tuist to v4.108.1 by @renovate[bot] in [#222](https://github.com/tuist/FileSystem/pull/222)
-
-## [0.13.38] - 2025-11-25
-### Details
-#### Chore
-- Update dependency tuist to v4.107.2 by @renovate[bot] in [#221](https://github.com/tuist/FileSystem/pull/221)
-
-## [0.13.37] - 2025-11-25
-### Details
-#### Chore
-- Update dependency tuist to v4.106.3 by @renovate[bot] in [#220](https://github.com/tuist/FileSystem/pull/220)
-
-## [0.13.36] - 2025-11-24
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.90.1" by @renovate[bot] in [#219](https://github.com/tuist/FileSystem/pull/219)
-
-## [0.13.35] - 2025-11-21
-### Details
-#### Chore
-- Update dependency tuist to v4.106.2 by @renovate[bot] in [#218](https://github.com/tuist/FileSystem/pull/218)
-
-## [0.13.34] - 2025-11-20
-### Details
-#### Chore
-- Update dependency tuist to v4.105.0 by @renovate[bot] in [#216](https://github.com/tuist/FileSystem/pull/216)
-
-## [0.13.33] - 2025-11-20
-### Details
-#### Chore
-- Update dependency tuist to v4.104.7 by @renovate[bot] in [#215](https://github.com/tuist/FileSystem/pull/215)
-
-## [0.13.32] - 2025-11-19
-### Details
-#### Chore
-- Update actions/checkout digest to 34e1148 by @renovate[bot] in [#214](https://github.com/tuist/FileSystem/pull/214)
-
-## [0.13.31] - 2025-11-17
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.90.0" by @renovate[bot] in [#213](https://github.com/tuist/FileSystem/pull/213)
-
-## [0.13.30] - 2025-11-15
-### Details
-#### Chore
-- Update dependency tuist to v4.104.6 by @renovate[bot] in [#212](https://github.com/tuist/FileSystem/pull/212)
-
-## [0.13.29] - 2025-11-14
-### Details
-#### Chore
-- Update dependency tuist to v4.104.4 by @renovate[bot] in [#211](https://github.com/tuist/FileSystem/pull/211)
-
-## [0.13.28] - 2025-11-13
-### Details
-#### Chore
-- Update dependency tuist to v4.104.1 by @renovate[bot] in [#210](https://github.com/tuist/FileSystem/pull/210)
-
-## [0.13.27] - 2025-11-13
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.89.0" by @renovate[bot] in [#209](https://github.com/tuist/FileSystem/pull/209)
-
-## [0.13.26] - 2025-11-11
-### Details
-#### Chore
-- Update dependency tuist to v4.103.0 by @renovate[bot] in [#208](https://github.com/tuist/FileSystem/pull/208)
-
-## [0.13.25] - 2025-11-11
-### Details
-#### Chore
-- Update dependency tuist to v4.102.0 by @renovate[bot] in [#207](https://github.com/tuist/FileSystem/pull/207)
-
-## [0.13.24] - 2025-11-07
-### Details
-#### Chore
-- Update dependency tuist to v4.101.0 by @renovate[bot] in [#206](https://github.com/tuist/FileSystem/pull/206)
-
-## [0.13.23] - 2025-11-06
-### Details
-#### Chore
-- Update dependency tuist to v4.100.0 by @renovate[bot] in [#205](https://github.com/tuist/FileSystem/pull/205)
-
-## [0.13.22] - 2025-11-05
-### Details
-#### Chore
-- Update dependency tuist to v4.99.2 by @renovate[bot] in [#204](https://github.com/tuist/FileSystem/pull/204)
-
-## [0.13.21] - 2025-11-04
-### Details
-#### Chore
-- Update dependency tuist to v4.99.0 by @renovate[bot] in [#203](https://github.com/tuist/FileSystem/pull/203)
-
-## [0.13.20] - 2025-11-03
-### Details
-#### Chore
-- Update dependency tuist to v4.98.0 by @renovate[bot] in [#202](https://github.com/tuist/FileSystem/pull/202)
-
-## [0.13.19] - 2025-11-01
-### Details
-#### Chore
-- Update dependency tuist to v4.97.2 by @renovate[bot] in [#201](https://github.com/tuist/FileSystem/pull/201)
-
-## [0.13.18] - 2025-11-01
-### Details
-#### Chore
-- Update dependency tuist to v4.97.1 by @renovate[bot] in [#200](https://github.com/tuist/FileSystem/pull/200)
-
-## [0.13.17] - 2025-10-31
-### Details
-#### Chore
-- Update dependency tuist to v4.95.0 by @renovate[bot] in [#199](https://github.com/tuist/FileSystem/pull/199)
-
-## [0.13.16] - 2025-10-30
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.88.0" by @renovate[bot] in [#198](https://github.com/tuist/FileSystem/pull/198)
-
-## [0.13.15] - 2025-10-30
-### Details
-#### Chore
-- Update dependency tuist to v4.94.0 by @renovate[bot] in [#197](https://github.com/tuist/FileSystem/pull/197)
-
-## [0.13.14] - 2025-10-29
-### Details
-#### Chore
-- Update dependency tuist to v4.91.1 by @renovate[bot] in [#196](https://github.com/tuist/FileSystem/pull/196)
-
-## [0.13.13] - 2025-10-23
-### Details
-#### Chore
-- Update dependency tuist to v4.90.0 by @renovate[bot] in [#195](https://github.com/tuist/FileSystem/pull/195)
-
-## [0.13.12] - 2025-10-22
-### Details
-#### Chore
-- Update dependency tuist to v4.89.0 by @renovate[bot] in [#194](https://github.com/tuist/FileSystem/pull/194)
-
-## [0.13.11] - 2025-10-17
-### Details
-#### Chore
-- Update dependency tuist to v4.88.0 by @renovate[bot] in [#193](https://github.com/tuist/FileSystem/pull/193)
-
-## [0.13.10] - 2025-10-17
-### Details
-#### Chore
-- Update dependency tuist to v4.87.0 by @renovate[bot] in [#192](https://github.com/tuist/FileSystem/pull/192)
-
-## [0.13.9] - 2025-10-15
-### Details
-#### Chore
-- Update dependency tuist to v4.86.3 by @renovate[bot] in [#191](https://github.com/tuist/FileSystem/pull/191)
-
-## [0.13.8] - 2025-10-15
-### Details
-#### Chore
-- Update dependency tuist to v4.85.1 by @renovate[bot] in [#190](https://github.com/tuist/FileSystem/pull/190)
-
-## [0.13.7] - 2025-10-14
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.87.0" by @renovate[bot] in [#189](https://github.com/tuist/FileSystem/pull/189)
-
-## [0.13.6] - 2025-10-14
-### Details
-#### Chore
-- Update dependency tuist to v4.84.2 by @renovate[bot] in [#188](https://github.com/tuist/FileSystem/pull/188)
-
-## [0.13.5] - 2025-10-08
-### Details
-#### Chore
-- Update dependency tuist to v4.83.0 by @renovate[bot] in [#186](https://github.com/tuist/FileSystem/pull/186)
-
-## [0.13.4] - 2025-10-07
-### Details
-#### Chore
-- Update dependency tuist to v4.82.3 by @renovate[bot] in [#185](https://github.com/tuist/FileSystem/pull/185)
-
-## [0.13.3] - 2025-10-02
-### Details
-#### Chore
-- Update dependency tuist to v4.81.1 by @renovate[bot] in [#184](https://github.com/tuist/FileSystem/pull/184)
-
-## [0.13.2] - 2025-09-30
-### Details
-#### Chore
-- Update dependency tuist to v4.80.0 by @renovate[bot] in [#183](https://github.com/tuist/FileSystem/pull/183)
-
-## [0.13.1] - 2025-09-26
-### Details
-#### Chore
-- Update dependency tuist to v4.79.7 by @renovate[bot] in [#182](https://github.com/tuist/FileSystem/pull/182)
-
 ## [0.13.0] - 2025-09-26
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Implement contentsOfDirectory by @fortmarek in [#181](https://github.com/tuist/FileSystem/pull/181)
-
-## [0.12.5] - 2025-09-25
-### Details
-#### Chore
-- Update dependency tuist to v4.79.4 by @renovate[bot] in [#180](https://github.com/tuist/FileSystem/pull/180)
-
-## [0.12.4] - 2025-09-25
-### Details
-#### Chore
-- Update dependency tuist to v4.79.3 by @renovate[bot] in [#179](https://github.com/tuist/FileSystem/pull/179)
-
-## [0.12.3] - 2025-09-24
-### Details
-#### Chore
-- Update dependency tuist to v4.78.4 by @renovate[bot] in [#176](https://github.com/tuist/FileSystem/pull/176)
-
-## [0.12.2] - 2025-09-23
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.86.2" by @renovate[bot] in [#178](https://github.com/tuist/FileSystem/pull/178)
-
-## [0.12.1] - 2025-09-22
-### Details
-#### Chore
-- Update dependency tuist to v4.78.1 by @renovate[bot] in [#175](https://github.com/tuist/FileSystem/pull/175)
 
 ## [0.12.0] - 2025-09-22
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Update swift-nio by @fortmarek in [#174](https://github.com/tuist/FileSystem/pull/174)
-
-## [0.11.23] - 2025-09-20
-### Details
-#### Chore
-- Update dependency tuist to v4.78.0 by @renovate[bot] in [#173](https://github.com/tuist/FileSystem/pull/173)
-
-## [0.11.22] - 2025-09-19
-### Details
-#### Chore
-- Update dependency tuist to v4.76.1 by @renovate[bot] in [#172](https://github.com/tuist/FileSystem/pull/172)
-
-## [0.11.21] - 2025-09-17
-### Details
-#### Chore
-- Update dependency tuist to v4.74.1 by @renovate[bot] in [#171](https://github.com/tuist/FileSystem/pull/171)
-
-## [0.11.20] - 2025-09-14
-### Details
-#### Chore
-- Update dependency tuist to v4.71.0 by @renovate[bot] in [#170](https://github.com/tuist/FileSystem/pull/170)
-
-## [0.11.19] - 2025-09-08
-### Details
-#### Chore
-- Update dependency tuist to v4.68.0 by @renovate[bot] in [#169](https://github.com/tuist/FileSystem/pull/169)
-
-## [0.11.18] - 2025-09-05
-### Details
-#### Chore
-- Update dependency tuist to v4.67.2 by @renovate[bot] in [#168](https://github.com/tuist/FileSystem/pull/168)
-
-## [0.11.17] - 2025-09-03
-### Details
-#### Chore
-- Update dependency tuist to v4.66.1 by @renovate[bot] in [#167](https://github.com/tuist/FileSystem/pull/167)
-
-## [0.11.16] - 2025-09-02
-### Details
-#### Chore
-- Update dependency tuist to v4.65.7 by @renovate[bot] in [#166](https://github.com/tuist/FileSystem/pull/166)
-
-## [0.11.15] - 2025-09-02
-### Details
-#### Chore
-- Update dependency tuist to v4.65.6 by @renovate[bot] in [#165](https://github.com/tuist/FileSystem/pull/165)
-
-## [0.11.14] - 2025-08-31
-### Details
-#### Chore
-- Update dependency tuist to v4.65.5 by @renovate[bot] in [#164](https://github.com/tuist/FileSystem/pull/164)
-
-## [0.11.13] - 2025-08-22
-### Details
-#### Chore
-- Update dependency tuist to v4.65.0 by @renovate[bot] in [#163](https://github.com/tuist/FileSystem/pull/163)
-
-## [0.11.12] - 2025-08-20
-### Details
-#### Chore
-- Update dependency tuist to v4.64.0 by @renovate[bot] in [#162](https://github.com/tuist/FileSystem/pull/162)
-
-## [0.11.11] - 2025-08-19
-### Details
-#### Chore
-- Update dependency tuist to v4.63.3 by @renovate[bot] in [#160](https://github.com/tuist/FileSystem/pull/160)
-
-## [0.11.10] - 2025-08-15
-### Details
-#### Chore
-- Update dependency tuist to v4.61.2 by @renovate[bot] in [#159](https://github.com/tuist/FileSystem/pull/159)
-
-## [0.11.9] - 2025-08-15
-### Details
-#### Chore
-- Update dependency tuist to v4.61.0 by @renovate[bot] in [#158](https://github.com/tuist/FileSystem/pull/158)
-
-## [0.11.8] - 2025-08-11
-### Details
-#### Chore
-- Update actions/checkout digest to 08eba0b by @renovate[bot] in [#156](https://github.com/tuist/FileSystem/pull/156)
-
-## [0.11.7] - 2025-08-09
-### Details
-#### Chore
-- Update dependency tuist to v4.59.2 by @renovate[bot] in [#155](https://github.com/tuist/FileSystem/pull/155)
-
-## [0.11.6] - 2025-08-08
-### Details
-#### Chore
-- Update dependency tuist to v4.59.1 by @renovate[bot] in [#154](https://github.com/tuist/FileSystem/pull/154)
-
-## [0.11.5] - 2025-08-07
-### Details
-#### Chore
-- Update dependency tuist to v4.58.1 by @renovate[bot] in [#153](https://github.com/tuist/FileSystem/pull/153)
-
-## [0.11.4] - 2025-08-07
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.86.0" by @renovate[bot] in [#152](https://github.com/tuist/FileSystem/pull/152)
-
-## [0.11.3] - 2025-07-26
-### Details
-#### Chore
-- Update dependency tuist to v4.56.0 by @renovate[bot] in [#151](https://github.com/tuist/FileSystem/pull/151)
-
-## [0.11.2] - 2025-07-26
-### Details
-#### Chore
-- Update dependency tuist to v4.55.9 by @renovate[bot] in [#149](https://github.com/tuist/FileSystem/pull/149)
-
-## [0.11.1] - 2025-07-25
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.6.4" by @renovate[bot] in [#150](https://github.com/tuist/FileSystem/pull/150)
 
 ## [0.11.0] - 2025-07-23
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Add API to get the metadata of a particular file by @pepicrft in [#148](https://github.com/tuist/FileSystem/pull/148)
-
-## [0.10.17] - 2025-07-23
-### Details
-#### Chore
-- Update stefanzweifel/git-auto-commit-action action to v6 by @renovate[bot] in [#135](https://github.com/tuist/FileSystem/pull/135)
-
-## [0.10.16] - 2025-07-22
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.85.0" by @renovate[bot] in [#147](https://github.com/tuist/FileSystem/pull/147)
-
-## [0.10.15] - 2025-07-04
-### Details
-#### Chore
-- Update dependency tuist to v4.55.6 by @renovate[bot] in [#146](https://github.com/tuist/FileSystem/pull/146)
-
-## [0.10.14] - 2025-07-03
-### Details
-#### Chore
-- Update dependency tuist to v4.55.5 by @renovate[bot] in [#145](https://github.com/tuist/FileSystem/pull/145)
-
-## [0.10.13] - 2025-07-02
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.84.0" by @renovate[bot] in [#144](https://github.com/tuist/FileSystem/pull/144)
-
-## [0.10.12] - 2025-06-30
-### Details
-#### Chore
-- Update dependency tuist to v4.55.2 by @renovate[bot] in [#143](https://github.com/tuist/FileSystem/pull/143)
-
-## [0.10.11] - 2025-06-29
-### Details
-#### Chore
-- Update dependency tuist to v4.55.0 by @renovate[bot] in [#142](https://github.com/tuist/FileSystem/pull/142)
-
-## [0.10.10] - 2025-06-20
-### Details
-#### Chore
-- Update dependency tuist to v4.54.3 by @renovate[bot] in [#141](https://github.com/tuist/FileSystem/pull/141)
-
-## [0.10.9] - 2025-06-19
-### Details
-#### Chore
-- Update dependency tuist to v4.54.0 by @renovate[bot] in [#140](https://github.com/tuist/FileSystem/pull/140)
-
-## [0.10.8] - 2025-06-16
-### Details
-#### Chore
-- Update dependency tuist to v4.53.4 by @renovate[bot] in [#139](https://github.com/tuist/FileSystem/pull/139)
-
-## [0.10.7] - 2025-06-13
-### Details
-#### Chore
-- Update dependency tuist to v4.53.3 by @renovate[bot] in [#138](https://github.com/tuist/FileSystem/pull/138)
-
-## [0.10.6] - 2025-06-12
-### Details
-#### Chore
-- Update dependency tuist to v4.53.0 by @renovate[bot] in [#137](https://github.com/tuist/FileSystem/pull/137)
-
-## [0.10.5] - 2025-06-11
-### Details
-#### Chore
-- Update dependency tuist to v4.52.2 by @renovate[bot] in [#136](https://github.com/tuist/FileSystem/pull/136)
-
-## [0.10.4] - 2025-06-11
-### Details
-#### Chore
-- Update dependency tuist to v4.52.1 by @renovate[bot] in [#134](https://github.com/tuist/FileSystem/pull/134)
-
-## [0.10.3] - 2025-06-06
-### Details
-#### Chore
-- Update dependency tuist to v4.52.0 by @renovate[bot] in [#133](https://github.com/tuist/FileSystem/pull/133)
-
-## [0.10.2] - 2025-06-04
-### Details
-#### Chore
-- Update dependency tuist to v4.51.2 by @renovate[bot] in [#132](https://github.com/tuist/FileSystem/pull/132)
-
-## [0.10.1] - 2025-06-04
-### Details
-#### Chore
-- Update dependency tuist to v4.51.1 by @renovate[bot] in [#131](https://github.com/tuist/FileSystem/pull/131)
 
 ## [0.10.0] - 2025-05-26
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Expose Glob target as a package product by @yhkaplan in [#130](https://github.com/tuist/FileSystem/pull/130)
 
 ## New Contributors
 * @yhkaplan made their first contribution in [#130](https://github.com/tuist/FileSystem/pull/130)
-## [0.9.2] - 2025-05-20
-### Details
-#### Chore
-- Update dependency tuist to v4.50.2 by @renovate[bot] in [#129](https://github.com/tuist/FileSystem/pull/129)
-
-## [0.9.1] - 2025-05-15
-### Details
-#### Chore
-- Update dependency tuist to v4.50.1 by @renovate[bot] in [#128](https://github.com/tuist/FileSystem/pull/128)
-
 ## [0.9.0] - 2025-05-15
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Move FileSystemTestingTrait to a new library product FileSystemTesting by @fortmarek in [#126](https://github.com/tuist/FileSystem/pull/126)
 
 ## [0.8.0] - 2025-05-13
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Add a Swift Testing trait to create and scope a temporary directory to a test or suite lifecycle by @pepicrft
 - Add a Swift Testing trait to create and scope a temporary directory to a test or suite lifecycle by @pepicrft
-
-## [0.7.18] - 2025-05-12
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.83.0" by @renovate[bot]
-
-## [0.7.17] - 2025-05-12
-### Details
-#### Chore
-- Update dependency tuist to v4.49.1 by @renovate[bot]
-
-## New Contributors
-* @danieleformichelli made their first contribution in [#122](https://github.com/tuist/FileSystem/pull/122)
-## [0.7.16] - 2025-04-25
-### Details
-#### Chore
-- Update dependency tuist to v4.48.2 by @renovate[bot] in [#119](https://github.com/tuist/FileSystem/pull/119)
 
 ## [0.7.15] - 2025-04-25
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Infinite loop caused by symbolic links pointing to ancestor directories by @monchote in [#120](https://github.com/tuist/FileSystem/pull/120)
 
 ## New Contributors
 * @monchote made their first contribution in [#120](https://github.com/tuist/FileSystem/pull/120)
-## [0.7.14] - 2025-04-22
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.82.0" by @renovate[bot] in [#118](https://github.com/tuist/FileSystem/pull/118)
-
 ## [0.7.13] - 2025-04-17
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Resolve relative symbolic link by @fortmarek in [#116](https://github.com/tuist/FileSystem/pull/116)
-
-## [0.7.12] - 2025-04-15
-### Details
-#### Chore
-- Update dependency tuist to v4.48.1 by @renovate[bot] in [#114](https://github.com/tuist/FileSystem/pull/114)
 
 ## [0.7.11] - 2025-04-15
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Ignore .gitkeep results when globbing by @dogo in [#115](https://github.com/tuist/FileSystem/pull/115)
 
 ## New Contributors
 * @dogo made their first contribution in [#115](https://github.com/tuist/FileSystem/pull/115)
-## [0.7.10] - 2025-04-04
-### Details
-#### Chore
-- Update dependency tuist to v4.46.1 by @renovate[bot] in [#113](https://github.com/tuist/FileSystem/pull/113)
-
 ## [0.7.9] - 2025-03-24
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Crash from long strings when building in Debug by @waltflanagan in [#112](https://github.com/tuist/FileSystem/pull/112)
 
 ## New Contributors
 * @waltflanagan made their first contribution in [#112](https://github.com/tuist/FileSystem/pull/112)
-## [0.7.8] - 2025-03-19
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.6.3" by @renovate[bot]
-- Update dependency tuist to v4.44.3 by @renovate[bot]
-
-## [0.7.7] - 2025-02-10
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.81.0" by @renovate[bot] in [#107](https://github.com/tuist/FileSystem/pull/107)
-
 ## [0.7.6] - 2025-02-05
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Temporary directory to return direct path instead of symlink by @fortmarek in [#106](https://github.com/tuist/FileSystem/pull/106)
-
-## [0.7.5] - 2025-02-04
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.80.0" by @renovate[bot] in [#104](https://github.com/tuist/FileSystem/pull/104)
 
 ## [0.7.4] - 2025-02-04
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Unstable ZIPFoundation version by @fortmarek in [#105](https://github.com/tuist/FileSystem/pull/105)
 
 ## [0.7.3] - 2025-02-04
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Update URLs APIs to work with linux by @ajkolean in [#103](https://github.com/tuist/FileSystem/pull/103)
 
 ## New Contributors
 * @ajkolean made their first contribution in [#103](https://github.com/tuist/FileSystem/pull/103)
-## [0.7.2] - 2025-01-15
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.79.0" by @renovate[bot] in [#102](https://github.com/tuist/FileSystem/pull/102)
-
-## [0.7.1] - 2025-01-13
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.78.0" by @renovate[bot] in [#101](https://github.com/tuist/FileSystem/pull/101)
-
 ## [0.7.0] - 2025-01-09
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Handle relative symbolic links by @KaiOelfke in [#98](https://github.com/tuist/FileSystem/pull/98)
 
 ## New Contributors
 * @KaiOelfke made their first contribution in [#98](https://github.com/tuist/FileSystem/pull/98)
 ## [0.6.24] - 2025-01-09
 ### Details
-#### Chore
+#### <!-- 7 -->⚙️ Miscellaneous Tasks
 - Update Tuist setup to the latest conventions by @fortmarek in [#100](https://github.com/tuist/FileSystem/pull/100)
-
-## [0.6.23] - 2024-12-12
-### Details
-#### Chore
-- Update dependency tuist to v4.37.0 by @renovate[bot] in [#96](https://github.com/tuist/FileSystem/pull/96)
-
-## [0.6.22] - 2024-11-28
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.77.0" by @renovate[bot] in [#94](https://github.com/tuist/FileSystem/pull/94)
-
-## [0.6.21] - 2024-11-27
-### Details
-#### Chore
-- Update dependency tuist to v4.36.0 by @renovate[bot] in [#95](https://github.com/tuist/FileSystem/pull/95)
-
-## [0.6.20] - 2024-11-27
-### Details
-#### Chore
-- Update dependency tuist to v4.35.0 by @renovate[bot] in [#91](https://github.com/tuist/FileSystem/pull/91)
-
-## [0.6.19] - 2024-11-26
-### Details
-#### Chore
-- Update dependency apple/swift-log to from: "1.6.2" by @renovate[bot] in [#93](https://github.com/tuist/FileSystem/pull/93)
 
 ## [0.6.18] - 2024-11-15
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Recreating directory when on concurrent move by @fortmarek in [#92](https://github.com/tuist/FileSystem/pull/92)
 
 ## [0.6.17] - 2024-11-14
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Do not search recursively when a glob is a file name wildcard by @fortmarek in [#90](https://github.com/tuist/FileSystem/pull/90)
-
-## [0.6.16] - 2024-11-13
-### Details
-#### Chore
-- Update dependency tuist to v4.34.0 by @renovate[bot] in [#89](https://github.com/tuist/FileSystem/pull/89)
 
 ## [0.6.15] - 2024-11-11
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Glob with extension options by @fortmarek in [#88](https://github.com/tuist/FileSystem/pull/88)
-
-## [0.6.14] - 2024-11-07
-### Details
-#### Chore
-- Update dependency tuist to v4.33.0 by @renovate[bot] in [#87](https://github.com/tuist/FileSystem/pull/87)
 
 ## [0.6.13] - 2024-11-07
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Removing non-existing file or directory by @fortmarek in [#86](https://github.com/tuist/FileSystem/pull/86)
 
 ## [0.6.12] - 2024-11-07
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Use FileManager for file and directory removal to fix performance issues by @fortmarek in [#85](https://github.com/tuist/FileSystem/pull/85)
 
 ## [0.6.11] - 2024-11-05
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Ignore .DS_Store results when globbing by @fortmarek in [#84](https://github.com/tuist/FileSystem/pull/84)
 
 ## [0.6.10] - 2024-11-05
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Glob when base directory is a symlink by @fortmarek in [#83](https://github.com/tuist/FileSystem/pull/83)
 
 ## [0.6.9] - 2024-11-04
 ### Details
-#### Refactor
+#### <!-- 2 -->🚜 Refactor
 - Migrate used subset of swift-glob to FileSystem by @fortmarek in [#82](https://github.com/tuist/FileSystem/pull/82)
 
 ## [0.6.8] - 2024-11-04
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Path wildcard with constant component by @fortmarek in [#81](https://github.com/tuist/FileSystem/pull/81)
 
 ## [0.6.7] - 2024-11-04
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Matching files with double globstar by @fortmarek in [#80](https://github.com/tuist/FileSystem/pull/80)
-
-## [0.6.6] - 2024-11-01
-### Details
-#### Chore
-- Update dependency tuist to v4.32.1 by @renovate[bot] in [#79](https://github.com/tuist/FileSystem/pull/79)
 
 ## [0.6.5] - 2024-11-01
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Searching for files in symlinked directories by @fortmarek in [#78](https://github.com/tuist/FileSystem/pull/78)
 
 ## [0.6.4] - 2024-11-01
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Include hidden files by default by @fortmarek in [#77](https://github.com/tuist/FileSystem/pull/77)
-
-## [0.6.3] - 2024-10-31
-### Details
-#### Chore
-- Update dependency tuist to v4.32.0 by @renovate[bot] in [#76](https://github.com/tuist/FileSystem/pull/76)
 
 ## [0.6.2] - 2024-10-30
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Searching for a constant file by @fortmarek in [#74](https://github.com/tuist/FileSystem/pull/74)
 
 ## [0.6.1] - 2024-10-30
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Matching files with a trailing path wildcard by @fortmarek in [#72](https://github.com/tuist/FileSystem/pull/72)
 
 ## [0.6.0] - 2024-10-30
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Improve globbing performance by using parallelized Swift glob implementation by @fortmarek in [#68](https://github.com/tuist/FileSystem/pull/68)
-
-## [0.5.4] - 2024-10-30
-### Details
-#### Chore
-- Update dependency tuist/swift-glob to from: "0.3.4" by @renovate[bot] in [#71](https://github.com/tuist/FileSystem/pull/71)
-
-## [0.5.3] - 2024-10-29
-### Details
-#### Chore
-- Update dependency tuist/swift-glob to from: "0.3.0" by @renovate[bot] in [#69](https://github.com/tuist/FileSystem/pull/69)
-
-## [0.5.2] - 2024-10-28
-### Details
-#### Chore
-- Update actions/checkout action to v4 by @renovate[bot] in [#67](https://github.com/tuist/FileSystem/pull/67)
 
 ## [0.5.1] - 2024-10-28
 ### Details
-#### Chore
+#### <!-- 7 -->⚙️ Miscellaneous Tasks
 - Add conventional PR check by @fortmarek in [#64](https://github.com/tuist/FileSystem/pull/64)
 
 ## [0.5.0] - 2024-10-24
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Use different implementation of globbing for more stable behavior by @fortmarek in [#66](https://github.com/tuist/FileSystem/pull/66)
-
-## [0.4.9] - 2024-10-24
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.76.1" by @renovate[bot] in [#65](https://github.com/tuist/FileSystem/pull/65)
 
 ## [0.4.8] - 2024-10-24
 ### Details
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Glob returning paths with resolved symlinks by @fortmarek in [#63](https://github.com/tuist/FileSystem/pull/63)
-
-## [0.4.7] - 2024-10-24
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.76.0" by @renovate[bot] in [#60](https://github.com/tuist/FileSystem/pull/60)
-
-## [0.4.6] - 2024-10-23
-### Details
-#### Chore
-- Update actions/checkout digest to 11bd719 by @renovate[bot] in [#59](https://github.com/tuist/FileSystem/pull/59)
-
-## [0.4.5] - 2024-10-23
-### Details
-#### Chore
-- Update dependency tuist to v4.31.0 by @renovate[bot] in [#58](https://github.com/tuist/FileSystem/pull/58)
-
-## [0.4.4] - 2024-10-16
-### Details
-#### Chore
-- Update dependency tuist to v4.30.0 by @renovate[bot] in [#57](https://github.com/tuist/FileSystem/pull/57)
-
-## [0.4.3] - 2024-10-14
-### Details
-#### Chore
-- Update dependency apple/swift-nio to from: "2.75.0" by @renovate[bot] in [#56](https://github.com/tuist/FileSystem/pull/56)
-
-## [0.4.2] - 2024-10-10
-### Details
-#### Chore
-- Update dependency tuist to v4.29.1 by @renovate[bot] in [#55](https://github.com/tuist/FileSystem/pull/55)
-
-## [0.4.1] - 2024-10-08
-### Details
-#### Chore
-- Update dependency tuist to v4.29.0 by @renovate[bot] in [#53](https://github.com/tuist/FileSystem/pull/53)
 
 ## [0.4.0] - 2024-10-08
 ### Details
-#### Feat
+#### <!-- 0 -->🚀 Features
 - Add support for getting the current working directory by @fortmarek in [#52](https://github.com/tuist/FileSystem/pull/52)
-
-## [0.3.2] - 2024-10-07
-### Details
-#### Chore
-- Update actions/checkout digest to eef6144 by @renovate[bot] in [#51](https://github.com/tuist/FileSystem/pull/51)
 
 ## [0.3.1] - 2024-10-07
 ### Details
-#### Chore
-- Update git-cliff by @fortmarek
-- Add changelog.md file by @fortmarek in [#49](https://github.com/tuist/FileSystem/pull/49)
-- Update dependency tuist to v4.28.2 by @renovate[bot] in [#46](https://github.com/tuist/FileSystem/pull/46)
-- Update dependency apple/swift-nio to from: "2.74.0" by @renovate[bot] in [#45](https://github.com/tuist/FileSystem/pull/45)
-- Update dependency tuist to v4.28.1 by @renovate[bot]
-- Update dependency apple/swift-nio to from: "2.73.0" by @renovate[bot]
-
-#### Ci
-- Use TUIST_FILE_SYSTEM_RELEASE_TOKEN for auto-commit by @fortmarek in [#50](https://github.com/tuist/FileSystem/pull/50)
-- Update release workflow to use git cliff by @fortmarek in [#48](https://github.com/tuist/FileSystem/pull/48)
-
-#### Fix
+#### <!-- 1 -->🐛 Bug Fixes
 - Do not throw error when resolving symlink of a plain directory by @fortmarek in [#47](https://github.com/tuist/FileSystem/pull/47)
 
-[0.17.2]: https://github.com/tuist/FileSystem/compare/0.17.1..0.17.2
-[0.17.1]: https://github.com/tuist/FileSystem/compare/0.17.0..0.17.1
+#### <!-- 7 -->⚙️ Miscellaneous Tasks
+- Use TUIST_FILE_SYSTEM_RELEASE_TOKEN for auto-commit by @fortmarek in [#50](https://github.com/tuist/FileSystem/pull/50)
+- Update git-cliff by @fortmarek
+- Add changelog.md file by @fortmarek in [#49](https://github.com/tuist/FileSystem/pull/49)
+- Update release workflow to use git cliff by @fortmarek in [#48](https://github.com/tuist/FileSystem/pull/48)
+
+## New Contributors
+* @fortmarek made their first contribution
+## [0.1.0] - 2024-06-23
+### Details
+## New Contributors
+* @pepicrft made their first contribution in [#17](https://github.com/tuist/FileSystem/pull/17)
+* @renovate[bot] made their first contribution in [#16](https://github.com/tuist/FileSystem/pull/16)
+[0.17.3]: https://github.com/tuist/FileSystem/compare/0.17.2..0.17.3
 [0.17.0]: https://github.com/tuist/FileSystem/compare/0.16.9..0.17.0
-[0.16.9]: https://github.com/tuist/FileSystem/compare/0.16.8..0.16.9
-[0.16.8]: https://github.com/tuist/FileSystem/compare/0.16.7..0.16.8
-[0.16.7]: https://github.com/tuist/FileSystem/compare/0.16.6..0.16.7
-[0.16.6]: https://github.com/tuist/FileSystem/compare/0.16.5..0.16.6
-[0.16.5]: https://github.com/tuist/FileSystem/compare/0.16.4..0.16.5
 [0.16.4]: https://github.com/tuist/FileSystem/compare/0.16.3..0.16.4
-[0.16.3]: https://github.com/tuist/FileSystem/compare/0.16.2..0.16.3
 [0.16.2]: https://github.com/tuist/FileSystem/compare/0.16.1..0.16.2
 [0.16.1]: https://github.com/tuist/FileSystem/compare/0.16.0..0.16.1
 [0.16.0]: https://github.com/tuist/FileSystem/compare/0.15.38..0.16.0
-[0.15.38]: https://github.com/tuist/FileSystem/compare/0.15.37..0.15.38
-[0.15.37]: https://github.com/tuist/FileSystem/compare/0.15.36..0.15.37
-[0.15.36]: https://github.com/tuist/FileSystem/compare/0.15.35..0.15.36
-[0.15.35]: https://github.com/tuist/FileSystem/compare/0.15.34..0.15.35
-[0.15.34]: https://github.com/tuist/FileSystem/compare/0.15.33..0.15.34
-[0.15.33]: https://github.com/tuist/FileSystem/compare/0.15.32..0.15.33
-[0.15.32]: https://github.com/tuist/FileSystem/compare/0.15.31..0.15.32
 [0.15.31]: https://github.com/tuist/FileSystem/compare/0.15.30..0.15.31
-[0.15.30]: https://github.com/tuist/FileSystem/compare/0.15.29..0.15.30
-[0.15.29]: https://github.com/tuist/FileSystem/compare/0.15.28..0.15.29
-[0.15.28]: https://github.com/tuist/FileSystem/compare/0.15.27..0.15.28
-[0.15.27]: https://github.com/tuist/FileSystem/compare/0.15.26..0.15.27
 [0.15.26]: https://github.com/tuist/FileSystem/compare/0.15.25..0.15.26
-[0.15.25]: https://github.com/tuist/FileSystem/compare/0.15.24..0.15.25
-[0.15.24]: https://github.com/tuist/FileSystem/compare/0.15.23..0.15.24
-[0.15.23]: https://github.com/tuist/FileSystem/compare/0.15.22..0.15.23
-[0.15.22]: https://github.com/tuist/FileSystem/compare/0.15.21..0.15.22
-[0.15.21]: https://github.com/tuist/FileSystem/compare/0.15.20..0.15.21
-[0.15.20]: https://github.com/tuist/FileSystem/compare/0.15.19..0.15.20
-[0.15.19]: https://github.com/tuist/FileSystem/compare/0.15.18..0.15.19
-[0.15.18]: https://github.com/tuist/FileSystem/compare/0.15.17..0.15.18
-[0.15.17]: https://github.com/tuist/FileSystem/compare/0.15.16..0.15.17
-[0.15.16]: https://github.com/tuist/FileSystem/compare/0.15.15..0.15.16
-[0.15.15]: https://github.com/tuist/FileSystem/compare/0.15.14..0.15.15
-[0.15.14]: https://github.com/tuist/FileSystem/compare/0.15.13..0.15.14
-[0.15.13]: https://github.com/tuist/FileSystem/compare/0.15.12..0.15.13
-[0.15.12]: https://github.com/tuist/FileSystem/compare/0.15.11..0.15.12
-[0.15.11]: https://github.com/tuist/FileSystem/compare/0.15.10..0.15.11
-[0.15.10]: https://github.com/tuist/FileSystem/compare/0.15.9..0.15.10
-[0.15.9]: https://github.com/tuist/FileSystem/compare/0.15.8..0.15.9
-[0.15.8]: https://github.com/tuist/FileSystem/compare/0.15.7..0.15.8
-[0.15.7]: https://github.com/tuist/FileSystem/compare/0.15.6..0.15.7
-[0.15.6]: https://github.com/tuist/FileSystem/compare/0.15.5..0.15.6
-[0.15.5]: https://github.com/tuist/FileSystem/compare/0.15.4..0.15.5
-[0.15.4]: https://github.com/tuist/FileSystem/compare/0.15.3..0.15.4
-[0.15.3]: https://github.com/tuist/FileSystem/compare/0.15.2..0.15.3
-[0.15.2]: https://github.com/tuist/FileSystem/compare/0.15.1..0.15.2
-[0.15.1]: https://github.com/tuist/FileSystem/compare/0.15.0..0.15.1
 [0.15.0]: https://github.com/tuist/FileSystem/compare/0.14.38..0.15.0
-[0.14.38]: https://github.com/tuist/FileSystem/compare/0.14.37..0.14.38
-[0.14.37]: https://github.com/tuist/FileSystem/compare/0.14.36..0.14.37
-[0.14.36]: https://github.com/tuist/FileSystem/compare/0.14.35..0.14.36
-[0.14.35]: https://github.com/tuist/FileSystem/compare/0.14.34..0.14.35
-[0.14.34]: https://github.com/tuist/FileSystem/compare/0.14.33..0.14.34
-[0.14.33]: https://github.com/tuist/FileSystem/compare/0.14.32..0.14.33
-[0.14.32]: https://github.com/tuist/FileSystem/compare/0.14.31..0.14.32
-[0.14.31]: https://github.com/tuist/FileSystem/compare/0.14.30..0.14.31
-[0.14.30]: https://github.com/tuist/FileSystem/compare/0.14.29..0.14.30
-[0.14.29]: https://github.com/tuist/FileSystem/compare/0.14.28..0.14.29
-[0.14.28]: https://github.com/tuist/FileSystem/compare/0.14.27..0.14.28
-[0.14.27]: https://github.com/tuist/FileSystem/compare/0.14.26..0.14.27
-[0.14.26]: https://github.com/tuist/FileSystem/compare/0.14.25..0.14.26
-[0.14.25]: https://github.com/tuist/FileSystem/compare/0.14.24..0.14.25
-[0.14.24]: https://github.com/tuist/FileSystem/compare/0.14.23..0.14.24
-[0.14.23]: https://github.com/tuist/FileSystem/compare/0.14.22..0.14.23
-[0.14.22]: https://github.com/tuist/FileSystem/compare/0.14.21..0.14.22
-[0.14.21]: https://github.com/tuist/FileSystem/compare/0.14.20..0.14.21
-[0.14.20]: https://github.com/tuist/FileSystem/compare/0.14.19..0.14.20
-[0.14.19]: https://github.com/tuist/FileSystem/compare/0.14.18..0.14.19
-[0.14.18]: https://github.com/tuist/FileSystem/compare/0.14.17..0.14.18
-[0.14.17]: https://github.com/tuist/FileSystem/compare/0.14.16..0.14.17
-[0.14.16]: https://github.com/tuist/FileSystem/compare/0.14.15..0.14.16
-[0.14.15]: https://github.com/tuist/FileSystem/compare/0.14.14..0.14.15
-[0.14.14]: https://github.com/tuist/FileSystem/compare/0.14.13..0.14.14
-[0.14.13]: https://github.com/tuist/FileSystem/compare/0.14.12..0.14.13
-[0.14.12]: https://github.com/tuist/FileSystem/compare/0.14.11..0.14.12
 [0.14.11]: https://github.com/tuist/FileSystem/compare/0.14.10..0.14.11
-[0.14.10]: https://github.com/tuist/FileSystem/compare/0.14.9..0.14.10
 [0.14.9]: https://github.com/tuist/FileSystem/compare/0.14.8..0.14.9
-[0.14.8]: https://github.com/tuist/FileSystem/compare/0.14.7..0.14.8
-[0.14.7]: https://github.com/tuist/FileSystem/compare/0.14.6..0.14.7
-[0.14.6]: https://github.com/tuist/FileSystem/compare/0.14.5..0.14.6
-[0.14.5]: https://github.com/tuist/FileSystem/compare/0.14.4..0.14.5
-[0.14.4]: https://github.com/tuist/FileSystem/compare/0.14.3..0.14.4
-[0.14.3]: https://github.com/tuist/FileSystem/compare/0.14.2..0.14.3
-[0.14.2]: https://github.com/tuist/FileSystem/compare/0.14.1..0.14.2
-[0.14.1]: https://github.com/tuist/FileSystem/compare/0.14.0..0.14.1
 [0.14.0]: https://github.com/tuist/FileSystem/compare/0.13.53..0.14.0
-[0.13.53]: https://github.com/tuist/FileSystem/compare/0.13.52..0.13.53
-[0.13.52]: https://github.com/tuist/FileSystem/compare/0.13.51..0.13.52
-[0.13.51]: https://github.com/tuist/FileSystem/compare/0.13.50..0.13.51
-[0.13.50]: https://github.com/tuist/FileSystem/compare/0.13.49..0.13.50
-[0.13.49]: https://github.com/tuist/FileSystem/compare/0.13.48..0.13.49
-[0.13.48]: https://github.com/tuist/FileSystem/compare/0.13.47..0.13.48
-[0.13.47]: https://github.com/tuist/FileSystem/compare/0.13.46..0.13.47
-[0.13.46]: https://github.com/tuist/FileSystem/compare/0.13.45..0.13.46
-[0.13.45]: https://github.com/tuist/FileSystem/compare/0.13.44..0.13.45
-[0.13.44]: https://github.com/tuist/FileSystem/compare/0.13.43..0.13.44
-[0.13.43]: https://github.com/tuist/FileSystem/compare/0.13.42..0.13.43
-[0.13.42]: https://github.com/tuist/FileSystem/compare/0.13.41..0.13.42
-[0.13.41]: https://github.com/tuist/FileSystem/compare/0.13.40..0.13.41
-[0.13.40]: https://github.com/tuist/FileSystem/compare/0.13.39..0.13.40
-[0.13.39]: https://github.com/tuist/FileSystem/compare/0.13.38..0.13.39
-[0.13.38]: https://github.com/tuist/FileSystem/compare/0.13.37..0.13.38
-[0.13.37]: https://github.com/tuist/FileSystem/compare/0.13.36..0.13.37
-[0.13.36]: https://github.com/tuist/FileSystem/compare/0.13.35..0.13.36
-[0.13.35]: https://github.com/tuist/FileSystem/compare/0.13.34..0.13.35
-[0.13.34]: https://github.com/tuist/FileSystem/compare/0.13.33..0.13.34
-[0.13.33]: https://github.com/tuist/FileSystem/compare/0.13.32..0.13.33
-[0.13.32]: https://github.com/tuist/FileSystem/compare/0.13.31..0.13.32
-[0.13.31]: https://github.com/tuist/FileSystem/compare/0.13.30..0.13.31
-[0.13.30]: https://github.com/tuist/FileSystem/compare/0.13.29..0.13.30
-[0.13.29]: https://github.com/tuist/FileSystem/compare/0.13.28..0.13.29
-[0.13.28]: https://github.com/tuist/FileSystem/compare/0.13.27..0.13.28
-[0.13.27]: https://github.com/tuist/FileSystem/compare/0.13.26..0.13.27
-[0.13.26]: https://github.com/tuist/FileSystem/compare/0.13.25..0.13.26
-[0.13.25]: https://github.com/tuist/FileSystem/compare/0.13.24..0.13.25
-[0.13.24]: https://github.com/tuist/FileSystem/compare/0.13.23..0.13.24
-[0.13.23]: https://github.com/tuist/FileSystem/compare/0.13.22..0.13.23
-[0.13.22]: https://github.com/tuist/FileSystem/compare/0.13.21..0.13.22
-[0.13.21]: https://github.com/tuist/FileSystem/compare/0.13.20..0.13.21
-[0.13.20]: https://github.com/tuist/FileSystem/compare/0.13.19..0.13.20
-[0.13.19]: https://github.com/tuist/FileSystem/compare/0.13.18..0.13.19
-[0.13.18]: https://github.com/tuist/FileSystem/compare/0.13.17..0.13.18
-[0.13.17]: https://github.com/tuist/FileSystem/compare/0.13.16..0.13.17
-[0.13.16]: https://github.com/tuist/FileSystem/compare/0.13.15..0.13.16
-[0.13.15]: https://github.com/tuist/FileSystem/compare/0.13.14..0.13.15
-[0.13.14]: https://github.com/tuist/FileSystem/compare/0.13.13..0.13.14
-[0.13.13]: https://github.com/tuist/FileSystem/compare/0.13.12..0.13.13
-[0.13.12]: https://github.com/tuist/FileSystem/compare/0.13.11..0.13.12
-[0.13.11]: https://github.com/tuist/FileSystem/compare/0.13.10..0.13.11
-[0.13.10]: https://github.com/tuist/FileSystem/compare/0.13.9..0.13.10
-[0.13.9]: https://github.com/tuist/FileSystem/compare/0.13.8..0.13.9
-[0.13.8]: https://github.com/tuist/FileSystem/compare/0.13.7..0.13.8
-[0.13.7]: https://github.com/tuist/FileSystem/compare/0.13.6..0.13.7
-[0.13.6]: https://github.com/tuist/FileSystem/compare/0.13.5..0.13.6
-[0.13.5]: https://github.com/tuist/FileSystem/compare/0.13.4..0.13.5
-[0.13.4]: https://github.com/tuist/FileSystem/compare/0.13.3..0.13.4
-[0.13.3]: https://github.com/tuist/FileSystem/compare/0.13.2..0.13.3
-[0.13.2]: https://github.com/tuist/FileSystem/compare/0.13.1..0.13.2
-[0.13.1]: https://github.com/tuist/FileSystem/compare/0.13.0..0.13.1
 [0.13.0]: https://github.com/tuist/FileSystem/compare/0.12.5..0.13.0
-[0.12.5]: https://github.com/tuist/FileSystem/compare/0.12.4..0.12.5
-[0.12.4]: https://github.com/tuist/FileSystem/compare/0.12.3..0.12.4
-[0.12.3]: https://github.com/tuist/FileSystem/compare/0.12.2..0.12.3
-[0.12.2]: https://github.com/tuist/FileSystem/compare/0.12.1..0.12.2
-[0.12.1]: https://github.com/tuist/FileSystem/compare/0.12.0..0.12.1
 [0.12.0]: https://github.com/tuist/FileSystem/compare/0.11.23..0.12.0
-[0.11.23]: https://github.com/tuist/FileSystem/compare/0.11.22..0.11.23
-[0.11.22]: https://github.com/tuist/FileSystem/compare/0.11.21..0.11.22
-[0.11.21]: https://github.com/tuist/FileSystem/compare/0.11.20..0.11.21
-[0.11.20]: https://github.com/tuist/FileSystem/compare/0.11.19..0.11.20
-[0.11.19]: https://github.com/tuist/FileSystem/compare/0.11.18..0.11.19
-[0.11.18]: https://github.com/tuist/FileSystem/compare/0.11.17..0.11.18
-[0.11.17]: https://github.com/tuist/FileSystem/compare/0.11.16..0.11.17
-[0.11.16]: https://github.com/tuist/FileSystem/compare/0.11.15..0.11.16
-[0.11.15]: https://github.com/tuist/FileSystem/compare/0.11.14..0.11.15
-[0.11.14]: https://github.com/tuist/FileSystem/compare/0.11.13..0.11.14
-[0.11.13]: https://github.com/tuist/FileSystem/compare/0.11.12..0.11.13
-[0.11.12]: https://github.com/tuist/FileSystem/compare/0.11.11..0.11.12
-[0.11.11]: https://github.com/tuist/FileSystem/compare/0.11.10..0.11.11
-[0.11.10]: https://github.com/tuist/FileSystem/compare/0.11.9..0.11.10
-[0.11.9]: https://github.com/tuist/FileSystem/compare/0.11.8..0.11.9
-[0.11.8]: https://github.com/tuist/FileSystem/compare/0.11.7..0.11.8
-[0.11.7]: https://github.com/tuist/FileSystem/compare/0.11.6..0.11.7
-[0.11.6]: https://github.com/tuist/FileSystem/compare/0.11.5..0.11.6
-[0.11.5]: https://github.com/tuist/FileSystem/compare/0.11.4..0.11.5
-[0.11.4]: https://github.com/tuist/FileSystem/compare/0.11.3..0.11.4
-[0.11.3]: https://github.com/tuist/FileSystem/compare/0.11.2..0.11.3
-[0.11.2]: https://github.com/tuist/FileSystem/compare/0.11.1..0.11.2
-[0.11.1]: https://github.com/tuist/FileSystem/compare/0.11.0..0.11.1
 [0.11.0]: https://github.com/tuist/FileSystem/compare/0.10.17..0.11.0
-[0.10.17]: https://github.com/tuist/FileSystem/compare/0.10.16..0.10.17
-[0.10.16]: https://github.com/tuist/FileSystem/compare/0.10.15..0.10.16
-[0.10.15]: https://github.com/tuist/FileSystem/compare/0.10.14..0.10.15
-[0.10.14]: https://github.com/tuist/FileSystem/compare/0.10.13..0.10.14
-[0.10.13]: https://github.com/tuist/FileSystem/compare/0.10.12..0.10.13
-[0.10.12]: https://github.com/tuist/FileSystem/compare/0.10.11..0.10.12
-[0.10.11]: https://github.com/tuist/FileSystem/compare/0.10.10..0.10.11
-[0.10.10]: https://github.com/tuist/FileSystem/compare/0.10.9..0.10.10
-[0.10.9]: https://github.com/tuist/FileSystem/compare/0.10.8..0.10.9
-[0.10.8]: https://github.com/tuist/FileSystem/compare/0.10.7..0.10.8
-[0.10.7]: https://github.com/tuist/FileSystem/compare/0.10.6..0.10.7
-[0.10.6]: https://github.com/tuist/FileSystem/compare/0.10.5..0.10.6
-[0.10.5]: https://github.com/tuist/FileSystem/compare/0.10.4..0.10.5
-[0.10.4]: https://github.com/tuist/FileSystem/compare/0.10.3..0.10.4
-[0.10.3]: https://github.com/tuist/FileSystem/compare/0.10.2..0.10.3
-[0.10.2]: https://github.com/tuist/FileSystem/compare/0.10.1..0.10.2
-[0.10.1]: https://github.com/tuist/FileSystem/compare/0.10.0..0.10.1
 [0.10.0]: https://github.com/tuist/FileSystem/compare/0.9.2..0.10.0
-[0.9.2]: https://github.com/tuist/FileSystem/compare/0.9.1..0.9.2
-[0.9.1]: https://github.com/tuist/FileSystem/compare/0.9.0..0.9.1
 [0.9.0]: https://github.com/tuist/FileSystem/compare/0.8.0..0.9.0
 [0.8.0]: https://github.com/tuist/FileSystem/compare/0.7.18..0.8.0
-[0.7.18]: https://github.com/tuist/FileSystem/compare/0.7.17..0.7.18
-[0.7.17]: https://github.com/tuist/FileSystem/compare/0.7.16..0.7.17
-[0.7.16]: https://github.com/tuist/FileSystem/compare/0.7.15..0.7.16
 [0.7.15]: https://github.com/tuist/FileSystem/compare/0.7.14..0.7.15
-[0.7.14]: https://github.com/tuist/FileSystem/compare/0.7.13..0.7.14
 [0.7.13]: https://github.com/tuist/FileSystem/compare/0.7.12..0.7.13
-[0.7.12]: https://github.com/tuist/FileSystem/compare/0.7.11..0.7.12
 [0.7.11]: https://github.com/tuist/FileSystem/compare/0.7.10..0.7.11
-[0.7.10]: https://github.com/tuist/FileSystem/compare/0.7.9..0.7.10
 [0.7.9]: https://github.com/tuist/FileSystem/compare/0.7.8..0.7.9
-[0.7.8]: https://github.com/tuist/FileSystem/compare/0.7.7..0.7.8
-[0.7.7]: https://github.com/tuist/FileSystem/compare/0.7.6..0.7.7
 [0.7.6]: https://github.com/tuist/FileSystem/compare/0.7.5..0.7.6
-[0.7.5]: https://github.com/tuist/FileSystem/compare/0.7.4..0.7.5
 [0.7.4]: https://github.com/tuist/FileSystem/compare/0.7.3..0.7.4
 [0.7.3]: https://github.com/tuist/FileSystem/compare/0.7.2..0.7.3
-[0.7.2]: https://github.com/tuist/FileSystem/compare/0.7.1..0.7.2
-[0.7.1]: https://github.com/tuist/FileSystem/compare/0.7.0..0.7.1
 [0.7.0]: https://github.com/tuist/FileSystem/compare/0.6.24..0.7.0
 [0.6.24]: https://github.com/tuist/FileSystem/compare/0.6.23..0.6.24
-[0.6.23]: https://github.com/tuist/FileSystem/compare/0.6.22..0.6.23
-[0.6.22]: https://github.com/tuist/FileSystem/compare/0.6.21..0.6.22
-[0.6.21]: https://github.com/tuist/FileSystem/compare/0.6.20..0.6.21
-[0.6.20]: https://github.com/tuist/FileSystem/compare/0.6.19..0.6.20
-[0.6.19]: https://github.com/tuist/FileSystem/compare/0.6.18..0.6.19
 [0.6.18]: https://github.com/tuist/FileSystem/compare/0.6.17..0.6.18
 [0.6.17]: https://github.com/tuist/FileSystem/compare/0.6.16..0.6.17
-[0.6.16]: https://github.com/tuist/FileSystem/compare/0.6.15..0.6.16
 [0.6.15]: https://github.com/tuist/FileSystem/compare/0.6.14..0.6.15
-[0.6.14]: https://github.com/tuist/FileSystem/compare/0.6.13..0.6.14
 [0.6.13]: https://github.com/tuist/FileSystem/compare/0.6.12..0.6.13
 [0.6.12]: https://github.com/tuist/FileSystem/compare/0.6.11..0.6.12
 [0.6.11]: https://github.com/tuist/FileSystem/compare/0.6.10..0.6.11
@@ -1562,29 +307,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.6.9]: https://github.com/tuist/FileSystem/compare/0.6.8..0.6.9
 [0.6.8]: https://github.com/tuist/FileSystem/compare/0.6.7..0.6.8
 [0.6.7]: https://github.com/tuist/FileSystem/compare/0.6.6..0.6.7
-[0.6.6]: https://github.com/tuist/FileSystem/compare/0.6.5..0.6.6
 [0.6.5]: https://github.com/tuist/FileSystem/compare/0.6.4..0.6.5
 [0.6.4]: https://github.com/tuist/FileSystem/compare/0.6.3..0.6.4
-[0.6.3]: https://github.com/tuist/FileSystem/compare/0.6.2..0.6.3
 [0.6.2]: https://github.com/tuist/FileSystem/compare/0.6.1..0.6.2
 [0.6.1]: https://github.com/tuist/FileSystem/compare/0.6.0..0.6.1
 [0.6.0]: https://github.com/tuist/FileSystem/compare/0.5.4..0.6.0
-[0.5.4]: https://github.com/tuist/FileSystem/compare/0.5.3..0.5.4
-[0.5.3]: https://github.com/tuist/FileSystem/compare/0.5.2..0.5.3
-[0.5.2]: https://github.com/tuist/FileSystem/compare/0.5.1..0.5.2
 [0.5.1]: https://github.com/tuist/FileSystem/compare/0.5.0..0.5.1
 [0.5.0]: https://github.com/tuist/FileSystem/compare/0.4.9..0.5.0
-[0.4.9]: https://github.com/tuist/FileSystem/compare/0.4.8..0.4.9
 [0.4.8]: https://github.com/tuist/FileSystem/compare/0.4.7..0.4.8
-[0.4.7]: https://github.com/tuist/FileSystem/compare/0.4.6..0.4.7
-[0.4.6]: https://github.com/tuist/FileSystem/compare/0.4.5..0.4.6
-[0.4.5]: https://github.com/tuist/FileSystem/compare/0.4.4..0.4.5
-[0.4.4]: https://github.com/tuist/FileSystem/compare/0.4.3..0.4.4
-[0.4.3]: https://github.com/tuist/FileSystem/compare/0.4.2..0.4.3
-[0.4.2]: https://github.com/tuist/FileSystem/compare/0.4.1..0.4.2
-[0.4.1]: https://github.com/tuist/FileSystem/compare/0.4.0..0.4.1
 [0.4.0]: https://github.com/tuist/FileSystem/compare/0.3.2..0.4.0
-[0.3.2]: https://github.com/tuist/FileSystem/compare/0.3.1..0.3.2
 [0.3.1]: https://github.com/tuist/FileSystem/compare/0.3.0..0.3.1
 
 <!-- generated by git-cliff -->
