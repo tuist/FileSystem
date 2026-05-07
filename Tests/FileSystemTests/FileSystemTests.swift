@@ -150,6 +150,39 @@ private struct TestError: Error, Equatable {}
             }
         }
 
+        func test_makeDirectory_concurrentCreationOfTheSameDirectory() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given — pin the mkdir -p contract: parallel creation of the same target is race-safe.
+                let directoryPath = temporaryDirectory.appending(components: "parent", "shared", "target")
+
+                // When — many tasks race to create the exact same directory
+                var errors: [Error] = []
+                await withTaskGroup(of: Error?.self) { group in
+                    for _ in 0 ..< 50 {
+                        group.addTask {
+                            do {
+                                try await self.subject.makeDirectory(
+                                    at: directoryPath,
+                                    options: [.createTargetParentDirectories]
+                                )
+                                return nil
+                            } catch {
+                                return error
+                            }
+                        }
+                    }
+                    for await error in group {
+                        if let error { errors.append(error) }
+                    }
+                }
+
+                // Then — none of them should have failed
+                XCTAssertTrue(errors.isEmpty, "Concurrent makeDirectory failed: \(errors)")
+                let exists = try await subject.exists(directoryPath, isDirectory: true)
+                XCTAssertTrue(exists)
+            }
+        }
+
         func test_makeDirectory_concurrentCreationOfSharedIntermediateDirectories() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                 // Given
@@ -200,6 +233,75 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 XCTAssertEqual(got, "test")
+            }
+        }
+
+        func test_writeText_isRaceFreeUnderConcurrency() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let filePath = temporaryDirectory.appending(component: "concurrent-text")
+
+                // When — many tasks race to write the same path with both option sets
+                var errors: [Error] = []
+                await withTaskGroup(of: Error?.self) { group in
+                    for index in 0 ..< 50 {
+                        group.addTask {
+                            do {
+                                let options: Set<WriteTextOptions> = index.isMultiple(of: 2) ? [.overwrite] : []
+                                try await self.subject.writeText("hello", at: filePath, options: options)
+                                return nil
+                            } catch {
+                                return error
+                            }
+                        }
+                    }
+                    for await error in group {
+                        if let error { errors.append(error) }
+                    }
+                }
+
+                // Then — none of them should have failed; final content is intact
+                XCTAssertTrue(errors.isEmpty, "Concurrent writeText failed: \(errors)")
+                let content = try await subject.readTextFile(at: filePath)
+                XCTAssertEqual(content, "hello")
+            }
+        }
+
+        func test_writeAsJSON_isRaceFreeUnderConcurrency() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                struct Payload: Codable, Equatable { let value: String }
+                let filePath = temporaryDirectory.appending(component: "concurrent.json")
+                let payload = Payload(value: "hello")
+
+                // When
+                var errors: [Error] = []
+                await withTaskGroup(of: Error?.self) { group in
+                    for index in 0 ..< 50 {
+                        group.addTask {
+                            do {
+                                let options: Set<WriteJSONOptions> = index.isMultiple(of: 2) ? [.overwrite] : []
+                                try await self.subject.writeAsJSON(
+                                    payload,
+                                    at: filePath,
+                                    encoder: JSONEncoder(),
+                                    options: options
+                                )
+                                return nil
+                            } catch {
+                                return error
+                            }
+                        }
+                    }
+                    for await error in group {
+                        if let error { errors.append(error) }
+                    }
+                }
+
+                // Then
+                XCTAssertTrue(errors.isEmpty, "Concurrent writeAsJSON failed: \(errors)")
+                let decoded: Payload = try await subject.readJSONFile(at: filePath)
+                XCTAssertEqual(decoded, payload)
             }
         }
 
