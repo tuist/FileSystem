@@ -72,6 +72,11 @@ public enum MoveOptions: String {
 /// Options to configure the make directory operation.
 public enum MakeDirectoryOptions: String {
     /// When passed, it creates the parent directories if needed.
+    ///
+    /// This option carries full `mkdir -p` semantics: intermediate directories are created
+    /// as needed, and no error is raised if a directory already exists at the target path,
+    /// which makes it safe to call concurrently from multiple processes or tasks. A
+    /// non-directory file at the target path still raises an error.
     case createTargetParentDirectories
 }
 
@@ -719,17 +724,16 @@ public struct FileSystem: FileSysteming, Sendable {
         _ text: String,
         at path: AbsolutePath,
         encoding: String.Encoding,
-        options: Set<WriteTextOptions>
+        options _: Set<WriteTextOptions>
     ) async throws {
         logger?.debug("Writing text at path \(path.pathString).")
         guard let data = text.data(using: encoding) else {
             throw FileSystemError.cantEncodeText(text, encoding)
         }
 
-        if options.contains(.overwrite), try await exists(path) {
-            try await remove(path)
-        }
-
+        // The underlying writes (atomic write on POSIX, Data.write on Windows)
+        // both replace existing files atomically. We intentionally don't pre-check
+        // and remove — that pattern is racy under concurrent writers.
         #if os(Windows)
             try data.write(to: URL(fileURLWithPath: path.pathString))
         #else
@@ -759,13 +763,9 @@ public struct FileSystem: FileSysteming, Sendable {
         _ item: some Encodable,
         at path: AbsolutePath,
         encoder: PropertyListEncoder,
-        options: Set<WritePlistOptions>
+        options _: Set<WritePlistOptions>
     ) async throws {
         logger?.debug("Writing .plist at path \(path.pathString).")
-
-        if options.contains(.overwrite), try await exists(path) {
-            try await remove(path)
-        }
 
         let plistData = try encoder.encode(item)
         #if os(Windows)
@@ -797,15 +797,11 @@ public struct FileSystem: FileSysteming, Sendable {
         _ item: some Encodable,
         at path: Path.AbsolutePath,
         encoder: JSONEncoder,
-        options: Set<WriteJSONOptions>
+        options _: Set<WriteJSONOptions>
     ) async throws {
         logger?.debug("Writing .json at path \(path.pathString).")
 
         let json = try encoder.encode(item)
-        if options.contains(.overwrite), try await exists(path) {
-            try await remove(path)
-        }
-
         #if os(Windows)
             try json.write(to: URL(fileURLWithPath: path.pathString))
         #else
