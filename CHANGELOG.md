@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-05-09
+### Details
+#### <!-- 0 -->🚀 Features
+- Add file operation backpressure by @pepicrft in [#345](https://github.com/tuist/FileSystem/pull/345)
+
 ## [0.17.3] - 2026-05-07
 ### Details
 #### <!-- 1 -->🐛 Bug Fixes
@@ -270,6 +275,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## New Contributors
 * @pepicrft made their first contribution in [#17](https://github.com/tuist/FileSystem/pull/17)
 * @renovate[bot] made their first contribution in [#16](https://github.com/tuist/FileSystem/pull/16)
+[0.18.0]: https://github.com/tuist/FileSystem/compare/0.17.3..0.18.0
 [0.17.3]: https://github.com/tuist/FileSystem/compare/0.17.2..0.17.3
 [0.17.0]: https://github.com/tuist/FileSystem/compare/0.16.9..0.17.0
 [0.16.4]: https://github.com/tuist/FileSystem/compare/0.16.3..0.16.4
