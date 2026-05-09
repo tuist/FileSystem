@@ -370,11 +370,58 @@ public protocol FileSysteming: Sendable {
 
 // swiftlint:disable:next type_body_length
 public struct FileSystem: FileSysteming, Sendable {
+    /// Default process-wide cap for operations that can hold file descriptors or OS file handles.
+    public static var defaultMaximumConcurrentFileOperations: Int {
+        systemMaximumConcurrentFileOperations()
+    }
+
+    private static let defaultFileOperationLimiter = AsyncResourceLimiter(
+        limitProvider: { FileSystem.defaultMaximumConcurrentFileOperations }
+    )
+
+    private static let fallbackMaximumConcurrentFileOperations = 64
+    private static let maximumSystemDerivedConcurrentFileOperations = 256
+    private static let reservedFileDescriptors = 32
+    private static let fileDescriptorShareDivisor = 4
+
     fileprivate let logger: Logger?
+    private let fileOperationLimiter: AsyncResourceLimiter
 
     /// Creates a filesystem client.
     public init(logger: Logger? = nil) {
         self.logger = logger
+        fileOperationLimiter = Self.defaultFileOperationLimiter
+    }
+
+    /// Creates a filesystem client with a custom per-instance file operation cap.
+    ///
+    /// Use this initializer when a caller needs a stricter or wider cap than the shared default.
+    public init(logger: Logger? = nil, maximumConcurrentFileOperations: Int) {
+        self.logger = logger
+        fileOperationLimiter = AsyncResourceLimiter(limit: maximumConcurrentFileOperations)
+    }
+
+    private static func systemMaximumConcurrentFileOperations() -> Int {
+        #if os(Windows)
+            return fallbackMaximumConcurrentFileOperations
+        #else
+            var resourceLimit = rlimit()
+            #if canImport(Glibc)
+                let openFilesResource = Int32(RLIMIT_NOFILE.rawValue)
+            #else
+                let openFilesResource = RLIMIT_NOFILE
+            #endif
+
+            guard getrlimit(openFilesResource, &resourceLimit) == 0 else {
+                return fallbackMaximumConcurrentFileOperations
+            }
+
+            let softLimit = Int(clamping: resourceLimit.rlim_cur)
+            let descriptorsAvailableToFileSystem = max(1, softLimit - reservedFileDescriptors)
+            let proportionalLimit = max(1, descriptorsAvailableToFileSystem / fileDescriptorShareDivisor)
+
+            return min(maximumSystemDerivedConcurrentFileOperations, proportionalLimit)
+        #endif
     }
 
     #if !os(Windows)
@@ -393,11 +440,13 @@ public struct FileSystem: FileSysteming, Sendable {
         private func writeDataUsingSwiftFileSystem(_ data: Data, at path: AbsolutePath) async throws {
             let swiftPath = try swiftFileSystemPath(path)
             let bytes = Array(data)
-            try bytes.withUnsafeBufferPointer { buffer in
-                try File.System.Write.Atomic.write(
-                    buffer,
-                    to: swiftPath
-                )
+            try await fileOperationLimiter.withPermit {
+                try bytes.withUnsafeBufferPointer { buffer in
+                    try File.System.Write.Atomic.write(
+                        buffer,
+                        to: swiftPath
+                    )
+                }
             }
         }
 
@@ -480,17 +529,19 @@ public struct FileSystem: FileSysteming, Sendable {
     }
 
     public func contentsOfDirectory(_ path: AbsolutePath) async throws -> [AbsolutePath] {
-        #if os(Windows)
-            let contents = try FileManager.default.contentsOfDirectory(atPath: path.pathString)
-            return try contents.map { try path.appending(component: $0) }
-        #else
-            let entries = try File.Directory.Contents.list(
-                at: try swiftFileSystemPath(path)
-            )
-            return try entries.map { entry in
-                try absolutePath(entry.path)
-            }
-        #endif
+        try await fileOperationLimiter.withPermit {
+            #if os(Windows)
+                let contents = try FileManager.default.contentsOfDirectory(atPath: path.pathString)
+                return try contents.map { try path.appending(component: $0) }
+            #else
+                let entries = try File.Directory.Contents.list(
+                    at: try swiftFileSystemPath(path)
+                )
+                return try entries.map { entry in
+                    try absolutePath(entry.path)
+                }
+            #endif
+        }
     }
 
     public func exists(_ path: AbsolutePath) async throws -> Bool {
@@ -535,7 +586,9 @@ public struct FileSystem: FileSysteming, Sendable {
     public func touch(_ path: Path.AbsolutePath) async throws {
         logger?.debug("Touching a file at path \(path.pathString).")
         #if os(Windows)
-            FileManager.default.createFile(atPath: path.pathString, contents: Data(), attributes: nil)
+            _ = try await fileOperationLimiter.withPermit {
+                FileManager.default.createFile(atPath: path.pathString, contents: Data(), attributes: nil)
+            }
         #else
             if try await exists(path) {
                 try setFileTimesUsingPOSIX(of: path, lastAccessDate: Date(), lastModificationDate: Date())
@@ -548,17 +601,19 @@ public struct FileSystem: FileSysteming, Sendable {
     public func remove(_ path: AbsolutePath) async throws {
         logger?.debug("Removing the file or directory at path: \(path.pathString).")
         guard try await exists(path) else { return }
-        #if os(Windows)
-            try await Task {
-                try FileManager.default.removeItem(atPath: path.pathString)
-            }
-            .value
-        #else
-            try File.System.Delete.delete(
-                at: try swiftFileSystemPath(path),
-                options: .init(recursive: true)
-            )
-        #endif
+        try await fileOperationLimiter.withPermit {
+            #if os(Windows)
+                try await Task {
+                    try FileManager.default.removeItem(atPath: path.pathString)
+                }
+                .value
+            #else
+                try File.System.Delete.delete(
+                    at: try swiftFileSystemPath(path),
+                    options: .init(recursive: true)
+                )
+            #endif
+        }
     }
 
     public func makeTemporaryDirectory(prefix: String) async throws -> AbsolutePath {
@@ -599,42 +654,44 @@ public struct FileSystem: FileSysteming, Sendable {
                 try? await makeDirectory(at: to.parentDirectory, options: [.createTargetParentDirectories])
             }
         }
-        #if os(Windows)
-            do {
-                try FileManager.default.moveItem(atPath: from.pathString, toPath: to.pathString)
-            } catch {
-                if !FileManager.default.fileExists(atPath: from.pathString) {
-                    throw FileSystemError.moveNotFound(from: from, to: to)
-                }
-                throw error
-            }
-        #else
-            do {
-                try File.System.Move.move(
-                    from: try swiftFileSystemPath(from),
-                    to: try swiftFileSystemPath(to)
-                )
-            } catch let error as File.System.Move.Error {
-                switch error {
-                case .sourceNotFound:
-                    throw FileSystemError.moveNotFound(from: from, to: to)
-                case .moveFailed:
-                    // The swift-system POSIX move falls back to a file-only copy on EXDEV,
-                    // which fails for directories across filesystems. Defer to FileManager,
-                    // which performs a recursive copy+delete in that case.
-                    do {
-                        try FileManager.default.moveItem(atPath: from.pathString, toPath: to.pathString)
-                    } catch {
-                        if !FileManager.default.fileExists(atPath: from.pathString) {
-                            throw FileSystemError.moveNotFound(from: from, to: to)
-                        }
-                        throw error
+        try await fileOperationLimiter.withPermit {
+            #if os(Windows)
+                do {
+                    try FileManager.default.moveItem(atPath: from.pathString, toPath: to.pathString)
+                } catch {
+                    if !FileManager.default.fileExists(atPath: from.pathString) {
+                        throw FileSystemError.moveNotFound(from: from, to: to)
                     }
-                default:
                     throw error
                 }
-            }
-        #endif
+            #else
+                do {
+                    try File.System.Move.move(
+                        from: try swiftFileSystemPath(from),
+                        to: try swiftFileSystemPath(to)
+                    )
+                } catch let error as File.System.Move.Error {
+                    switch error {
+                    case .sourceNotFound:
+                        throw FileSystemError.moveNotFound(from: from, to: to)
+                    case .moveFailed:
+                        // The swift-system POSIX move falls back to a file-only copy on EXDEV,
+                        // which fails for directories across filesystems. Defer to FileManager,
+                        // which performs a recursive copy+delete in that case.
+                        do {
+                            try FileManager.default.moveItem(atPath: from.pathString, toPath: to.pathString)
+                        } catch {
+                            if !FileManager.default.fileExists(atPath: from.pathString) {
+                                throw FileSystemError.moveNotFound(from: from, to: to)
+                            }
+                            throw error
+                        }
+                    default:
+                        throw error
+                    }
+                }
+            #endif
+        }
     }
 
     public func makeDirectory(at: Path.AbsolutePath) async throws {
@@ -691,12 +748,14 @@ public struct FileSystem: FileSysteming, Sendable {
         if log {
             logger?.debug("Reading file at path \(path.pathString).")
         }
-        #if os(Windows)
-            return try Data(contentsOf: URL(fileURLWithPath: path.pathString))
-        #else
-            let bytes = try File.System.Read.Full.read(from: try swiftFileSystemPath(path))
-            return Data(bytes)
-        #endif
+        return try await fileOperationLimiter.withPermit {
+            #if os(Windows)
+                return try Data(contentsOf: URL(fileURLWithPath: path.pathString))
+            #else
+                let bytes = try File.System.Read.Full.read(from: try swiftFileSystemPath(path))
+                return Data(bytes)
+            #endif
+        }
     }
 
     public func readTextFile(at: Path.AbsolutePath) async throws -> String {
@@ -735,7 +794,9 @@ public struct FileSystem: FileSysteming, Sendable {
         // both replace existing files atomically. We intentionally don't pre-check
         // and remove — that pattern is racy under concurrent writers.
         #if os(Windows)
-            try data.write(to: URL(fileURLWithPath: path.pathString))
+            try await fileOperationLimiter.withPermit {
+                try data.write(to: URL(fileURLWithPath: path.pathString))
+            }
         #else
             try await writeDataUsingSwiftFileSystem(data, at: path)
         #endif
@@ -769,7 +830,9 @@ public struct FileSystem: FileSysteming, Sendable {
 
         let plistData = try encoder.encode(item)
         #if os(Windows)
-            try plistData.write(to: URL(fileURLWithPath: path.pathString))
+            try await fileOperationLimiter.withPermit {
+                try plistData.write(to: URL(fileURLWithPath: path.pathString))
+            }
         #else
             try await writeDataUsingSwiftFileSystem(plistData, at: path)
         #endif
@@ -803,7 +866,9 @@ public struct FileSystem: FileSysteming, Sendable {
 
         let json = try encoder.encode(item)
         #if os(Windows)
-            try json.write(to: URL(fileURLWithPath: path.pathString))
+            try await fileOperationLimiter.withPermit {
+                try json.write(to: URL(fileURLWithPath: path.pathString))
+            }
         #else
             try await writeDataUsingSwiftFileSystem(json, at: path)
         #endif
@@ -817,24 +882,26 @@ public struct FileSystem: FileSysteming, Sendable {
         if !(try await exists(to.parentDirectory)) {
             try await makeDirectory(at: to.parentDirectory)
         }
-        #if os(Windows)
-            if FileManager.default.fileExists(atPath: to.pathString) {
-                try FileManager.default.removeItem(atPath: to.pathString)
-            }
-            try FileManager.default.copyItem(atPath: path.pathString, toPath: to.pathString)
-        #else
-            // The swift-system POSIX move uses rename(2) for the overwrite path, which fails
-            // with ENOTEMPTY/EEXIST when the destination is a non-empty directory. Mirror the
-            // Windows branch by removing the destination first so directory replacements work.
-            if FileManager.default.fileExists(atPath: to.pathString) {
-                try FileManager.default.removeItem(atPath: to.pathString)
-            }
-            try File.System.Move.move(
-                from: try swiftFileSystemPath(path),
-                to: try swiftFileSystemPath(to),
-                options: .init(overwrite: true)
-            )
-        #endif
+        try await fileOperationLimiter.withPermit {
+            #if os(Windows)
+                if FileManager.default.fileExists(atPath: to.pathString) {
+                    try FileManager.default.removeItem(atPath: to.pathString)
+                }
+                try FileManager.default.copyItem(atPath: path.pathString, toPath: to.pathString)
+            #else
+                // The swift-system POSIX move uses rename(2) for the overwrite path, which fails
+                // with ENOTEMPTY/EEXIST when the destination is a non-empty directory. Mirror the
+                // Windows branch by removing the destination first so directory replacements work.
+                if FileManager.default.fileExists(atPath: to.pathString) {
+                    try FileManager.default.removeItem(atPath: to.pathString)
+                }
+                try File.System.Move.move(
+                    from: try swiftFileSystemPath(path),
+                    to: try swiftFileSystemPath(to),
+                    options: .init(overwrite: true)
+                )
+            #endif
+        }
     }
 
     public func copy(_ from: AbsolutePath, to: AbsolutePath) async throws {
@@ -846,15 +913,20 @@ public struct FileSystem: FileSysteming, Sendable {
             try await makeDirectory(at: to.parentDirectory)
         }
         #if os(Windows)
-            try FileManager.default.copyItem(atPath: from.pathString, toPath: to.pathString)
-        #else
-            if try await exists(from, isDirectory: true) {
+            try await fileOperationLimiter.withPermit {
                 try FileManager.default.copyItem(atPath: from.pathString, toPath: to.pathString)
-            } else {
-                try File.System.Copy.copy(
-                    from: try swiftFileSystemPath(from),
-                    to: try swiftFileSystemPath(to)
-                )
+            }
+        #else
+            let isDirectory = try await exists(from, isDirectory: true)
+            try await fileOperationLimiter.withPermit {
+                if isDirectory {
+                    try FileManager.default.copyItem(atPath: from.pathString, toPath: to.pathString)
+                } else {
+                    try File.System.Copy.copy(
+                        from: try swiftFileSystemPath(from),
+                        to: try swiftFileSystemPath(to)
+                    )
+                }
             }
         #endif
     }
@@ -1003,13 +1075,15 @@ public struct FileSystem: FileSysteming, Sendable {
             logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
             let sourceURL = URL(fileURLWithPath: path.pathString)
             let destinationURL = URL(fileURLWithPath: to.pathString)
-            try await performBlockingFileOperation {
-                let fileManager = FileManager()
-                try fileManager.zipItem(
-                    at: sourceURL,
-                    to: destinationURL,
-                    shouldKeepParent: false
-                )
+            try await fileOperationLimiter.withPermit {
+                try await performBlockingFileOperation {
+                    let fileManager = FileManager()
+                    try fileManager.zipItem(
+                        at: sourceURL,
+                        to: destinationURL,
+                        shouldKeepParent: false
+                    )
+                }
             }
         }
 
@@ -1017,12 +1091,14 @@ public struct FileSystem: FileSysteming, Sendable {
             logger?.debug("Unzipping the file at path \(zipPath.pathString) to \(to.pathString)")
             let sourceURL = URL(fileURLWithPath: zipPath.pathString)
             let destinationURL = URL(fileURLWithPath: to.pathString)
-            try await performBlockingFileOperation {
-                let fileManager = FileManager()
-                try fileManager.unzipItem(
-                    at: sourceURL,
-                    to: destinationURL
-                )
+            try await fileOperationLimiter.withPermit {
+                try await performBlockingFileOperation {
+                    let fileManager = FileManager()
+                    try fileManager.unzipItem(
+                        at: sourceURL,
+                        to: destinationURL
+                    )
+                }
             }
         }
 
