@@ -1,7 +1,7 @@
 [tools]
 "tuist" = "4.202.6"
 "swiftlint" = "0.65.0"
-"swiftformat" = "0.52.10"
+"swiftformat" = "0.62.1"
 "git-cliff" = "2.13.1"
 
 [plugins]
