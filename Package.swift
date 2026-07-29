@@ -225,6 +225,7 @@ let packageTargets: [Target] = [
         name: "FileSystemTests",
         dependencies: [
             "FileSystem",
+            "Glob",
         ]
     ),
     .target(

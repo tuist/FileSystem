@@ -1136,6 +1136,102 @@ private struct TestError: Error, Equatable {}
             }
         }
 
+        func test_glob_with_an_empty_exclude_returns_ds_store_and_git_keep() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let directory = temporaryDirectory.appending(component: "first")
+                let sourceFile = directory.appending(component: "file.swift")
+                let dsStore = directory.appending(component: ".DS_Store")
+                let gitKeep = directory.appending(component: ".gitkeep")
+                try await subject.makeDirectory(at: directory)
+                try await subject.touch(sourceFile)
+                try await subject.touch(dsStore)
+                try await subject.touch(gitKeep)
+
+                // When
+                let got = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["**"],
+                    exclude: []
+                )
+                .collect()
+                .sorted()
+
+                // Then
+                XCTAssertEqual(got, [directory, dsStore, gitKeep, sourceFile].sorted())
+            }
+        }
+
+        func test_glob_excludes_the_paths_matching_the_exclude_patterns() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let directory = temporaryDirectory.appending(component: "first")
+                let sourceFile = directory.appending(component: "file.swift")
+                try await subject.makeDirectory(at: directory)
+                try await subject.touch(sourceFile)
+                try await subject.touch(directory.appending(component: "data.json"))
+
+                // When
+                let got = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["**"],
+                    exclude: ["**/*.json"]
+                )
+                .collect()
+                .sorted()
+
+                // Then
+                XCTAssertEqual(got, [directory, sourceFile].sorted())
+            }
+        }
+
+        func test_glob_excludes_the_descendants_of_an_excluded_directory() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let generatedDirectory = temporaryDirectory.appending(component: "Generated")
+                let sourceFile = temporaryDirectory.appending(component: "file.swift")
+                try await subject.makeDirectory(at: generatedDirectory)
+                try await subject.touch(generatedDirectory.appending(component: "generated.swift"))
+                try await subject.touch(sourceFile)
+
+                // When
+                let got = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["**"],
+                    exclude: ["Generated"]
+                )
+                .collect()
+                .sorted()
+
+                // Then
+                XCTAssertEqual(got, [sourceFile])
+            }
+        }
+
+        func test_glob_expands_braces_in_the_exclude_patterns() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let directory = temporaryDirectory.appending(component: "first")
+                let sourceFile = directory.appending(component: "file.swift")
+                try await subject.makeDirectory(at: directory)
+                try await subject.touch(sourceFile)
+                try await subject.touch(directory.appending(component: "data.json"))
+                try await subject.touch(directory.appending(component: "data.xml"))
+
+                // When
+                let got = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["**"],
+                    exclude: ["**/*.{json,xml}"]
+                )
+                .collect()
+                .sorted()
+
+                // Then
+                XCTAssertEqual(got, [directory, sourceFile].sorted())
+            }
+        }
+
         // Glob tests involving symlinks are skipped on Windows because symlinks require elevated permissions
         #if !os(Windows)
             func test_glob_with_symlink_and_only_a_directory_wildcard() async throws {
