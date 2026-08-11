@@ -40,7 +40,7 @@ extension File {
             // Check for control characters before FilePath conversion
             // (FilePath may truncate at NUL, so we validate the original string)
             if string.utf8.contains(where: \.ascii.isControl) {
-                throw .containsControlCharacters
+                throw .containsControlCharacters(string)
             }
 
             self._path = FilePath(string)
