@@ -20,6 +20,23 @@ import Path
     import ZIPFoundation
 #endif
 
+#if !os(Windows)
+    /// The compression applied to the entries of a zip archive.
+    public enum ZipCompressionMethod: CaseIterable, Equatable, Sendable {
+        /// Entries are stored as they are.
+        case none
+        /// Entries are compressed with deflate.
+        case deflate
+
+        fileprivate var zipFoundationCompressionMethod: CompressionMethod {
+            switch self {
+            case .none: CompressionMethod.none
+            case .deflate: CompressionMethod.deflate
+            }
+        }
+    }
+#endif
+
 public enum FileSystemItemType: CaseIterable, Equatable {
     case directory
     case file
@@ -329,13 +346,26 @@ public protocol FileSysteming: Sendable {
     func resolveSymbolicLink(_ symlinkPath: AbsolutePath) async throws -> AbsolutePath
 
     #if !os(Windows)
-        /// Zips a file or the content of a given directory.
+        /// Zips a file or the content of a given directory, storing the entries without compressing them.
         /// - Parameters:
         ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to
         /// a
         /// directory, the content of the directory is zipped.
         ///   - to: Path to where the zip file will be created.
         func zipFileOrDirectoryContent(at path: AbsolutePath, to: AbsolutePath) async throws
+
+        /// Zips a file or the content of a given directory.
+        /// - Parameters:
+        ///   - path: Path to file or directory. When the path to a file is provided, the file is zipped. When the path points to
+        /// a
+        /// directory, the content of the directory is zipped.
+        ///   - to: Path to where the zip file will be created.
+        ///   - compressionMethod: The compression to apply to the entries.
+        func zipFileOrDirectoryContent(
+            at path: AbsolutePath,
+            to: AbsolutePath,
+            compressionMethod: ZipCompressionMethod
+        ) async throws
 
         /// Unzips a zip file.
         /// - Parameters:
@@ -367,6 +397,19 @@ public protocol FileSysteming: Sendable {
     //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
     //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
 }
+
+#if !os(Windows)
+    extension FileSysteming {
+        /// Conformances that predate the compression method keep their existing behaviour.
+        public func zipFileOrDirectoryContent(
+            at path: AbsolutePath,
+            to: AbsolutePath,
+            compressionMethod _: ZipCompressionMethod
+        ) async throws {
+            try await zipFileOrDirectoryContent(at: path, to: to)
+        }
+    }
+#endif
 
 // swiftlint:disable:next type_body_length
 public struct FileSystem: FileSysteming, Sendable {
@@ -1072,16 +1115,29 @@ public struct FileSystem: FileSysteming, Sendable {
 
     #if !os(Windows)
         public func zipFileOrDirectoryContent(at path: Path.AbsolutePath, to: Path.AbsolutePath) async throws {
-            logger?.debug("Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString)")
+            try await zipFileOrDirectoryContent(at: path, to: to, compressionMethod: .none)
+        }
+
+        public func zipFileOrDirectoryContent(
+            at path: Path.AbsolutePath,
+            to: Path.AbsolutePath,
+            compressionMethod: ZipCompressionMethod
+        ) async throws {
+            logger?
+                .debug(
+                    "Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString) using \(compressionMethod)"
+                )
             let sourceURL = URL(fileURLWithPath: path.pathString)
             let destinationURL = URL(fileURLWithPath: to.pathString)
+            let zipFoundationCompressionMethod = compressionMethod.zipFoundationCompressionMethod
             try await fileOperationLimiter.withPermit {
                 try await performBlockingFileOperation {
                     let fileManager = FileManager()
                     try fileManager.zipItem(
                         at: sourceURL,
                         to: destinationURL,
-                        shouldKeepParent: false
+                        shouldKeepParent: false,
+                        compressionMethod: zipFoundationCompressionMethod
                     )
                 }
             }

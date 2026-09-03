@@ -740,6 +740,47 @@ private struct TestError: Error, Equatable {}
                     XCTAssertTrue(exists)
                 }
             }
+
+            func test_zipping_withoutACompressionMethod_storesTheContent() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let directoryPath = temporaryDirectory.appending(component: "directory")
+                    let zipPath = temporaryDirectory.appending(component: "directory.zip")
+                    try await subject.makeDirectory(at: directoryPath)
+                    let content = String(repeating: "compressible content ", count: 20000)
+                    try await subject.writeText(content, at: directoryPath.appending(component: "file"))
+
+                    // When
+                    try await subject.zipFileOrDirectoryContent(at: directoryPath, to: zipPath)
+
+                    // Then
+                    let zipSize = try await subject.fileMetadata(at: zipPath)?.size ?? 0
+                    XCTAssertGreaterThan(zipSize, Int64(content.utf8.count))
+                }
+            }
+
+            func test_zipping_withDeflate_compressesTheContent() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let directoryPath = temporaryDirectory.appending(component: "directory")
+                    let zipPath = temporaryDirectory.appending(component: "directory.zip")
+                    let unzippedPath = temporaryDirectory.appending(component: "unzipped")
+                    try await subject.makeDirectory(at: directoryPath)
+                    try await subject.makeDirectory(at: unzippedPath)
+                    let content = String(repeating: "compressible content ", count: 20000)
+                    try await subject.writeText(content, at: directoryPath.appending(component: "file"))
+
+                    // When
+                    try await subject.zipFileOrDirectoryContent(at: directoryPath, to: zipPath, compressionMethod: .deflate)
+                    try await subject.unzip(zipPath, to: unzippedPath)
+
+                    // Then
+                    let zipSize = try await subject.fileMetadata(at: zipPath)?.size ?? 0
+                    XCTAssertLessThan(zipSize, Int64(content.utf8.count) / 2)
+                    let unzippedContent = try await subject.readTextFile(at: unzippedPath.appending(component: "file"))
+                    XCTAssertEqual(unzippedContent, content)
+                }
+            }
         #endif
 
         func test_glob_component_wildcard() async throws {
