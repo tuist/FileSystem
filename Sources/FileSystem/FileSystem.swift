@@ -375,11 +375,29 @@ public protocol FileSysteming: Sendable {
     #endif
 
     /// Looks up files and directories that match a set of glob patterns.
+    ///
+    /// The results omit the paths that match `FileSystem.defaultGlobExclusions`. Use
+    /// ``glob(directory:include:exclude:)`` to control which paths are excluded.
     /// - Parameters:
     ///   - directory: Base absolute directory that glob patterns are relative to.
     ///   - include: A list of glob patterns.
     /// - Returns: An async sequence to get the results.
     func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
+
+    /// Looks up files and directories that match a set of glob patterns, omitting the ones that
+    /// match `exclude`.
+    /// - Parameters:
+    ///   - directory: Base absolute directory that glob patterns are relative to.
+    ///   - include: A list of glob patterns.
+    ///   - exclude: A list of glob patterns whose matches are omitted from the results. Pass an
+    ///   empty array to also get the paths that `FileSystem.defaultGlobExclusions` filters out,
+    ///   such as `.DS_Store` and `.gitkeep`.
+    /// - Returns: An async sequence to get the results.
+    func glob(
+        directory: Path.AbsolutePath,
+        include: [String],
+        exclude: [String]
+    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
 
     /// Returns the path of the current working directory.
     func currentWorkingDirectory() async throws -> AbsolutePath
@@ -1172,24 +1190,26 @@ public struct FileSystem: FileSysteming, Sendable {
         }
     #endif
 
-    private func expandBraces(in regexString: String) throws -> [String] {
-        let pattern = #"\{[^}]+\}"#
-        let regex = try Regex(pattern)
-
-        guard let match = regexString.firstMatch(of: regex) else {
-            return [regexString]
-        }
-
-        return regexString[match.range]
-            .dropFirst()
-            .dropLast()
-            .split(separator: ",")
-            .map { option in
-                regexString.replacingCharacters(in: match.range, with: option)
-            }
-    }
+    /// The glob patterns that ``glob(directory:include:)`` omits from its results.
+    ///
+    /// These editor and version-control placeholder files are filtered out by default because
+    /// callers rarely want them. Pass an explicit `exclude` to
+    /// ``glob(directory:include:exclude:)`` to override the default, either to filter out
+    /// additional paths or to opt out of the filtering entirely.
+    public static let defaultGlobExclusions: [String] = [
+        "**/.DS_Store",
+        "**/.gitkeep",
+    ]
 
     public func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
+        try glob(directory: directory, include: include, exclude: Self.defaultGlobExclusions)
+    }
+
+    public func glob(
+        directory: Path.AbsolutePath,
+        include: [String],
+        exclude: [String]
+    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
         let logMessage =
             "Looking up files and directories from \(directory.pathString) that match the glob patterns \(include.joined(separator: ", "))."
         logger?.debug("\(logMessage)")
@@ -1200,10 +1220,9 @@ public struct FileSystem: FileSysteming, Sendable {
             include: try include
                 .flatMap { try expandBraces(in: $0) }
                 .map { try Pattern($0) },
-            exclude: [
-                try Pattern("**/.DS_Store"),
-                try Pattern("**/.gitkeep"),
-            ],
+            exclude: try exclude
+                .flatMap { try expandBraces(in: $0) }
+                .map { try Pattern($0) },
             skipHiddenFiles: false
         )
         .map {
@@ -1211,6 +1230,68 @@ public struct FileSystem: FileSysteming, Sendable {
             return try Path.AbsolutePath(validating: path)
         }
         .eraseToAnyThrowingAsyncSequenceable()
+    }
+}
+
+private func expandBraces(in regexString: String) throws -> [String] {
+    let pattern = #"\{[^}]+\}"#
+    let regex = try Regex(pattern)
+
+    guard let match = regexString.firstMatch(of: regex) else {
+        return [regexString]
+    }
+
+    return regexString[match.range]
+        .dropFirst()
+        .dropLast()
+        .split(separator: ",")
+        .map { option in
+            regexString.replacingCharacters(in: match.range, with: option)
+        }
+}
+
+extension FileSysteming {
+    /// Filters the results of ``glob(directory:include:)`` instead of passing the exclusions down
+    /// to the underlying search, so that conforming types get a working implementation without
+    /// having to provide one.
+    ///
+    /// Because it filters results that ``glob(directory:include:)`` already produced, it cannot
+    /// surface paths that the two-argument overload dropped. Conforming types whose
+    /// ``glob(directory:include:)`` omits paths of its own accord, as `FileSystem` does with
+    /// `FileSystem.defaultGlobExclusions`, should implement this method to honor `exclude` fully.
+    public func glob(
+        directory: Path.AbsolutePath,
+        include: [String],
+        exclude: [String]
+    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
+        let patterns = try exclude
+            .flatMap { try expandBraces(in: $0) }
+            .map { try Pattern($0) }
+        return try glob(directory: directory, include: include)
+            .excludingPaths(matching: patterns, relativeTo: directory)
+            .eraseToAnyThrowingAsyncSequenceable()
+    }
+}
+
+extension AsyncSequence where Element == Path.AbsolutePath, Self: Sendable {
+    /// Omits the elements that match any of `patterns` relative to `directory`, along with the
+    /// descendants of the directories that match, mirroring how the underlying glob search prunes
+    /// an excluded directory's subtree.
+    func excludingPaths(
+        matching patterns: [Pattern],
+        relativeTo directory: Path.AbsolutePath
+    ) -> AsyncFilterSequence<Self> {
+        filter { path in
+            guard !patterns.isEmpty else { return true }
+            var ancestor = ""
+            for component in path.relative(to: directory).pathString.split(separator: "/") {
+                ancestor = ancestor.isEmpty ? String(component) : "\(ancestor)/\(component)"
+                if patterns.contains(where: { $0.match(ancestor) }) {
+                    return false
+                }
+            }
+            return true
+        }
     }
 }
 
