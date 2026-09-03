@@ -148,11 +148,16 @@ import Path
                 [.year, .month, .day, .hour, .minute, .second],
                 from: date
             )
-            let year = components.year ?? 1980
+            let year: Int = components.year ?? 1980
             guard year >= 1980, year <= 2107 else { return (0, 33) }
-            let time = UInt16((components.hour ?? 0) << 11 | (components.minute ?? 0) << 5 | ((components.second ?? 0) / 2))
-            let dosDate = UInt16((year - 1980) << 9 | (components.month ?? 1) << 5 | (components.day ?? 1))
-            return (time, dosDate)
+            let hour: Int = components.hour ?? 0
+            let minute: Int = components.minute ?? 0
+            let second: Int = components.second ?? 0
+            let month: Int = components.month ?? 1
+            let day: Int = components.day ?? 1
+            let time: Int = (hour << 11) | (minute << 5) | (second / 2)
+            let dosDate: Int = ((year - 1980) << 9) | (month << 5) | day
+            return (UInt16(time), UInt16(dosDate))
         }
     }
 
