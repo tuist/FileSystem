@@ -1127,6 +1127,18 @@ public struct FileSystem: FileSysteming, Sendable {
                 .debug(
                     "Zipping the file or contents of directory at path \(path.pathString) into \(to.pathString) using \(compressionMethod)"
                 )
+            // Deflating entries concurrently is several times faster than the serial
+            // encoder, and the format allows it because entries are compressed
+            // independently. It runs before the permit is taken so its own file
+            // operations do not contend with the permit this call would hold.
+            if compressionMethod == .deflate {
+                do {
+                    return try await ParallelZipWriter().write(contentsOf: path, to: to)
+                } catch ParallelZipWriterError.zip64Required {
+                    logger?.debug("The archive requires ZIP64 extensions, falling back to a serial writer.")
+                }
+            }
+
             let sourceURL = URL(fileURLWithPath: path.pathString)
             let destinationURL = URL(fileURLWithPath: to.pathString)
             let zipFoundationCompressionMethod = compressionMethod.zipFoundationCompressionMethod
