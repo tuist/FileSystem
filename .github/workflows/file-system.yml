@@ -39,7 +39,7 @@ jobs:
     name: "Release build on Static Linux SDK (${{ matrix.arch }})"
     runs-on: ${{ matrix.runner }}
     container:
-      image: swift:6.2
+      image: swift:6.3
     timeout-minutes: 30
     strategy:
       fail-fast: false
