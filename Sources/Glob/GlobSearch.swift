@@ -42,36 +42,8 @@ public func search(
         let task = Task {
             do {
                 for include in include {
-                    let (baseURL, include) = switch include.sections.first {
-                    case let .constant(constant):
-                        if constant.hasSuffix("/") {
-                            (
-                                baseURL.appendingPath(constant.dropLast()),
-                                Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
-                            )
-                        } else if include.sections.count == 1 {
-                            (
-                                baseURL.appendingPath(constant),
-                                Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
-                            )
-                        } else if case .componentWildcard = include.sections[1] {
-                            (
-                                baseURL.appendingPath(constant.components(separatedBy: "/").dropLast().joined(separator: "/")),
-                                Pattern(
-                                    sections: [.constant(constant.components(separatedBy: "/").last ?? "")] +
-                                        Array(include.sections.dropFirst()),
-                                    options: include.options
-                                )
-                            )
-                        } else {
-                            (
-                                baseURL.appendingPath(constant),
-                                Pattern(sections: Array(include.sections.dropFirst()), options: include.options)
-                            )
-                        }
-                    default:
-                        (baseURL, include)
-                    }
+                    let searchRoot = searchRoot(for: include, in: baseURL)
+                    let (baseURL, include, searchRootPrefix) = (searchRoot.url, searchRoot.pattern, searchRoot.prefix)
 
                     if include.sections.isEmpty {
                         if FileManager.default
@@ -101,6 +73,12 @@ public func search(
                         directory: baseURL,
                         symbolicLinkDestination: symbolicLinkDestination,
                         matching: { _, relativePath in
+                            // Excludes are checked before includes so that an excluded directory is pruned even
+                            // though it doesn't match the include pattern itself (e.g. `**/*.swift`).
+                            for pattern in exclude where pattern.match(searchRootPrefix + relativePath) {
+                                return .init(matches: false, skipDescendents: true)
+                            }
+
                             guard include.match(relativePath) else {
                                 // for patterns like `**/*.swift`, parent folders won't be matched but we don't want to skip those
                                 // folder's descendents or we won't find the files that do match
@@ -127,17 +105,12 @@ public func search(
                                 return .init(matches: false, skipDescendents: skipDescendents)
                             }
 
-                            for pattern in exclude {
-                                if pattern.match(relativePath) {
-                                    return .init(matches: false, skipDescendents: true)
-                                }
-                            }
-
                             return .init(matches: true, skipDescendents: false)
                         },
                         includingPropertiesForKeys: keys,
                         skipHiddenFiles: skipHiddenFiles,
                         relativePath: "",
+                        followedSymbolicLinkDestinations: FollowedSymbolicLinkDestinations(),
                         continuation: continuation
                     )
                 }
@@ -154,6 +127,79 @@ public func search(
     }
 }
 
+private struct SearchRoot {
+    /// The directory the search starts from.
+    let url: URL
+    /// The include pattern relative to `url`.
+    let pattern: Pattern
+    /// The path of `url` relative to the caller's base directory, with a trailing slash when non-empty.
+    let prefix: String
+}
+
+/// Folds the constant prefix of an include pattern into the directory the search starts from.
+///
+/// The prefix is kept so exclude patterns can be matched against paths relative to the caller's base directory,
+/// like the include patterns are.
+private func searchRoot(for include: Pattern, in baseURL: URL) -> SearchRoot {
+    guard case let .constant(constant) = include.sections.first else {
+        return SearchRoot(url: baseURL, pattern: include, prefix: "")
+    }
+    let remainingSections = Array(include.sections.dropFirst())
+    if constant.hasSuffix("/") {
+        return SearchRoot(
+            url: baseURL.appendingPath(constant.dropLast()),
+            pattern: Pattern(sections: remainingSections, options: include.options),
+            prefix: constant
+        )
+    } else if include.sections.count > 1, case .componentWildcard = include.sections[1] {
+        let components = constant.components(separatedBy: "/")
+        return SearchRoot(
+            url: baseURL.appendingPath(components.dropLast().joined(separator: "/")),
+            pattern: Pattern(
+                sections: [.constant(components.last ?? "")] + remainingSections,
+                options: include.options
+            ),
+            prefix: components.dropLast().map { $0 + "/" }.joined()
+        )
+    } else {
+        return SearchRoot(
+            url: baseURL.appendingPath(constant),
+            pattern: Pattern(sections: remainingSections, options: include.options),
+            prefix: constant + "/"
+        )
+    }
+}
+
+/// Resolves whether a directory entry is a directory to descend into and, for symbolic links, where it points to.
+private func directoryDestination(of url: URL) throws -> (isDirectory: Bool, symbolicLinkDestination: URL?) {
+    let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+    if resourceValues.isDirectory == true {
+        return (true, nil)
+    } else if resourceValues.isSymbolicLink == true {
+        let symbolicLinkDestination = url.resolvingSymlinksInPath()
+        let resourceValues = try symbolicLinkDestination.resourceValues(forKeys: [.isDirectoryKey])
+        return (resourceValues.isDirectory == true, symbolicLinkDestination)
+    } else {
+        return (false, nil)
+    }
+}
+
+/// The canonical destinations of the directory symbolic links a search has already followed.
+///
+/// A directory that many symbolic links point to (for example a cached framework linked from every target of a
+/// project) is walked once, through the first link the search comes across, instead of once per link.
+private final class FollowedSymbolicLinkDestinations: @unchecked Sendable {
+    private let lock = NSLock()
+    private var destinations: Set<String> = []
+
+    /// Returns `true` if the destination hadn't been followed before.
+    func insert(_ destination: URL) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return destinations.insert(destination.standardizedFileURL.path).inserted
+    }
+}
+
 @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
 private func search(
     directory: URL,
@@ -162,6 +208,7 @@ private func search(
     includingPropertiesForKeys keys: [URLResourceKey],
     skipHiddenFiles: Bool,
     relativePath relativeDirectoryPath: String,
+    followedSymbolicLinkDestinations: FollowedSymbolicLinkDestinations,
     continuation: AsyncThrowingStream<URL, any Error>.Continuation
 ) async throws {
     var options: FileManager.DirectoryEnumerationOptions = [
@@ -190,35 +237,27 @@ private func search(
 
             guard !matchResult.skipDescendents else { continue }
 
-            let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-            let isDirectory: Bool
-            let symbolicLinkDestination: URL?
-            if resourceValues.isDirectory == true {
-                isDirectory = true
-                symbolicLinkDestination = nil
-            } else if resourceValues.isSymbolicLink == true {
-                let resourceValues = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
-                isDirectory = resourceValues.isDirectory == true
-                symbolicLinkDestination = url.resolvingSymlinksInPath()
-            } else {
-                isDirectory = false
-                symbolicLinkDestination = nil
-            }
+            let (isDirectory, symbolicLinkDestination) = try directoryDestination(of: url)
             if isDirectory {
-                // This check prevents infinite loops when a symbolic link
-                // points to an ancestor directory of the current path.
-                if symbolicLinkDestination?.isAncestorOf(directory) != true {
-                    group.addTask {
-                        try await search(
-                            directory: foundPath,
-                            symbolicLinkDestination: symbolicLinkDestination,
-                            matching: matching,
-                            includingPropertiesForKeys: keys,
-                            skipHiddenFiles: skipHiddenFiles,
-                            relativePath: relativePath + "/",
-                            continuation: continuation
-                        )
-                    }
+                if let symbolicLinkDestination {
+                    // This check prevents infinite loops when a symbolic link
+                    // points to an ancestor directory of the current path.
+                    guard !symbolicLinkDestination.isAncestorOf(directory) else { continue }
+                    // Real directories are always walked; a destination is only walked through the first
+                    // symbolic link that points to it.
+                    guard followedSymbolicLinkDestinations.insert(symbolicLinkDestination) else { continue }
+                }
+                group.addTask {
+                    try await search(
+                        directory: foundPath,
+                        symbolicLinkDestination: symbolicLinkDestination,
+                        matching: matching,
+                        includingPropertiesForKeys: keys,
+                        skipHiddenFiles: skipHiddenFiles,
+                        relativePath: relativePath + "/",
+                        followedSymbolicLinkDestinations: followedSymbolicLinkDestinations,
+                        continuation: continuation
+                    )
                 }
             }
         }

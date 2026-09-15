@@ -1293,7 +1293,98 @@ private struct TestError: Error, Equatable {}
                     XCTAssertEqual(got.map(\.basename), [myStructPath.basename])
                 }
             }
+
+            func test_glob_walks_a_symlinked_directory_once_regardless_of_how_many_symlinks_point_to_it() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let targetDirectory = temporaryDirectory.appending(component: "target")
+                    let sourceFile = targetDirectory.appending(components: "nested", "file.swift")
+                    let linksDirectory = temporaryDirectory.appending(component: "links")
+                    try await subject.makeDirectory(at: sourceFile.parentDirectory)
+                    try await subject.makeDirectory(at: linksDirectory)
+                    try await subject.touch(sourceFile)
+                    for index in 0 ..< 5 {
+                        try await subject.createSymbolicLink(
+                            from: linksDirectory.appending(component: "link\(index)"),
+                            to: targetDirectory
+                        )
+                    }
+
+                    // When
+                    let got = try await subject.glob(
+                        directory: temporaryDirectory,
+                        include: ["**/*.swift"]
+                    )
+                    .collect()
+                    .sorted()
+
+                    // Then
+                    XCTAssertEqual(got.count, 2)
+                    XCTAssertTrue(got.contains(sourceFile))
+                    XCTAssertEqual(got.filter { $0.pathString.contains("/links/link") }.count, 1)
+                }
+            }
+
+            func test_glob_with_exclude_does_not_descend_into_an_excluded_directory() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let sourceFile = temporaryDirectory.appending(components: "Sources", "file.swift")
+                    let derivedDirectory = temporaryDirectory.appending(components: "Derived", "FrameworkSearchPaths")
+                    let derivedFile = derivedDirectory.appending(component: "derived.swift")
+                    let otherDerivedFile = temporaryDirectory.appending(components: "Derived", "other.swift")
+                    let linkedDirectory = temporaryDirectory.appending(component: "linked")
+                    let linkedFile = linkedDirectory.appending(component: "linked.swift")
+                    try await subject.makeDirectory(at: sourceFile.parentDirectory)
+                    try await subject.makeDirectory(at: derivedDirectory)
+                    try await subject.makeDirectory(at: linkedDirectory)
+                    try await subject.touch(sourceFile)
+                    try await subject.touch(derivedFile)
+                    try await subject.touch(otherDerivedFile)
+                    try await subject.touch(linkedFile)
+                    try await subject.createSymbolicLink(
+                        from: derivedDirectory.appending(component: "link"),
+                        to: linkedDirectory
+                    )
+
+                    // When
+                    let got = try await subject.glob(
+                        directory: temporaryDirectory,
+                        include: ["**/*.swift"],
+                        exclude: ["**/Derived/FrameworkSearchPaths"]
+                    )
+                    .collect()
+                    .sorted()
+
+                    // Then
+                    XCTAssertEqual(got, [otherDerivedFile, sourceFile, linkedFile].sorted())
+                }
+            }
         #endif
+
+        func test_glob_with_exclude_relative_to_the_base_directory_when_the_include_has_a_constant_prefix() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let projectFile = temporaryDirectory.appending(components: "Projects", "App", "Project.swift")
+                let derivedProjectFile = temporaryDirectory.appending(
+                    components: "Projects", "App", "Derived", "FrameworkSearchPaths", "Project.swift"
+                )
+                try await subject.makeDirectory(at: projectFile.parentDirectory)
+                try await subject.makeDirectory(at: derivedProjectFile.parentDirectory)
+                try await subject.touch(projectFile)
+                try await subject.touch(derivedProjectFile)
+
+                // When
+                let got = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["Projects/**/Project.swift"],
+                    exclude: ["Projects/*/Derived/FrameworkSearchPaths"]
+                )
+                .collect()
+
+                // Then
+                XCTAssertEqual(got, [projectFile])
+            }
+        }
 
         func test_glob_with_double_directory_wildcard() async throws {
             try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
