@@ -20,8 +20,9 @@ public struct MatchResult {
 /// - Parameters:
 ///   - baseURL: The directory to search, defaults to the current working directory.
 ///   - include: When provided, only includes results that match these patterns.
-///   - exclude: When provided, ignore results that match these patterns. If a directory matches an exclude pattern, none of it's
-/// descendents will be matched.
+///   - exclude: When provided, ignore results that match these patterns. Like `include`, the patterns are matched against paths
+/// relative to `baseURL`. If a directory matches an exclude pattern, none of its descendents will be matched; that includes
+/// the directory an include pattern starts from (its constant prefix) and the ancestors of that directory.
 ///   - keys: An array of keys that identify the properties that you want pre-fetched for each returned url. The values for these
 /// keys are cached in the corresponding URL objects. You may specify nil for this parameter. For a list of keys you can specify,
 /// see [Common File System Resource
@@ -44,6 +45,9 @@ public func search(
                 for include in include {
                     let searchRoot = searchRoot(for: include, in: baseURL)
                     let (baseURL, include, searchRootPrefix) = (searchRoot.url, searchRoot.pattern, searchRoot.prefix)
+
+                    // The walk below never matches the search root or its ancestors, so they are checked here.
+                    guard !isExcluded(searchRootPrefix: searchRootPrefix, byAnyOf: exclude) else { continue }
 
                     if include.sections.isEmpty {
                         if FileManager.default
@@ -75,8 +79,11 @@ public func search(
                         matching: { _, relativePath in
                             // Excludes are checked before includes so that an excluded directory is pruned even
                             // though it doesn't match the include pattern itself (e.g. `**/*.swift`).
-                            for pattern in exclude where pattern.match(searchRootPrefix + relativePath) {
-                                return .init(matches: false, skipDescendents: true)
+                            if !exclude.isEmpty {
+                                let pathRelativeToBase = searchRootPrefix + relativePath
+                                if exclude.contains(where: { $0.match(pathRelativeToBase) }) {
+                                    return .init(matches: false, skipDescendents: true)
+                                }
                             }
 
                             guard include.match(relativePath) else {
@@ -110,7 +117,6 @@ public func search(
                         includingPropertiesForKeys: keys,
                         skipHiddenFiles: skipHiddenFiles,
                         relativePath: "",
-                        followedSymbolicLinkDestinations: FollowedSymbolicLinkDestinations(),
                         continuation: continuation
                     )
                 }
@@ -184,20 +190,16 @@ private func directoryDestination(of url: URL) throws -> (isDirectory: Bool, sym
     }
 }
 
-/// The canonical destinations of the directory symbolic links a search has already followed.
-///
-/// A directory that many symbolic links point to (for example a cached framework linked from every target of a
-/// project) is walked once, through the first link the search comes across, instead of once per link.
-private final class FollowedSymbolicLinkDestinations: @unchecked Sendable {
-    private let lock = NSLock()
-    private var destinations: Set<String> = []
-
-    /// Returns `true` if the destination hadn't been followed before.
-    func insert(_ destination: URL) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return destinations.insert(destination.standardizedFileURL.path).inserted
+/// Whether the search root (`searchRootPrefix`, relative to the base directory with a trailing slash) or one of its
+/// ancestors matches an exclude pattern.
+private func isExcluded(searchRootPrefix: String, byAnyOf exclude: [Pattern]) -> Bool {
+    guard !exclude.isEmpty, !searchRootPrefix.isEmpty else { return false }
+    var path = ""
+    for component in searchRootPrefix.split(separator: "/") {
+        path += path.isEmpty ? String(component) : "/" + component
+        if exclude.contains(where: { $0.match(path) }) { return true }
     }
+    return false
 }
 
 @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
@@ -208,7 +210,6 @@ private func search(
     includingPropertiesForKeys keys: [URLResourceKey],
     skipHiddenFiles: Bool,
     relativePath relativeDirectoryPath: String,
-    followedSymbolicLinkDestinations: FollowedSymbolicLinkDestinations,
     continuation: AsyncThrowingStream<URL, any Error>.Continuation
 ) async throws {
     var options: FileManager.DirectoryEnumerationOptions = [
@@ -239,14 +240,9 @@ private func search(
 
             let (isDirectory, symbolicLinkDestination) = try directoryDestination(of: url)
             if isDirectory {
-                if let symbolicLinkDestination {
-                    // This check prevents infinite loops when a symbolic link
-                    // points to an ancestor directory of the current path.
-                    guard !symbolicLinkDestination.isAncestorOf(directory) else { continue }
-                    // Real directories are always walked; a destination is only walked through the first
-                    // symbolic link that points to it.
-                    guard followedSymbolicLinkDestinations.insert(symbolicLinkDestination) else { continue }
-                }
+                // This check prevents infinite loops when a symbolic link
+                // points to an ancestor directory of the current path.
+                if let symbolicLinkDestination, symbolicLinkDestination.isAncestorOf(directory) { continue }
                 group.addTask {
                     try await search(
                         directory: foundPath,
@@ -255,7 +251,6 @@ private func search(
                         includingPropertiesForKeys: keys,
                         skipHiddenFiles: skipHiddenFiles,
                         relativePath: relativePath + "/",
-                        followedSymbolicLinkDestinations: followedSymbolicLinkDestinations,
                         continuation: continuation
                     )
                 }

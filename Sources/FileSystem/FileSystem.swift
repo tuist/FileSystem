@@ -382,7 +382,8 @@ public protocol FileSysteming: Sendable {
     func glob(directory: Path.AbsolutePath, include: [String]) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath>
 
     /// Looks up files and directories that match a set of glob patterns, skipping the ones that match any of the
-    /// exclude patterns. A directory that matches an exclude pattern is not descended into.
+    /// exclude patterns. A directory that matches an exclude pattern is not descended into, and neither is a search
+    /// root (the constant prefix of an include pattern) that matches one or lies under one.
     /// - Parameters:
     ///   - directory: Base absolute directory that glob patterns are relative to.
     ///   - include: A list of glob patterns.
@@ -409,23 +410,6 @@ public protocol FileSysteming: Sendable {
     //       func fileAttributes(at path: AbsolutePath) throws -> [FileAttributeKey: Any]
     //       func files(in path: AbsolutePath, nameFilter: Set<String>?, extensionFilter: Set<String>?) -> Set<AbsolutePath>
     //       func filesAndDirectoriesContained(in path: AbsolutePath) throws -> [AbsolutePath]?
-}
-
-extension FileSysteming {
-    /// Conformances that predate exclude patterns filter the results of the include-only lookup.
-    public func glob(
-        directory: Path.AbsolutePath,
-        include: [String],
-        exclude: [String]
-    ) throws -> AnyThrowingAsyncSequenceable<Path.AbsolutePath> {
-        let excludePatterns = try exclude.map { try Pattern($0) }
-        return try glob(directory: directory, include: include)
-            .filter { path in
-                let relativePath = path.relative(to: directory).pathString
-                return !excludePatterns.contains { $0.match(relativePath) }
-            }
-            .eraseToAnyThrowingAsyncSequenceable()
-    }
 }
 
 #if !os(Windows)

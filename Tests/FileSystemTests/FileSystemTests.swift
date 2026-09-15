@@ -1294,34 +1294,57 @@ private struct TestError: Error, Equatable {}
                 }
             }
 
-            func test_glob_walks_a_symlinked_directory_once_regardless_of_how_many_symlinks_point_to_it() async throws {
+            func test_glob_reports_every_symlink_to_the_same_directory_deterministically() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
-                    // Given
+                    // Given: a directory reachable directly and through several links in sibling directories, so the
+                    // concurrent walk reaches it in a different order on every run.
                     let targetDirectory = temporaryDirectory.appending(component: "target")
                     let sourceFile = targetDirectory.appending(components: "nested", "file.swift")
-                    let linksDirectory = temporaryDirectory.appending(component: "links")
                     try await subject.makeDirectory(at: sourceFile.parentDirectory)
-                    try await subject.makeDirectory(at: linksDirectory)
                     try await subject.touch(sourceFile)
+                    var expected = [sourceFile]
                     for index in 0 ..< 5 {
-                        try await subject.createSymbolicLink(
-                            from: linksDirectory.appending(component: "link\(index)"),
-                            to: targetDirectory
+                        let link = temporaryDirectory.appending(components: "links\(index)", "link")
+                        try await subject.makeDirectory(at: link.parentDirectory)
+                        try await subject.createSymbolicLink(from: link, to: targetDirectory)
+                        expected.append(link.appending(components: "nested", "file.swift"))
+                    }
+
+                    // When
+                    var results: Set<[AbsolutePath]> = []
+                    for _ in 0 ..< 20 {
+                        try await results.insert(
+                            subject.glob(directory: temporaryDirectory, include: ["**/*.swift"]).collect().sorted()
                         )
                     }
+
+                    // Then
+                    XCTAssertEqual(results, [expected.sorted()])
+                }
+            }
+
+            func test_glob_matches_a_pattern_naming_one_of_several_symlinks_to_the_same_directory() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let sharedDirectory = temporaryDirectory.appending(component: "shared")
+                    try await subject.makeDirectory(at: sharedDirectory)
+                    try await subject.touch(sharedDirectory.appending(component: "Header.h"))
+                    let publicLink = temporaryDirectory.appending(components: "Headers", "Public", "Module")
+                    let privateLink = temporaryDirectory.appending(components: "Headers", "Private", "Module")
+                    try await subject.makeDirectory(at: publicLink.parentDirectory)
+                    try await subject.makeDirectory(at: privateLink.parentDirectory)
+                    try await subject.createSymbolicLink(from: publicLink, to: sharedDirectory)
+                    try await subject.createSymbolicLink(from: privateLink, to: sharedDirectory)
 
                     // When
                     let got = try await subject.glob(
                         directory: temporaryDirectory,
-                        include: ["**/*.swift"]
+                        include: ["**/Private/Module/*.h"]
                     )
                     .collect()
-                    .sorted()
 
                     // Then
-                    XCTAssertEqual(got.count, 2)
-                    XCTAssertTrue(got.contains(sourceFile))
-                    XCTAssertEqual(got.filter { $0.pathString.contains("/links/link") }.count, 1)
+                    XCTAssertEqual(got, [privateLink.appending(component: "Header.h")])
                 }
             }
 
@@ -1383,6 +1406,61 @@ private struct TestError: Error, Equatable {}
 
                 // Then
                 XCTAssertEqual(got, [projectFile])
+            }
+        }
+
+        func test_glob_with_exclude_matching_the_include_search_root_or_one_of_its_ancestors() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let derivedFile = temporaryDirectory.appending(components: "Derived", "Sources", "file.swift")
+                try await subject.makeDirectory(at: derivedFile.parentDirectory)
+                try await subject.touch(derivedFile)
+
+                // When
+                let gotRoot = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["Derived/**/*.swift"],
+                    exclude: ["Derived"]
+                )
+                .collect()
+                let gotAncestor = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["Derived/Sources/**/*.swift"],
+                    exclude: ["**/Derived"]
+                )
+                .collect()
+
+                // Then
+                XCTAssertEqual(gotRoot, [])
+                XCTAssertEqual(gotAncestor, [])
+            }
+        }
+
+        func test_glob_with_exclude_matching_a_constant_include() async throws {
+            try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                // Given
+                let generatedFile = temporaryDirectory.appending(components: "Sources", "Generated.swift")
+                let dsStore = temporaryDirectory.appending(components: "Sources", ".DS_Store")
+                try await subject.makeDirectory(at: generatedFile.parentDirectory)
+                try await subject.touch(generatedFile)
+                try await subject.touch(dsStore)
+
+                // When
+                let gotGenerated = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["Sources/Generated.swift"],
+                    exclude: ["**/Generated.swift"]
+                )
+                .collect()
+                let gotDSStore = try await subject.glob(
+                    directory: temporaryDirectory,
+                    include: ["Sources/.DS_Store"]
+                )
+                .collect()
+
+                // Then
+                XCTAssertEqual(gotGenerated, [])
+                XCTAssertEqual(gotDSStore, [])
             }
         }
 
