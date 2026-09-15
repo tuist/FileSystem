@@ -20,7 +20,7 @@ jobs:
     name: "Release build on macOS"
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v4
       - name: Run
@@ -30,7 +30,7 @@ jobs:
     name: "Release build on Linux"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - name: Run
         run: mise run build-linux
@@ -52,7 +52,7 @@ jobs:
             runner: ubuntu-24.04-arm
             sdk-target: aarch64-swift-linux-musl
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Cache Static Linux SDK
         uses: actions/cache@v5
         with:
@@ -72,7 +72,7 @@ jobs:
     name: "Test on macOS"
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v4
       - name: Run
@@ -82,7 +82,7 @@ jobs:
     name: "Test on Linux"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - name: Run
         run: mise run test-linux
@@ -92,7 +92,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: compnerd/gha-setup-vsdevenv@main
       - uses: compnerd/gha-setup-swift@main
         with:
@@ -107,7 +107,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: compnerd/gha-setup-vsdevenv@main
       - uses: compnerd/gha-setup-swift@main
         with:
@@ -121,7 +121,7 @@ jobs:
     name: Lint
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: sudo xcode-select -s /Applications/Xcode_16.3.app
       - uses: jdx/mise-action@v4
       - name: Run
