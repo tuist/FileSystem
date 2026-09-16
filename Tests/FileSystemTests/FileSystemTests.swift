@@ -759,6 +759,74 @@ private struct TestError: Error, Equatable {}
                 }
             }
 
+            func test_zipping_withDeflate_roundTripsDirectoriesSymlinksAndPermissions() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let bundlePath = temporaryDirectory.appending(component: "App.app")
+                    let zipPath = temporaryDirectory.appending(component: "App.zip")
+                    let unzippedPath = temporaryDirectory.appending(component: "unzipped")
+                    try await subject.makeDirectory(at: bundlePath.appending(component: "Frameworks"))
+                    try await subject.makeDirectory(at: unzippedPath)
+                    let content = String(repeating: "executable payload ", count: 5000)
+                    try await subject.writeText(content, at: bundlePath.appending(component: "App"))
+                    try FileManager.default.setAttributes(
+                        [.posixPermissions: 0o755],
+                        ofItemAtPath: bundlePath.appending(component: "App").pathString
+                    )
+                    try await subject.touch(bundlePath.appending(component: "Empty"))
+                    try await subject.writeText("ü", at: bundlePath.appending(component: "Ünïcödé.txt"))
+                    try FileManager.default.createSymbolicLink(
+                        atPath: bundlePath.appending(component: "Current").pathString,
+                        withDestinationPath: "Frameworks"
+                    )
+
+                    // When
+                    try await subject.zipFileOrDirectoryContent(at: bundlePath, to: zipPath, compressionMethod: .deflate)
+                    try await subject.unzip(zipPath, to: unzippedPath)
+
+                    // Then
+                    let unzippedContent = try await subject.readTextFile(at: unzippedPath.appending(component: "App"))
+                    XCTAssertEqual(unzippedContent, content)
+                    let unicodeContent = try await subject.readTextFile(at: unzippedPath.appending(component: "Ünïcödé.txt"))
+                    XCTAssertEqual(unicodeContent, "ü")
+                    let emptyExists = try await subject.exists(unzippedPath.appending(component: "Empty"))
+                    XCTAssertTrue(emptyExists)
+                    let frameworksExists = try await subject.exists(
+                        unzippedPath.appending(component: "Frameworks"),
+                        isDirectory: true
+                    )
+                    XCTAssertTrue(frameworksExists)
+                    let permissions = try FileManager.default
+                        .attributesOfItem(atPath: unzippedPath.appending(component: "App").pathString)[.posixPermissions]
+                        as? NSNumber
+                    XCTAssertEqual(permissions?.uint16Value, 0o755)
+                    let linkPath = unzippedPath.appending(component: "Current").pathString
+                    let linkType = try FileManager.default.attributesOfItem(atPath: linkPath)[.type] as? FileAttributeType
+                    XCTAssertEqual(linkType, .typeSymbolicLink)
+                    XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: linkPath), "Frameworks")
+                }
+            }
+
+            func test_zipping_withDeflate_zipsASingleFile() async throws {
+                try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
+                    // Given
+                    let filePath = temporaryDirectory.appending(component: "file.txt")
+                    let zipPath = temporaryDirectory.appending(component: "file.zip")
+                    let unzippedPath = temporaryDirectory.appending(component: "unzipped")
+                    try await subject.makeDirectory(at: unzippedPath)
+                    let content = String(repeating: "single file payload ", count: 5000)
+                    try await subject.writeText(content, at: filePath)
+
+                    // When
+                    try await subject.zipFileOrDirectoryContent(at: filePath, to: zipPath, compressionMethod: .deflate)
+                    try await subject.unzip(zipPath, to: unzippedPath)
+
+                    // Then
+                    let unzippedContent = try await subject.readTextFile(at: unzippedPath.appending(component: "file.txt"))
+                    XCTAssertEqual(unzippedContent, content)
+                }
+            }
+
             func test_zipping_withDeflate_compressesTheContent() async throws {
                 try await subject.runInTemporaryDirectory(prefix: "FileSystem") { temporaryDirectory in
                     // Given
