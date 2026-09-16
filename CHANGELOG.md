@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.1] - 2026-09-16
+### Details
+#### <!-- 1 -->🐛 Bug Fixes
+- Prune excluded directories in glob and add glob(directory:include:exclude:) by @esnunes in [#402](https://github.com/tuist/FileSystem/pull/402)
+
+## New Contributors
+* @esnunes made their first contribution in [#402](https://github.com/tuist/FileSystem/pull/402)
 ## [0.19.0] - 2026-09-03
 ### Details
 #### <!-- 0 -->🚀 Features
@@ -280,6 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## New Contributors
 * @pepicrft made their first contribution in [#17](https://github.com/tuist/FileSystem/pull/17)
 * @renovate[bot] made their first contribution in [#16](https://github.com/tuist/FileSystem/pull/16)
+[0.19.1]: https://github.com/tuist/FileSystem/compare/0.19.0..0.19.1
 [0.19.0]: https://github.com/tuist/FileSystem/compare/0.18.0..0.19.0
 [0.18.0]: https://github.com/tuist/FileSystem/compare/0.17.3..0.18.0
 [0.17.3]: https://github.com/tuist/FileSystem/compare/0.17.2..0.17.3
