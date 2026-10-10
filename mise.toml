@@ -2,7 +2,7 @@
 "tuist" = "4.208.0"
 "swiftlint" = "0.65.1"
 "swiftformat" = "0.52.10"
-"git-cliff" = "2.14.1"
+"git-cliff" = "2.14.2"
 
 [plugins]
 tuist = "https://github.com/asdf-community/asdf-tuist"
