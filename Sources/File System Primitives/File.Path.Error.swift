@@ -15,7 +15,10 @@ extension File.Path {
         ///
         /// Control characters are invalid in file paths and can cause
         /// security issues or unexpected behavior with system calls.
-        case containsControlCharacters
+        ///
+        /// The associated value is the original, unmodified path string so
+        /// callers can identify which path was rejected.
+        case containsControlCharacters(String)
     }
 }
 
@@ -26,8 +29,11 @@ extension File.Path.Error: CustomStringConvertible {
         switch self {
         case .empty:
             return "Path is empty"
-        case .containsControlCharacters:
-            return "Path contains control characters"
+        case let .containsControlCharacters(path):
+            // Use the escaped representation so the offending characters are
+            // visible instead of being rendered (a bare "\n" would split the
+            // message and a bare "\r" would overwrite part of it).
+            return "Path contains control characters: \(path.debugDescription)"
         }
     }
 }
